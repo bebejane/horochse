@@ -45,6 +45,7 @@ Stockholm concert aggregator. A Next.js 16 App Router client app (React 19, Turb
 - Window is fixed at `WEEKS = 5` in `dates.ts`. No API keys: the SoundCloud `client_id` is scraped from soundcloud.com at runtime; Bandcamp uses its public mobile API.
 - **Bandcamp rate limits:** `autocomplete_elastic` (the search endpoint) can 429 an IP for a while. `httpJson` throttles same-host calls (see `HOST_LIMITS` in `http.ts`) with exponential backoff + jitter, and `bandcamp.ts` opens a 10-min circuit (`isBandcampSearchBlocked`) so a block skips search-assisted lookups instead of retrying every artist. A blocked search just means fewer tracks; the run is unaffected. The mobile API (`tralbum_details`/`band_details`) is not rate-limited the same way.
 - **Event-page fetches in the track phase** (`takePageLinks`) skip Ticketmaster/Live Nation hosts (`EVENT_PAGE_SKIP_HOSTS` in `links.ts`) — they need a session cookie, always 401, and never expose music links. Other hosts log a single `evenemangssida … HTTP 4xx (hoppar över)` line via `warn` instead of a stack trace; the lookup continues using `text`/`title` only.
+- **Ticketmaster venue listings** (`sources/ticketmaster.ts`) send browser-like navigation headers (`BROWSER_HEADERS`) and retry twice on 403/429; a bare `Accept: */*` gets 403'd as a bot. Used by `cirkus` and `fryshuset`. A 0-event result there usually means the venue genuinely has no concerts in the window, not a fetch failure.
 - Preserve the `eventId` algorithm and JSON field shape — ICS URLs and `localStorage` keys depend on them.
 
 ## Duplicated logic — keep both sides in sync
@@ -68,6 +69,7 @@ Changing one side only makes the stored events and the rendered UI disagree.
   - `pnpm scrape:db` — CLI (`scripts/scrape-to-db.ts`), for system crontab / GitHub Actions. Flags `--only`, `--no-tracks`, `--quiet`.
   - `GET /api/cron/scrape` — Vercel Cron (scheduled in `vercel.json`, daily 05:00 UTC). Guarded by `Authorization: Bearer $CRON_SECRET` (Vercel sends this) or `?secret=`; `&tracks=false` and `&only=` are supported for cheap manual runs. `maxDuration = 300` because a full run is ~5 min — **needs a Vercel plan allowing 300 s**, not Hobby's 60 s.
 - `collect()` returns `provenance` (event id → source key) and `okSources`; these drive `events.source_key` and per-source reconciliation and are internal to the write path (not persisted on the event).
+- **Never use `db.transaction()` with this remote `libsql://` client** — interactive transactions (BEGIN/COMMIT) hang over Turso's HTTP transport, which stalls the run right after the seed log. Use `db.batch([...])` (one atomic HTTP round-trip; statements run in array order) as `upsertEvents` does. Same applies to any future multi-statement write.
 - The app reads from Turso (`/api/events` → `loadPayload()`, ICS → `findEvent()`); there is no JSON feed. The only writer is `scrapeAndStore`.
 - For local runs, load `.env` explicitly: `node --env-file=.env --import tsx scripts/scrape-to-db.ts` (plain `tsx` via the pnpm shim can break under an inherited `NODE_OPTIONS`).
 

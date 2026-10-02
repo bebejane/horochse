@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 // The scrape takes ~5 min including Bandcamp/SoundCloud lookups.
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300;
+export const maxDuration = 600;
 
 function authorized(request: Request): boolean {
 	const secret = process.env.CRON_SECRET;

@@ -206,46 +206,63 @@ function trackRow(eventId: string, position: number, input: TrackInput) {
   };
 }
 
-/** Upsert one event and replace its tracks, atomically. */
-export async function upsertEvent(runId: number, input: EventInput): Promise<void> {
-  const now = new Date();
+function eventUpsertStatement(runId: number, input: EventInput, now: Date) {
   const row = eventRow(runId, input, now);
-  await db.transaction(async (tx) => {
-    await tx
-      .insert(events)
-      .values(row)
-      .onConflictDoUpdate({
-        target: events.id,
-        set: {
-          sourceKey: row.sourceKey,
-          venueSlug: row.venueSlug,
-          place: row.place,
-          title: row.title,
-          startsAt: row.startsAt,
-          date: row.date,
-          time: row.time,
-          image: row.image,
-          text: row.text,
-          url: row.url,
-          status: "active",
-          cancelled: row.cancelled,
-          isClub: row.isClub,
-          lastSeenAt: row.lastSeenAt,
-          lastRunId: row.lastRunId,
-          seenCount: sql`${events.seenCount} + 1`,
-        },
-      });
-    await tx.delete(tracks).where(eq(tracks.eventId, row.id));
-    if (input.tracks?.length) {
-      await tx
-        .insert(tracks)
-        .values(input.tracks.map((item, index) => trackRow(row.id, index, item)));
-    }
-  });
+  return db
+    .insert(events)
+    .values(row)
+    .onConflictDoUpdate({
+      target: events.id,
+      set: {
+        sourceKey: row.sourceKey,
+        venueSlug: row.venueSlug,
+        place: row.place,
+        title: row.title,
+        startsAt: row.startsAt,
+        date: row.date,
+        time: row.time,
+        image: row.image,
+        text: row.text,
+        url: row.url,
+        status: "active",
+        cancelled: row.cancelled,
+        isClub: row.isClub,
+        lastSeenAt: row.lastSeenAt,
+        lastRunId: row.lastRunId,
+        seenCount: sql`${events.seenCount} + 1`,
+      },
+    });
 }
 
+/**
+ * Upsert a batch of events and replace their tracks.
+ *
+ * Uses `db.batch` (one atomic HTTP round-trip) instead of an interactive
+ * `db.transaction`: Turso's remote `libsql://` transport does not reliably
+ * support interactive transactions and hangs on `BEGIN`. Statements run in
+ * array order inside a single transaction, so per event the order is:
+ * upsert event → delete its tracks → insert new tracks.
+ */
 export async function upsertEvents(runId: number, inputs: EventInput[]): Promise<void> {
-  for (const input of inputs) await upsertEvent(runId, input);
+  if (!inputs.length) return;
+  const now = new Date();
+  const statements: unknown[] = [];
+
+  for (const input of inputs) {
+    const row = eventRow(runId, input, now);
+    statements.push(eventUpsertStatement(runId, input, now));
+    statements.push(db.delete(tracks).where(eq(tracks.eventId, row.id)));
+    if (input.tracks?.length) {
+      statements.push(
+        db
+          .insert(tracks)
+          .values(input.tracks.map((item, index) => trackRow(row.id, index, item))),
+      );
+    }
+  }
+
+  // db.batch expects a non-empty tuple; the array is guaranteed non-empty here.
+  await db.batch(statements as unknown as Parameters<typeof db.batch>[0]);
 }
 
 /**

@@ -1,6 +1,6 @@
 import type { DateTime } from "luxon";
 
-import { httpRequest } from "../http";
+import { HttpError, httpRequest, sleep } from "../http";
 import { inRange, parseDt } from "../dates";
 import { pickImage } from "../html";
 import { jsonldEvents, walkJsonld } from "../jsonld";
@@ -62,6 +62,35 @@ function nodesFromNext(html: string): any[] {
   return walkJsonld(nodes);
 }
 
+// Ticketmaster returns 403 to bot-looking requests (a bare `Accept: */*`) and
+// intermittently under load. Send browser-like navigation headers and retry
+// once on 403/429 before giving up.
+const BROWSER_HEADERS = {
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "Accept-Language": "sv-SE,sv;q=0.9,en;q=0.8",
+  Referer: "https://www.ticketmaster.se/",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "same-origin",
+  "Upgrade-Insecure-Requests": "1",
+};
+
+async function fetchListing(url: string): Promise<string> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await httpRequest(url, { extraHeaders: BROWSER_HEADERS });
+    } catch (exc) {
+      const status = exc instanceof HttpError ? exc.status : 0;
+      if ((status === 403 || status === 429) && attempt < 2) {
+        await sleep(1500 * (attempt + 1));
+        continue;
+      }
+      throw exc;
+    }
+  }
+  throw new Error(`ticketmaster: kunde inte hämta ${url}`);
+}
+
 export async function fetchTicketmasterVenue(
   start: DateTime,
   end: DateTime,
@@ -70,7 +99,7 @@ export async function fetchTicketmasterVenue(
   slug: string,
   place = "",
 ): Promise<ScrapedEvent[]> {
-  const html = await httpRequest(url);
+  const html = await fetchListing(url);
   const events: ScrapedEvent[] = [];
   const seen = new Set<string>();
   const tmEvents = venueEvents(html);
