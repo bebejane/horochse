@@ -54,6 +54,9 @@ export function eventTracks(event?: ConcertEvent | null): Track[] {
   if (event && event.youtube && event.youtube.video_id) {
     return [{ source: "youtube", ...event.youtube }];
   }
+  if (event && event.deezer && event.deezer.track_id) {
+    return [{ source: "deezer", ...event.deezer }];
+  }
   return [];
 }
 
@@ -163,9 +166,12 @@ export function trackSource(track?: Track | null): TrackSource | "" {
   if (track && track.source === "bandcamp") return "bandcamp";
   if (track && track.source === "soundcloud") return "soundcloud";
   if (track && track.source === "youtube") return "youtube";
+  if (track && track.source === "deezer") return "deezer";
   if (track && track.band_id && track.album_id) return "bandcamp";
-  if (track && track.track_id) return "soundcloud";
   if (track && track.video_id) return "youtube";
+  // `track_id` alone means SoundCloud — keep after the deezer check, since
+  // deezer tracks carry a `track_id` too.
+  if (track && track.track_id) return "soundcloud";
   return "";
 }
 
@@ -203,6 +209,13 @@ export function streamRequest(track?: Track | null): StreamRequest | null {
     // No stream to resolve: the embedded player takes the id directly.
     return { href: "", source, fallback: track?.url || "", videoId };
   }
+  if (source === "deezer") {
+    return {
+      href: "/api/deezer/stream?id=" + encodeURIComponent(String(track?.track_id || "")),
+      source,
+      fallback: track?.url || "",
+    };
+  }
   return null;
 }
 
@@ -239,6 +252,7 @@ export function trackSourceName(track?: Track | null): string {
   if (src === "youtube" || /youtube\.com|youtu\.be/i.test(url)) return "YouTube";
   if (src === "soundcloud" || /soundcloud\.com/i.test(url)) return "SoundCloud";
   if (src === "bandcamp" || /bandcamp\.com/i.test(url)) return "Bandcamp";
+  if (src === "deezer" || /deezer\.com/i.test(url)) return "Deezer";
   return "";
 }
 

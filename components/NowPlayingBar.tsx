@@ -92,6 +92,7 @@ export function NowPlayingBar({
             ) : (
               <a className={s.nowplayingArtist}>{data?.artist || ""}</a>
             )}
+            {data?.preview ? <span className={s.nowplayingPreview}>30 s förhandslyssning</span> : null}
           </div>
         </div>
         <div className={s.nowplayingMain}>
@@ -155,7 +156,13 @@ export function NowPlayingBar({
               rel="noopener noreferrer"
               hidden={!data?.url}
             >
-              {data?.source === "soundcloud" ? "SoundCloud" : data?.source === "youtube" ? "YouTube" : "Bandcamp"}
+              {data?.source === "soundcloud"
+                ? "SoundCloud"
+                : data?.source === "youtube"
+                  ? "YouTube"
+                  : data?.source === "deezer"
+                    ? "Deezer"
+                    : "Bandcamp"}
             </a>
           </span>
         </div>

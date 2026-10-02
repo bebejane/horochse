@@ -1,6 +1,7 @@
 import { bcTrack, lookupBandcamp, lookupBandcampUrl } from "./bandcamp";
 import { lookupSoundcloudArtist, lookupSoundcloudUrl, scTrack } from "./soundcloud";
 import { lookupYoutubeArtist, youtubeDisabled, ytTrack } from "./youtube";
+import { lookupDeezerArtist, dzTrack } from "./deezer";
 import { takePageLinks, spotifyMeta } from "./links";
 import { mapPool, memoInflight, log, warn, seconds, withTimeout } from "./log";
 import {
@@ -67,6 +68,16 @@ export function applyPrimaryMedia(event: ScrapedEvent, tracks: ScrapedTrack[]): 
       url: first.url || "",
       image: first.image || "",
     };
+  } else if (first.source === "deezer") {
+    event.deezer = {
+      artist: first.artist || "",
+      album: first.album || "",
+      track: first.track || "",
+      track_id: first.track_id,
+      url: first.url || "",
+      image: first.image || "",
+      preview: true,
+    };
   } else {
     event.soundcloud = {
       artist: first.artist || "",
@@ -122,6 +133,7 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
   const bc = new Map<string, Release | null>();
   const sc = new Map<string, Release | null>();
   const yt = new Map<string, Release | null>();
+  const dz = new Map<string, Release | null>();
   const bcInflight = new Map<string, Promise<Release | null>>();
   const scInflight = new Map<string, Promise<Release | null>>();
   // Persistent across the whole run: an artist already resolved (or ruled out)
@@ -129,13 +141,16 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
   const bcResolved = new Map<string, Release | null>();
   const scResolved = new Map<string, Release | null>();
   const ytResolved = new Map<string, Release | null>();
+  // Deezer has no persistent cache: the API is public, key-less and generous
+  // with rate limits, and an in-run memo is enough to avoid repeats.
+  const dzResolved = new Map<string, Release | null>();
   // Persisted across runs (Turso): resolved artists are never searched again,
   // which is the main lever against Bandcamp 429s and slow lookups.
   const persistent = opts.bandcampCache;
   const persistentUpdates = opts.bandcampUpdates;
   const persistentYt = opts.youtubeCache;
   const ytUpdates = opts.youtubeUpdates;
-  const stats = { found: 0, fromPage: 0, extra: 0, cached: 0, persistentHits: 0, spotifyHits: 0, youtubeHits: 0 };
+  const stats = { found: 0, fromPage: 0, extra: 0, cached: 0, persistentHits: 0, spotifyHits: 0, youtubeHits: 0, deezerHits: 0 };
   const total = events.length;
   const quiet = opts.quiet ?? false;
   const concurrency = opts.concurrency ?? 8;
@@ -387,6 +402,32 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
         if (tracks.length) stats.youtubeHits += 1;
       }
 
+      // Deezer is the very last resort after even the YouTube pass: a 30 s
+      // preview is better than a silent event, but it is a taste, not the track.
+      // Only the first artist is looked up — a preview should anchor the event,
+      // not fill it with sidemen.
+      if (!tracks.length && people.length) {
+        const person = people[0];
+        const nameKey = foldName(person);
+        let release = dzResolved.get(nameKey) ?? null;
+        if (!dzResolved.has(nameKey)) {
+          release = withTimeout(lookupDeezerArtist(person, dz, context), artistTimeoutMs, `deezer ${person}`)
+            .catch((err) => {
+              warn(String(err));
+              return null;
+            })
+            .then((resolved) => {
+              dzResolved.set(nameKey, resolved);
+              return resolved;
+            });
+          release = await release;
+        }
+        if (release) {
+          addTrack(dzTrack(release) as ScrapedTrack);
+          stats.deezerHits += 1;
+        }
+      }
+
       applyPrimaryMedia(event, tracks);
       if (tracks.length) {
         stats.found += 1;
@@ -408,6 +449,7 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
     `Låtar klara: ${stats.found}/${total} poster med spelbar låt ` +
       `(${stats.fromPage} från evenemangssida, ${stats.extra} extra artistspår, ` +
       `${stats.spotifyHits} via Spotify-metadata, ${stats.youtubeHits} via YouTube, ` +
+      `${stats.deezerHits} via Deezer-förhandslyssning, ` +
       `${stats.cached} cachade i körningen, ${stats.persistentHits} från tidigare körningar) ` +
       `på ${seconds(Date.now() - started)}`,
   );

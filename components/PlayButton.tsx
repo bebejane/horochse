@@ -30,12 +30,22 @@ export function PlayButton({
   if (!tracks.length) return null;
   const first = tracks[0];
   const source = trackSource(first);
+  const preview = source === "deezer" || first.preview === true;
+  const sourceName =
+    source === "soundcloud"
+      ? "SoundCloud"
+      : source === "youtube"
+        ? "YouTube"
+        : source === "deezer"
+          ? "Deezer"
+          : "Bandcamp";
+  const previewNote = preview ? " (30 sekunders förhandslyssning)" : "";
   const n = tracks.length;
   const label = n > 1
     ? "Spela " + n + " låtar från " + (event.title || "konserten")
     : "Spela " + (first.track || first.album || "en låt") +
       (first.artist ? " av " + first.artist : "") +
-      (source === "soundcloud" ? " från SoundCloud" : source === "youtube" ? " från YouTube" : " från Bandcamp");
+      " från " + sourceName + previewNote;
   const playBtn = (
     <button
       type="button"
@@ -56,6 +66,11 @@ export function PlayButton({
       <PlayIcon />
       <PauseIcon />
       {n > 1 ? <span className={s.playCount} data-play-count>{n}</span> : null}
+      {preview ? (
+        <span className={s.playPreview} data-play-preview aria-hidden="true">
+          30 s
+        </span>
+      ) : null}
     </button>
   );
   if (n < 2) return playBtn;

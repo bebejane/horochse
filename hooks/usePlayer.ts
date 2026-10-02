@@ -65,6 +65,8 @@ export type NowPlayingData = {
   trackUrl?: string;
   image: string;
   source: string;
+  /** Deezer tracks play a 30 s preview, not the full track. */
+  preview?: boolean;
 };
 
 type PlayerOpts = {
@@ -662,6 +664,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
         url: data.url || track.url || "",
         image: data.image || track.image || "",
         source: req.source,
+        preview: req.source === "deezer" || Boolean(track?.preview),
       });
       const startWidget = () => {
         const url = data.url || req.fallback;

@@ -38,7 +38,7 @@ export type VenueSlug =
   | "ronnells"
   | "larryscorner";
 
-export type TrackSource = "bandcamp" | "soundcloud" | "youtube";
+export type TrackSource = "bandcamp" | "soundcloud" | "youtube" | "deezer";
 
 export type Track = {
   source?: TrackSource | string;
@@ -52,6 +52,8 @@ export type Track = {
   track_id?: number;
   /** YouTube video id (embedded player). */
   video_id?: string;
+  /** Deezer tracks are 30 s previews, never full tracks. */
+  preview?: boolean;
   type?: string;
 };
 
@@ -71,6 +73,7 @@ export type ConcertEvent = {
   bandcamp?: Track;
   soundcloud?: Track;
   youtube?: Track;
+  deezer?: Track;
   /** Spotify link (artist/album). Shown as a "listen" link — not streamable. */
   spotify?: string;
   times?: string[];
@@ -104,6 +107,8 @@ export type StreamPayload = {
   image?: string;
   stream?: string;
   widget?: boolean;
+  /** Deezer-only: this stream is a 30 s preview, not the full track. */
+  preview?: boolean;
   error?: string;
 };
 

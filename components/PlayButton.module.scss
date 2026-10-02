@@ -125,6 +125,29 @@
 	color: var(--ink);
 }
 
+.playPreview {
+	position: absolute;
+	bottom: -0.2rem;
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 0 0.25rem;
+	border-radius: 999px;
+	background: var(--ink);
+	color: var(--bg);
+	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	font-size: 0.52rem;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	line-height: 1.05rem;
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+.play:global(.isOn) .playPreview {
+	background: var(--bg);
+	color: var(--ink);
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.playSkip {
 		transition: none;

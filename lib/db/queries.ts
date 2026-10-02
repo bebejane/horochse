@@ -405,6 +405,9 @@ function toTrack(row: TrackRow): Track {
     album_id: row.albumId ?? undefined,
     track_id: row.trackId ?? undefined,
     video_id: row.videoId ?? undefined,
+    // Deezer rows are always 30 s previews; `source` is the single source of
+    // truth for that, so no extra column is needed.
+    preview: row.source === "deezer" ? true : undefined,
     type: row.type ?? undefined,
   };
 }
@@ -431,6 +434,7 @@ function toConcertEvent(row: EventRow, venueName: string, trackRows: TrackRow[])
     if (first.source === "bandcamp") event.bandcamp = first;
     else if (first.source === "soundcloud") event.soundcloud = first;
     else if (first.source === "youtube") event.youtube = first;
+    else if (first.source === "deezer") event.deezer = first;
   }
   return event;
 }

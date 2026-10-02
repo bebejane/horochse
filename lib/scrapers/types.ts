@@ -31,6 +31,8 @@ export type ScrapedEvent = {
   bandcamp?: Record<string, unknown>;
   soundcloud?: Record<string, unknown>;
   youtube?: Record<string, unknown>;
+  /** Deezer link (30 s preview) — the last-resort playback source. */
+  deezer?: Record<string, unknown>;
   /** Spotify link shown in the UI (no inline playback). */
   spotify?: string;
   _bandcamp_links?: string[];
