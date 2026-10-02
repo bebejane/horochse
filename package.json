@@ -1,25 +1,34 @@
 {
-  "name": "konserter-next",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "fetch": "python3 fetch.py"
-  },
-  "dependencies": {
-    "next": "16.3.6",
-    "react": "^19.3.0",
-    "react-dom": "19.2.8"
-  },
-  "devDependencies": {
-    "@types/node": "^26.6.4",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "eslint": "^10.11.0",
-    "eslint-config-next": "^16.3.8",
-    "typescript": "^5.9.3"
-  }
+	"name": "horochse",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev",
+		"build": "next build",
+		"start": "next start",
+		"lint": "eslint",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:push": "drizzle-kit push",
+		"db:studio": "drizzle-kit studio",
+		"fetch": "python3 fetch.py"
+	},
+	"dependencies": {
+		"@libsql/client": "^0.18.0",
+		"dotenv": "^18.0.5",
+		"drizzle-orm": "^0.45.3",
+		"next": "16.3.6",
+		"react": "^19.3.0",
+		"react-dom": "19.2.8",
+		"server-only": "^0.0.1"
+	},
+	"devDependencies": {
+		"@types/node": "^26.6.4",
+		"@types/react": "^19.3.0",
+		"@types/react-dom": "^19.3.0",
+		"drizzle-kit": "^0.31.11",
+		"eslint": "^10.11.0",
+		"eslint-config-next": "^16.3.8",
+		"typescript": "^5.9.3"
+	}
 }
