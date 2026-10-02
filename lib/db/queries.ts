@@ -20,7 +20,7 @@ import {
 import type { ConcertEvent, EventsPayload, Track } from "@/lib/types";
 
 import { db } from "./client";
-import { events, scrapeErrors, scrapeRuns, sources, tracks, venues } from "./schema";
+import { bandcampArtists, events, scrapeErrors, scrapeRuns, sources, tracks, venues } from "./schema";
 
 type EventRow = typeof events.$inferSelect;
 type TrackRow = typeof tracks.$inferSelect;
@@ -263,6 +263,49 @@ export async function upsertEvents(runId: number, inputs: EventInput[]): Promise
 
   // db.batch expects a non-empty tuple; the array is guaranteed non-empty here.
   await db.batch(statements as unknown as Parameters<typeof db.batch>[0]);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Bandcamp artist cache                                                       */
+/* -------------------------------------------------------------------------- */
+
+export type ArtistCacheEntry = { release: Record<string, unknown> | null; found: boolean };
+
+/** Load the whole Bandcamp artist cache into memory (folded name → entry). */
+export async function loadBandcampArtists(): Promise<Map<string, ArtistCacheEntry>> {
+  const map = new Map<string, ArtistCacheEntry>();
+  const rows = await db.select().from(bandcampArtists);
+  for (const row of rows) {
+    map.set(row.artistKey, { release: row.release ? JSON.parse(row.release) : null, found: row.found });
+  }
+  return map;
+}
+
+/** Persist cache entries (upsert) in one batch. Only pass keys touched this run. */
+export async function saveBandcampArtists(
+  entries: Map<string, { artist: string; release: Record<string, unknown> | null }>,
+): Promise<void> {
+  if (!entries.size) return;
+  const now = new Date();
+  const rows = [...entries].map(([artistKey, entry]) => ({
+    artistKey,
+    artist: entry.artist,
+    release: entry.release ? JSON.stringify(entry.release) : null,
+    found: entry.release !== null,
+    updatedAt: now,
+  }));
+  await db
+    .insert(bandcampArtists)
+    .values(rows)
+    .onConflictDoUpdate({
+      target: bandcampArtists.artistKey,
+      set: {
+        artist: sql`excluded.artist`,
+        release: sql`excluded.release`,
+        found: sql`excluded.found`,
+        updatedAt: sql`excluded.updated_at`,
+      },
+    });
 }
 
 /**

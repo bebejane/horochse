@@ -19,8 +19,10 @@ import { VENUES } from "@/lib/types";
 import type { EventInput, SourceInput, VenueInput } from "@/lib/db/queries";
 import {
   finishScrapeRun,
+  loadBandcampArtists,
   reconcileSource,
   recordScrapeErrors,
+  saveBandcampArtists,
   startScrapeRun,
   upsertEvents,
   upsertSources,
@@ -134,8 +136,20 @@ export async function scrapeAndStore(opts: CollectOptions = {}): Promise<StoreSu
   log(`DB: scrape_run #${runId} startad`);
 
   try {
-    const result = await collect(opts);
+    const bandcampCache = await loadBandcampArtists();
+    const bandcampUpdates = new Map<
+      string,
+      { artist: string; release: Record<string, unknown> | null }
+    >();
+    if (bandcampCache.size) log(`DB: ${bandcampCache.size} bandcamp-artister i cache`);
+
+    const result = await collect({ ...opts, bandcampCache, bandcampUpdates });
     const { events, provenance, okSources, errors } = result;
+
+    if (bandcampUpdates.size) {
+      await saveBandcampArtists(bandcampUpdates);
+      log(`DB: ${bandcampUpdates.size} bandcamp-artister cachade`);
+    }
 
     const { venueRows, sourceRows } = await seedReference(events, provenance);
     await upsertVenues(venueRows);

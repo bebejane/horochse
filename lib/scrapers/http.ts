@@ -138,15 +138,20 @@ export async function httpJson(url: string, payload: Record<string, unknown>): P
   let lastError: unknown;
   const attempts = 5;
   for (let attempt = 0; attempt < attempts; attempt++) {
-    // Bandcamp's search API is rate-limited per host; serialize same-host calls
-    // so bursts from many concurrent artists don't trip 429s.
+    // Bandcamp's search API is rate-limited per host; pace same-host calls so
+    // bursts from many concurrent artists don't trip 429s.
     await hostThrottle(url);
     const res = await withSlot(() =>
       fetch(url, { method: "POST", headers, body, signal: AbortSignal.timeout(30000) }),
     );
-    if (res.ok) return await res.json();
+    if (res.ok) {
+      easeHost(url);
+      return await res.json();
+    }
     lastError = new HttpError(res.status, `HTTP ${res.status} for ${url}`);
     if (res.status !== 429 || attempt === attempts - 1) throw lastError;
+    // Back off this host for subsequent calls, then wait before retrying.
+    penalizeHost(url);
     // Exponential backoff with jitter; honour Retry-After when present.
     const retryAfter = Number(res.headers.get("retry-after") || 0);
     const base = retryAfter > 0 ? retryAfter * 1000 : Math.min(15000, 1000 * 2 ** attempt);
@@ -158,20 +163,58 @@ export async function httpJson(url: string, payload: Record<string, unknown>): P
 // --- Per-host throttling ----------------------------------------------------
 // Some APIs (Bandcamp search) 429 if several requests land at once. These
 // limits apply globally per host so concurrency in the caller can stay high.
-const HOST_LIMITS: { match: RegExp; minIntervalMs: number; maxConcurrent: number }[] = [
-  { match: /bandcamp\.com$/i, minIntervalMs: 250, maxConcurrent: 2 },
+// The interval is adaptive: `penalizeHost` widens it after a 429, `easeHost`
+// relaxes it back toward the base as calls succeed.
+const HOST_LIMITS: { match: RegExp; minIntervalMs: number; maxConcurrent: number; maxIntervalMs: number }[] = [
+  { match: /bandcamp\.com$/i, minIntervalMs: 250, maxConcurrent: 2, maxIntervalMs: 1500 },
 ];
 
-type HostState = { last: number; active: number; queue: Array<() => void> };
+type HostState = {
+  last: number;
+  active: number;
+  queue: Array<() => void>;
+  intervalMs: number;
+};
 const hostStates = new Map<string, HostState>();
 
 function hostState(host: string): HostState {
   let state = hostStates.get(host);
   if (!state) {
-    state = { last: 0, active: 0, queue: [] };
+    const limit = HOST_LIMITS.find((entry) => entry.match.test(host));
+    state = { last: 0, active: 0, queue: [], intervalMs: limit?.minIntervalMs ?? 0 };
     hostStates.set(host, state);
   }
   return state;
+}
+
+function hostLimitFor(host: string) {
+  return HOST_LIMITS.find((entry) => entry.match.test(host));
+}
+
+/** Called on a 429: widen this host's spacing (up to its ceiling). */
+function penalizeHost(url: string): void {
+  try {
+    const host = new URL(url).host;
+    const limit = hostLimitFor(host);
+    if (!limit) return;
+    const state = hostState(host);
+    state.intervalMs = Math.min(limit.maxIntervalMs, Math.max(state.intervalMs * 2, 300));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Called on success: relax spacing back toward the base interval. */
+function easeHost(url: string): void {
+  try {
+    const host = new URL(url).host;
+    const limit = hostLimitFor(host);
+    if (!limit) return;
+    const state = hostState(host);
+    state.intervalMs = Math.max(limit.minIntervalMs, Math.round(state.intervalMs * 0.9));
+  } catch {
+    /* ignore */
+  }
 }
 
 async function hostThrottle(url: string): Promise<void> {
@@ -181,14 +224,14 @@ async function hostThrottle(url: string): Promise<void> {
   } catch {
     return;
   }
-  const limit = HOST_LIMITS.find((entry) => entry.match.test(host));
+  const limit = hostLimitFor(host);
   if (!limit) return;
   const state = hostState(host);
   if (state.active >= limit.maxConcurrent) {
     await new Promise<void>((resolve) => state.queue.push(resolve));
   }
   state.active++;
-  const wait = state.last + limit.minIntervalMs - Date.now();
+  const wait = state.last + state.intervalMs - Date.now();
   if (wait > 0) await sleep(wait);
   state.last = Date.now();
   // Release the concurrency slot once the (throttled) caller proceeds.

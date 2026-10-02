@@ -122,3 +122,23 @@ export const scrapeErrors = sqliteTable("scrape_errors", {
   message: text("message").notNull(),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
+
+/**
+ * Persistent cache of Bandcamp artist lookups, keyed by the folded artist name.
+ * Bandcamp has no public catalog API and its search endpoint is rate-limited, so
+ * resolving each artist once and reusing the result across runs (including
+ * "no release found") is the main way to keep the track phase fast and avoid 429s.
+ * `release` is the serialized Release object, or NULL for a known miss.
+ */
+export const bandcampArtists = sqliteTable(
+  "bandcamp_artists",
+  {
+    artistKey: text("artist_key").primaryKey(),
+    artist: text("artist").notNull(),
+    /** Serialized Release JSON, or NULL when the artist has no usable release. */
+    release: text("release"),
+    found: integer("found", { mode: "boolean" }).notNull().default(false),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [index("bandcamp_artists_updated_idx").on(table.updatedAt)],
+);

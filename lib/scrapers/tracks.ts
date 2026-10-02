@@ -84,11 +84,17 @@ function firstMatchingPageTrack(
   return null;
 }
 
+export type ArtistCacheEntry = { release: Record<string, unknown> | null; found: boolean };
+
 export type AttachOptions = {
   concurrency?: number;
   eventConcurrency?: number;
   quiet?: boolean;
   artistTimeoutMs?: number;
+  /** Preloaded Bandcamp artist cache (folded name → entry) from Turso. */
+  bandcampCache?: Map<string, ArtistCacheEntry>;
+  /** Receives newly resolved artists (folded name → { artist, release }) to persist. */
+  bandcampUpdates?: Map<string, { artist: string; release: Record<string, unknown> | null }>;
 };
 
 function trim(value: string): string {
@@ -106,7 +112,11 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
   // is never looked up again, so repeated names cost nothing.
   const bcResolved = new Map<string, Release | null>();
   const scResolved = new Map<string, Release | null>();
-  const stats = { found: 0, fromPage: 0, extra: 0, cached: 0 };
+  // Persisted across runs (Turso): resolved artists are never searched again,
+  // which is the main lever against Bandcamp 429s and slow lookups.
+  const persistent = opts.bandcampCache;
+  const persistentUpdates = opts.bandcampUpdates;
+  const stats = { found: 0, fromPage: 0, extra: 0, cached: 0, persistentHits: 0 };
   const total = events.length;
   const quiet = opts.quiet ?? false;
   const concurrency = opts.concurrency ?? 8;
@@ -121,6 +131,14 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
       stats.cached += 1;
       return Promise.resolve(bcResolved.get(nameKey) ?? null);
     }
+    // Cross-run cache: a previously resolved (or ruled-out) artist is instant.
+    const persisted = persistent?.get(nameKey);
+    if (persisted !== undefined) {
+      const release = (persisted.release as Release | null) ?? null;
+      bcResolved.set(nameKey, release);
+      stats.persistentHits += 1;
+      return Promise.resolve(release);
+    }
     const contextKey = nameKey + "\t" + context;
     if (bcInflight.has(contextKey)) return bcInflight.get(contextKey)!;
     const promise = withTimeout(lookupBandcamp(person, bc, context), artistTimeoutMs, `bandcamp ${person}`)
@@ -130,6 +148,8 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
       })
       .then((release) => {
         bcResolved.set(nameKey, release);
+        // Persist the outcome (found or a definitive miss) for future runs.
+        persistentUpdates?.set(nameKey, { artist: person, release: release ?? null });
         return release;
       })
       .finally(() => bcInflight.delete(contextKey));
@@ -279,6 +299,7 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
   log(
     `Låtar klara: ${stats.found}/${total} poster med spelbar låt ` +
       `(${stats.fromPage} från evenemangssida, ${stats.extra} extra artistspår, ` +
-      `${stats.cached} cachade artistuppslag) på ${seconds(Date.now() - started)}`,
+      `${stats.cached} cachade i körningen, ${stats.persistentHits} från tidigare körningar) ` +
+      `på ${seconds(Date.now() - started)}`,
   );
 }

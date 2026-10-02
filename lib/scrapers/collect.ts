@@ -4,6 +4,7 @@ import { log, mapPool, seconds, warn, withTimeout } from "./log";
 import { SOURCES } from "./registry";
 import { isCancelled, isClubNight, normalizeEventTitles } from "./text";
 import { attachTracks } from "./tracks";
+import type { ArtistCacheEntry } from "./tracks";
 import type { EventsPayload, ScrapedEvent } from "./types";
 
 export type CollectOptions = {
@@ -14,6 +15,10 @@ export type CollectOptions = {
   quiet?: boolean;
   sourceTimeoutMs?: number;
   artistTimeoutMs?: number;
+  /** Preloaded Bandcamp artist cache (folded name → entry). */
+  bandcampCache?: Map<string, ArtistCacheEntry>;
+  /** Collects newly resolved artists to persist after the run. */
+  bandcampUpdates?: Map<string, { artist: string; release: Record<string, unknown> | null }>;
 };
 
 export type CollectResult = EventsPayload & {
@@ -93,6 +98,8 @@ export async function collect(opts: CollectOptions = {}): Promise<CollectResult>
         concurrency,
         quiet,
         artistTimeoutMs: opts.artistTimeoutMs,
+        bandcampCache: opts.bandcampCache,
+        bandcampUpdates: opts.bandcampUpdates,
       }),
     );
   } else {
