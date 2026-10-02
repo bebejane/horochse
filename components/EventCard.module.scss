@@ -16,7 +16,7 @@
 	overflow: visible;
 }
 
-.card:global(.has-play) {
+.card:global(.hasPlay) {
 	grid-template-columns: minmax(0, 1fr);
 }
 
@@ -32,7 +32,7 @@
 	overflow: visible;
 }
 
-.card:global(.has-play) .cardMain {
+.card:global(.hasPlay) .cardMain {
 	grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr) auto;
 	grid-template-areas: 'poster text play';
 }
@@ -96,19 +96,19 @@
 	text-decoration: none;
 }
 
-.posterWrap:global(.is-fallback) {
+.posterWrap:global(.isFallback) {
 	display: grid;
 	place-items: center;
 }
 
-.posterWrap:global(.is-fallback) :global(.mast-symbol-lockup) {
+.posterWrap:global(.isFallback) :global(.mastSymbolLockup) {
 	display: grid;
 	place-items: center;
 	height: 92%;
 	width: auto;
 }
 
-.posterWrap:global(.is-fallback) :global(.mast-symbol) {
+.posterWrap:global(.isFallback) :global(.mastSymbol) {
 	height: 100%;
 	width: auto;
 	max-height: none;
@@ -326,7 +326,7 @@ button.venue:focus-visible {
 	letter-spacing: 0.08em;
 }
 
-.card:global(.is-live) .nowLabel {
+.card:global(.isLive) .nowLabel {
 	display: inline;
 	animation: now-pulse 5.2s ease-in-out infinite;
 }
@@ -348,7 +348,7 @@ button.venue:focus-visible {
 	letter-spacing: -0.02em;
 }
 
-.card:global(.has-play) .title {
+.card:global(.hasPlay) .title {
 	width: fit-content;
 	max-width: calc(100% - (1.75rem * 2) - 0.16rem - 1.2rem);
 }
@@ -368,8 +368,8 @@ button.venue:focus-visible {
 	fill: currentColor;
 }
 
-.card:global(.is-current) .title:not(:global(.has-current-artist)) .nowArrowLead,
-.card:global(.is-current) .titleArtist:global(.is-current) .nowArrow {
+.card:global(.isCurrent) .title:not(:global(.hasCurrentArtist)) .nowArrowLead,
+.card:global(.isCurrent) .titleArtist:global(.isCurrent) .nowArrow {
 	display: inline-block;
 }
 
@@ -397,7 +397,7 @@ button.venue:focus-visible {
 	transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.card [data-play-cluster]:global(.is-open) {
+.card [data-play-cluster]:global(.isOpen) {
 	transform: translateX(-1.75rem);
 }
 
@@ -414,7 +414,7 @@ button.venue:focus-visible {
 		align-items: start;
 	}
 
-	.card:global(.has-play) .cardMain {
+	.card:global(.hasPlay) .cardMain {
 		grid-template-columns: minmax(0, 1fr) 25%;
 		grid-template-areas:
 			'meta meta'
@@ -455,7 +455,7 @@ button.venue:focus-visible {
 		min-width: 0;
 	}
 
-	.card:global(.has-play) .title {
+	.card:global(.hasPlay) .title {
 		width: auto;
 		max-width: none;
 	}
@@ -469,31 +469,31 @@ button.venue:focus-visible {
 		container-type: inline-size;
 	}
 
-	.card:global(.is-compact) {
+	.card:global(.isCompact) {
 		cursor: pointer;
 	}
 
-	.card:global(.is-compact-closed) {
+	.card:global(.isCompactClosed) {
 		padding-bottom: 0.9rem;
 	}
 
-	.card:global(.is-compact-closed) .cardMain,
-	.card:global(.is-compact-closed):global(.has-play) .cardMain {
+	.card:global(.isCompactClosed) .cardMain,
+	.card:global(.isCompactClosed):global(.hasPlay) .cardMain {
 		grid-template-columns: minmax(0, 1fr);
 		grid-template-areas:
 			'meta'
 			'body';
 	}
 
-	.card:global(.is-compact-closed) .posterSlot,
-	.card:global(.is-compact-closed) .text,
-	.card:global(.is-compact-closed) .cardActions,
-	.card:global(.is-compact-closed) .nowLabel,
-	.card:global(.is-compact-closed) .nowArrow {
+	.card:global(.isCompactClosed) .posterSlot,
+	.card:global(.isCompactClosed) .text,
+	.card:global(.isCompactClosed) .cardActions,
+	.card:global(.isCompactClosed) .nowLabel,
+	.card:global(.isCompactClosed) .nowArrow {
 		display: none;
 	}
 
-	.card:global(.has-play) {
+	.card:global(.hasPlay) {
 		grid-template-columns: 1fr;
 	}
 
@@ -507,7 +507,7 @@ button.venue:focus-visible {
 		transform: translate(-50%, -50%);
 	}
 
-	.posterSlot > [data-play-cluster]:global(.is-open) {
+	.posterSlot > [data-play-cluster]:global(.isOpen) {
 		transform: translate(-50%, -50%);
 	}
 
@@ -520,15 +520,15 @@ button.venue:focus-visible {
 		border: 1px solid color-mix(in srgb, var(--ink) 42%, transparent);
 	}
 
-	.posterSlot > [data-play]:global(.is-on),
-	.posterSlot > [data-play-cluster] [data-play]:global(.is-on) {
+	.posterSlot > [data-play]:global(.isOn),
+	.posterSlot > [data-play-cluster] [data-play]:global(.isOn) {
 		background: var(--ink);
 		color: var(--bg);
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.card:global(.is-live) .nowLabel {
+	.card:global(.isLive) .nowLabel {
 		animation: none;
 	}
 

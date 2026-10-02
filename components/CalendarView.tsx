@@ -42,11 +42,11 @@ function CalendarEvent({
   return (
     <article
       className={cn(s.calEvent, {
-        "has-art": showArt,
-        "has-symbol": showSymbol,
-        "has-play": playable,
-        "is-live": playing && current,
-        "is-current": current,
+        hasArt: showArt,
+        hasSymbol: showSymbol,
+        hasPlay: playable,
+        isLive: playing && current,
+        isCurrent: current,
       })}
       data-cal-event
       data-venue={event.venue_slug}
@@ -94,7 +94,7 @@ function CalendarEvent({
         <span className={s.calTitle}>{title}</span>
       </div>
       {simple ? null : (
-        <a className={cn("go", s.calIcs, "go-down")} href={"/kalender/" + encodeURIComponent(event.id) + ".ics"}>
+        <a className={cn("go", s.calIcs, { goDown: true })} href={"/kalender/" + encodeURIComponent(event.id) + ".ics"}>
           Lägg till<span className={s.calIcsRest}>&nbsp;i kalender</span>
         </a>
       )}
@@ -173,7 +173,7 @@ export function CalendarView({
 
   if (simple) {
     return (
-      <div className={cn(s.weeks, "is-simple")}>
+      <div className={cn(s.weeks, { isSimple: true })}>
         {weeks.map((weekDays, index) => {
           const hasEvents = weekDays.some((iso) => (byDay[iso] || []).length);
           if (!hasEvents && index !== 0) return null;
@@ -186,7 +186,7 @@ export function CalendarView({
                 return (
                   <h2
                     key={iso}
-                    className={cn(s.calHead, { "is-today": iso === today })}
+                    className={cn(s.calHead, { isToday: iso === today })}
                     id={"cal-" + iso}
                     aria-current={iso === today ? "date" : undefined}
                   >
@@ -200,7 +200,7 @@ export function CalendarView({
               {weekDays.map((iso) => (
                 <section
                   key={iso}
-                  className={cn(s.calDay, { "is-today": iso === today })}
+                  className={cn(s.calDay, { isToday: iso === today })}
                   role="gridcell"
                   aria-labelledby={"cal-" + iso}
                   data-cal-day
@@ -248,7 +248,7 @@ export function CalendarView({
                   return (
                     <h2
                       key={iso}
-                      className={cn(s.calHead, { "is-today": iso === today })}
+                      className={cn(s.calHead, { isToday: iso === today })}
                       id={"cal-" + iso}
                       aria-current={iso === today ? "date" : undefined}
                     >
@@ -262,7 +262,7 @@ export function CalendarView({
                 {weekDays.map((iso) => (
                   <section
                     key={iso}
-                    className={cn(s.calDay, { "is-today": iso === today })}
+                    className={cn(s.calDay, { isToday: iso === today })}
                     role="gridcell"
                     aria-labelledby={"cal-" + iso}
                     data-cal-day

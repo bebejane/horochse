@@ -39,7 +39,7 @@ export function PlayButton({
   const playBtn = (
     <button
       type="button"
-      className={cn(s.play, { "is-on": playing && current, "is-loading": loading })}
+      className={cn(s.play, { isOn: playing && current, isLoading: loading })}
       data-play
       data-id={event.id}
       title={label}
@@ -60,7 +60,7 @@ export function PlayButton({
   );
   if (n < 2) return playBtn;
   return (
-    <div className={cn(s.playCluster, { "is-open": current })} data-play-cluster data-id={event.id}>
+    <div className={cn(s.playCluster, { isOpen: current })} data-play-cluster data-id={event.id}>
       <button
         type="button"
         className={cn(s.playSkip, s.playSkipPrev)}

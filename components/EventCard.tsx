@@ -15,7 +15,7 @@ function EventPoster({ src }: { src?: string }) {
   const [failed, setFailed] = useState(!src);
   if (!src || failed) {
     return (
-      <span className={cn(s.posterWrap, "is-fallback")} aria-hidden="true">
+      <span className={cn(s.posterWrap, { isFallback: true })} aria-hidden="true">
         <MastSymbol />
       </span>
     );
@@ -69,7 +69,7 @@ function Title({
       parts.push(
         <span
           key={hit.i + hit.start}
-          className={cn(s.titleArtist, { "is-current": current && hit.i === trackIndex })}
+          className={cn(s.titleArtist, { isCurrent: current && hit.i === trackIndex })}
           data-i={hit.i}
         >
           <NowArrow className={s.nowArrow} />
@@ -83,7 +83,7 @@ function Title({
     parts.push(title);
   }
   return (
-    <h3 className={cn(s.title, { "has-artists": hits.length > 0, "has-current-artist": hasCurrentArtist })}>
+    <h3 className={cn(s.title, { hasArtists: hits.length > 0, hasCurrentArtist: hasCurrentArtist })}>
       <a className={s.cardTitleLink} href={href} target="_blank" rel="noopener noreferrer">
         {parts}
       </a>
@@ -133,11 +133,11 @@ export function EventCard({
   return (
     <article
       className={cn(s.card, {
-        "has-play": playable,
-        "is-live": playing && current,
-        "is-current": current,
-        "is-compact": compact,
-        "is-compact-closed": compactClosed,
+        hasPlay: playable,
+        isLive: playing && current,
+        isCurrent: current,
+        isCompact: compact,
+        isCompactClosed: compactClosed,
       })}
       data-card
       data-id={event.id}
@@ -198,7 +198,7 @@ export function EventCard({
           <div className={s.cardActions}>
             <a className={cn("go", s.cardRead)} href={href} target="_blank" rel="noopener noreferrer">Se mer</a>
             <ListenMore event={event} />
-            <a className={cn("go", "go-down")} href={ics}>Lägg till i kalender</a>
+            <a className={cn("go", { goDown: true })} href={ics}>Lägg till i kalender</a>
           </div>
         </div>
         </div>

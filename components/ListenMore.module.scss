@@ -7,7 +7,7 @@
 	overflow: visible;
 }
 
-.listenMore:global(.is-open) {
+.listenMore:global(.isOpen) {
 	z-index: 30;
 }
 
@@ -37,7 +37,7 @@
 	transform: translateY(-0.14em);
 }
 
-.listenMore:global(.is-open) .listenMoreCaret {
+.listenMore:global(.isOpen) .listenMoreCaret {
 	transform: translateY(-0.14em) rotate(180deg);
 }
 

@@ -32,11 +32,11 @@
 	}
 }
 
-.weekHead:global(.is-next) {
+.weekHead:global(.isNext) {
 	margin-top: 0.4rem;
 }
 
-.weekHead:global(.is-next) .weekHeadMain {
+.weekHead:global(.isNext) .weekHeadMain {
 	padding-top: 1.6rem;
 }
 
@@ -55,7 +55,7 @@
 	white-space: nowrap;
 }
 
-:global(body:not(.is-calendar)) .day {
+:global(body:not(.isCalendar)) .day {
 	display: grid;
 	grid-template-columns: var(--title-col) minmax(0, 1fr);
 	column-gap: var(--title-gap);
@@ -79,7 +79,7 @@
 	z-index: 5;
 }
 
-:global(body:not(.is-calendar)) .dayTitle {
+:global(body:not(.isCalendar)) .dayTitle {
 	grid-column: 1;
 }
 
@@ -105,25 +105,25 @@
 	display: none;
 }
 
-:global(body:not(.is-calendar)) .day:global(.is-week-start) {
+:global(body:not(.isCalendar)) .day:global(.isWeekStart) {
 	scroll-margin-top: calc(var(--mast-height) + 0.4rem);
 }
 
-:global(body:not(.is-calendar)) .day:global(.is-week-start) .list {
+:global(body:not(.isCalendar)) .day:global(.isWeekStart) .list {
 	padding-bottom: 0.85rem;
 }
 
-:global(body:not(.is-calendar)) .list {
+:global(body:not(.isCalendar)) .list {
 	grid-column: 2;
 }
 
 @include mq($from: tablet) {
-	:global(body:not(.is-calendar)) .list {
+	:global(body:not(.isCalendar)) .list {
 		padding-top: 0;
 		border-top-color: transparent;
 	}
 
-	:global(body:not(.is-calendar)) .listRule {
+	:global(body:not(.isCalendar)) .listRule {
 		display: block;
 		position: sticky;
 		top: calc(var(--mast-height) + 0.4rem);
@@ -146,25 +146,25 @@
 	border-bottom: 0;
 }
 
-:global(body.is-calendar) .weekHead {
+:global(body.isCalendar) .weekHead {
 	display: block;
 }
 
-:global(body.is-calendar) .weekHeadMain {
+:global(body.isCalendar) .weekHeadMain {
 	grid-column: 1;
 	padding: 0.2rem 0 0.85rem;
 }
 
-:global(body.is-calendar) .weekHead:global(.is-next) {
+:global(body.isCalendar) .weekHead:global(.isNext) {
 	margin-top: 0;
 }
 
-:global(body.is-calendar) .weekHead:global(.is-next) .weekHeadMain {
+:global(body.isCalendar) .weekHead:global(.isNext) .weekHeadMain {
 	padding-top: 0.2rem;
 }
 
 @include mq($until: tablet) {
-	:global(body:not(.is-calendar)) .day,
+	:global(body:not(.isCalendar)) .day,
 	.weekHead {
 		display: flex;
 		flex-direction: column;
@@ -173,14 +173,14 @@
 		width: 100%;
 	}
 
-	:global(body:not(.is-calendar)) .dayTitle,
-	:global(body:not(.is-calendar)) .list,
+	:global(body:not(.isCalendar)) .dayTitle,
+	:global(body:not(.isCalendar)) .list,
 	.weekHeadMain {
 		grid-column: 1;
 		width: 100%;
 	}
 
-	:global(body:not(.is-calendar)) .dayTitle {
+	:global(body:not(.isCalendar)) .dayTitle {
 		width: 100%;
 		align-self: stretch;
 		box-sizing: border-box;

@@ -44,11 +44,11 @@
 }
 
 .calDay:hover,
-.calDay:has(.calEvent:global(.is-live)) {
+.calDay:has(.calEvent:global(.isLive)) {
 	z-index: 18;
 }
 
-.calDay:global(.is-today) {
+.calDay:global(.isToday) {
 	background: var(--today);
 }
 
@@ -86,11 +86,11 @@
 	letter-spacing: -0.03em;
 }
 
-.calHead:global(.is-today) {
+.calHead:global(.isToday) {
 	background: var(--today);
 }
 
-.calHead:global(.is-today) span {
+.calHead:global(.isToday) span {
 	color: var(--ink);
 	font-weight: 700;
 }
@@ -138,7 +138,7 @@
 	z-index: 2;
 }
 
-.calEvent:global(.has-play) .calEventLink {
+.calEvent:global(.hasPlay) .calEventLink {
 	padding-bottom: 2.15rem;
 }
 
@@ -154,7 +154,7 @@
 	transition: right 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.calEvent [data-play-cluster]:global(.is-open) {
+.calEvent [data-play-cluster]:global(.isOpen) {
 	right: 1.7rem;
 }
 
@@ -188,7 +188,7 @@
 	height: 0.78rem;
 }
 
-.calEvent [data-play]:global(.is-on) {
+.calEvent [data-play]:global(.isOn) {
 	background: var(--ink);
 	color: var(--bg);
 }
@@ -224,22 +224,22 @@
 	pointer-events: none;
 }
 
-.calEventFallback :global(.mast-symbol-lockup),
-.calEventFallback :global(.mast-symbol) {
+.calEventFallback :global(.mastSymbolLockup),
+.calEventFallback :global(.mastSymbol) {
 	height: 4.8rem;
 	width: auto;
 }
 
-.calEventFallback :global(.mast-symbol) {
+.calEventFallback :global(.mastSymbol) {
 	opacity: 0.28;
 }
 
-.calEvent:global(.has-art) {
+.calEvent:global(.hasArt) {
 	--cal-fill: #1c1914;
 	color: #f3eee4;
 }
 
-.calEvent:global(.has-art)::after {
+.calEvent:global(.hasArt)::after {
 	content: '';
 	position: absolute;
 	inset: 0;
@@ -269,19 +269,19 @@
 	pointer-events: auto;
 }
 
-.calEvent:global(.has-art) .calTime,
-.calEvent:global(.has-art) .calTitle,
-.calEvent:global(.has-art) .calVenue,
-.calEvent:global(.has-art) .calPlace,
-.calEvent:global(.has-art) .calIcs {
+.calEvent:global(.hasArt) .calTime,
+.calEvent:global(.hasArt) .calTitle,
+.calEvent:global(.hasArt) .calVenue,
+.calEvent:global(.hasArt) .calPlace,
+.calEvent:global(.hasArt) .calIcs {
 	text-shadow: 0 1px 10px var(--cal-fill);
 }
 
-.calEvent:global(.has-art) .calTime {
+.calEvent:global(.hasArt) .calTime {
 	color: #b7b0a4;
 }
 
-.calEvent:global(.has-art) .calTitle {
+.calEvent:global(.hasArt) .calTitle {
 	color: #f3eee4;
 }
 
@@ -401,18 +401,18 @@
 }
 
 .calEvent:hover,
-.calEvent:global(.is-live) {
+.calEvent:global(.isLive) {
 	--cal-fill: var(--cal-hover);
 }
 
-.calEvent:global(.has-art):hover,
-.calEvent:global(.has-art):global(.is-live) {
+.calEvent:global(.hasArt):hover,
+.calEvent:global(.hasArt):global(.isLive) {
 	--cal-fill: #191612;
 	--cal-art-filter: saturate(0.62) brightness(0.38) contrast(1.05);
 }
 
-.calEvent:global(.has-art):hover::after,
-.calEvent:global(.has-art):global(.is-live)::after {
+.calEvent:global(.hasArt):hover::after,
+.calEvent:global(.hasArt):global(.isLive)::after {
 	background: linear-gradient(
 		to right,
 		color-mix(in srgb, var(--cal-fill) 86%, transparent) 0%,
@@ -473,44 +473,44 @@
 }
 
 .calEvent:hover,
-.calEvent:global(.is-live) {
+.calEvent:global(.isLive) {
 	z-index: 18;
 	transform: scale(var(--cal-hover-scale));
 	transform-origin: center center;
 	box-shadow: 0 1rem 2.2rem rgba(0, 0, 0, 0.38);
 }
 
-:global(body.is-cal-simple) .weeks {
+:global(body.isCalSimple) .weeks {
 	gap: 0;
 }
 
-:global(body.is-cal-simple) .week + .week .calHeads {
+:global(body.isCalSimple) .week + .week .calHeads {
 	border-top: 0;
 }
 
-:global(body.is-cal-simple) .calEvent {
+:global(body.isCalSimple) .calEvent {
 	min-height: 0;
 }
 
-:global(body.is-cal-simple) .calEventLink {
+:global(body.isCalSimple) .calEventLink {
 	min-height: 0;
 	padding: 0.42rem 0.5rem 0.48rem 0.55rem;
 }
 
-:global(body.is-cal-simple) .calTitle {
+:global(body.isCalSimple) .calTitle {
 	font-size: 0.92rem;
 	-webkit-line-clamp: 5;
 }
 
-:global(body.is-cal-simple) .calEvent:hover,
-:global(body.is-cal-simple) .calEvent:global(.is-live) {
+:global(body.isCalSimple) .calEvent:hover,
+:global(body.isCalSimple) .calEvent:global(.isLive) {
 	z-index: 1;
 	transform: none;
 	box-shadow: none;
 }
 
-:global(body.is-cal-simple) .calDay:hover,
-:global(body.is-cal-simple) .calDay:has(.calEvent:global(.is-live)) {
+:global(body.isCalSimple) .calDay:hover,
+:global(body.isCalSimple) .calDay:has(.calEvent:global(.isLive)) {
 	z-index: 1;
 }
 
@@ -530,7 +530,7 @@
 }
 
 .calEvent:hover .calIcs,
-.calEvent:global(.is-live) .calIcs {
+.calEvent:global(.isLive) .calIcs {
 	display: flex;
 }
 
@@ -539,11 +539,11 @@
 	overflow: visible;
 }
 
-.calEvent:has([data-play-cluster]:global(.is-open)) .calIcs {
+.calEvent:has([data-play-cluster]:global(.isOpen)) .calIcs {
 	right: 4.6rem;
 }
 
-.calEvent:has([data-play-cluster]:global(.is-open)) .calIcsRest {
+.calEvent:has([data-play-cluster]:global(.isOpen)) .calIcsRest {
 	display: none;
 }
 
@@ -699,7 +699,7 @@ button.calVenue:focus-visible {
 
 	.calEvent:hover,
 	.calEvent:focus-within,
-	.calEvent:global(.is-live) {
+	.calEvent:global(.isLive) {
 		transform: none;
 	}
 

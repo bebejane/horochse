@@ -134,7 +134,7 @@
 	transform: translateY(-1px);
 }
 
-.mast h1 :global(.mast-symbol-lockup) {
+.mast h1 :global(.mastSymbolLockup) {
 	position: absolute;
 	left: 0;
 	top: 50%;
@@ -144,16 +144,16 @@
 	pointer-events: none;
 }
 
-.mast h1 :global(.mast-symbol) {
+.mast h1 :global(.mastSymbol) {
 	height: 3.5rem;
 	width: auto;
 }
 
-.mastHeadline:has(:global(.is-about)) h1 .mastWordmark {
+.mastHeadline:has(:global(.isAbout)) h1 .mastWordmark {
 	opacity: 0;
 }
 
-.mastHeadline:has(:global(.is-about)) h1 :global(.mast-symbol-lockup) {
+.mastHeadline:has(:global(.isAbout)) h1 :global(.mastSymbolLockup) {
 	opacity: 1;
 }
 
@@ -198,7 +198,7 @@
 
 .mastAbout:hover,
 .mastAbout:focus-visible,
-.mastAbout:global(.is-on) {
+.mastAbout:global(.isOn) {
 	color: var(--ink);
 }
 
@@ -213,19 +213,19 @@
 	min-width: 0;
 }
 
-.mastIntroWrap:not(:global(.is-about)) {
+.mastIntroWrap:not(:global(.isAbout)) {
 	display: contents;
 }
 
-.mastIntroWrap:not(:global(.is-about)) .mastIntro {
+.mastIntroWrap:not(:global(.isAbout)) .mastIntro {
 	grid-column: 2;
 	margin: 0 0 1.5rem;
 	min-width: 0;
 	transform: translateY(-1px);
 }
 
-.mastIntroWrap:global(.is-down) .mastIntro,
-.mastIntroWrap:global(.is-down) .mastAboutClose {
+.mastIntroWrap:global(.isDown) .mastIntro,
+.mastIntroWrap:global(.isDown) .mastAboutClose {
 	animation: mast-copy-down 0.55s ease;
 }
 
@@ -240,13 +240,13 @@
 	}
 }
 
-.mastIntroWrap:global(.is-about) {
+.mastIntroWrap:global(.isAbout) {
 	min-width: 0;
 	justify-self: start;
 	width: 100%;
 }
 
-.mastIntroWrap:global(.is-about) .mastIntro {
+.mastIntroWrap:global(.isAbout) .mastIntro {
 	min-width: 0;
 	max-width: 50ch;
 }
@@ -383,9 +383,9 @@
 	background: var(--bg-2);
 }
 
-.view.viewEnkel:global(.is-on),
-.view.viewEnkel:global(.is-on):hover,
-.view.viewEnkel:global(.is-on):focus-visible {
+.view.viewEnkel:global(.isOn),
+.view.viewEnkel:global(.isOn):hover,
+.view.viewEnkel:global(.isOn):focus-visible {
 	background: var(--ink);
 	color: var(--bg);
 }
@@ -399,7 +399,7 @@
 	background: var(--hover);
 }
 
-.view:global(.is-on) {
+.view:global(.isOn) {
 	background: var(--ink);
 	color: var(--bg);
 }
@@ -424,7 +424,7 @@
 	margin: 0;
 }
 
-.filters:not(:global(.is-open)) {
+.filters:not(:global(.isOpen)) {
 	flex-wrap: nowrap;
 }
 
@@ -449,27 +449,27 @@
 	display: none;
 }
 
-.filterScroller:global(.is-overflow),
-.filterScroller:global(.is-overflow) .filter {
+.filterScroller:global(.isOverflow),
+.filterScroller:global(.isOverflow) .filter {
 	cursor: grab;
 }
 
-.filterScroller:global(.is-dragging),
-.filterScroller:global(.is-dragging) .filter {
+.filterScroller:global(.isDragging),
+.filterScroller:global(.isDragging) .filter {
 	cursor: grabbing;
 }
 
-.filterScroller:global(.is-overflow-right) {
+.filterScroller:global(.isOverflowRight) {
 	-webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 1.8rem), transparent);
 	mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 1.8rem), transparent);
 }
 
-.filterScroller:global(.is-overflow-left) {
+.filterScroller:global(.isOverflowLeft) {
 	-webkit-mask-image: linear-gradient(90deg, transparent, #000 1.8rem, #000 100%);
 	mask-image: linear-gradient(90deg, transparent, #000 1.8rem, #000 100%);
 }
 
-.filterScroller:global(.is-overflow-left):global(.is-overflow-right) {
+.filterScroller:global(.isOverflowLeft):global(.isOverflowRight) {
 	-webkit-mask-image: linear-gradient(
 		90deg,
 		transparent,
@@ -510,7 +510,7 @@
 	display: none;
 }
 
-.filters:global(.is-open) {
+.filters:global(.isOpen) {
 	display: grid;
 	grid-template-columns: auto auto minmax(0, 1fr);
 	align-items: start;
@@ -518,17 +518,17 @@
 	row-gap: 0.35rem;
 }
 
-.filters:global(.is-open) > [data-venue='all'] {
+.filters:global(.isOpen) > [data-venue='all'] {
 	grid-column: 1;
 	grid-row: 1;
 }
 
-.filters:global(.is-open) > [data-venue='mine'] {
+.filters:global(.isOpen) > [data-venue='mine'] {
 	grid-column: 2;
 	grid-row: 1;
 }
 
-.filters:global(.is-open) .filterMineRow {
+.filters:global(.isOpen) .filterMineRow {
 	display: flex;
 	grid-column: 3;
 	grid-row: 1;
@@ -537,17 +537,17 @@
 	gap: 0.35rem;
 }
 
-.filters:global(.is-open) .filterMineRow .filterScroller {
+.filters:global(.isOpen) .filterMineRow .filterScroller {
 	flex: 1 1 auto;
 	min-width: 0;
 }
 
-.filters:global(.is-open) .filterScroller .filter {
+.filters:global(.isOpen) .filterScroller .filter {
 	cursor: default;
 	pointer-events: none;
 }
 
-.filters:global(.is-open) .filterClose {
+.filters:global(.isOpen) .filterClose {
 	flex: 0 0 auto;
 }
 
@@ -580,7 +580,7 @@
 	overflow: hidden;
 }
 
-.mastInner > .filterChips > .filter:global(.has-x) {
+.mastInner > .filterChips > .filter:global(.hasX) {
 	justify-content: space-between;
 }
 
@@ -600,7 +600,7 @@
 }
 
 @media (hover: hover) {
-	.mastInner > .filterChips > .filter:global(.is-label-scroll) .filterLabelInner,
+	.mastInner > .filterChips > .filter:global(.isLabelScroll) .filterLabelInner,
 	.mastInner > .filterChips > .filter:focus-within .filterLabelInner {
 		overflow: visible;
 		text-overflow: clip;
@@ -611,7 +611,7 @@
 
 @media (prefers-reduced-motion: reduce) {
 	.mastInner > .filterChips > .filter .filterLabelInner,
-	.mastInner > .filterChips > .filter:global(.is-label-scroll) .filterLabelInner,
+	.mastInner > .filterChips > .filter:global(.isLabelScroll) .filterLabelInner,
 	.mastInner > .filterChips > .filter:focus-within .filterLabelInner {
 		transform: none;
 		transition: none;
@@ -630,7 +630,7 @@
 	-webkit-user-select: none;
 }
 
-.filters:not(:global(.is-open)) > .filter {
+.filters:not(:global(.isOpen)) > .filter {
 	flex: 0 0 auto;
 }
 
@@ -656,16 +656,16 @@ span.filter {
 	cursor: default;
 }
 
-span.filter:global(.is-solo) {
+span.filter:global(.isSolo) {
 	cursor: pointer;
 }
 
-.filter:global(.has-x) {
+.filter:global(.hasX) {
 	padding-right: 0.28rem;
 }
 
 @media (hover: hover) {
-	.filter:hover:not(:global(.is-solo)) {
+	.filter:hover:not(:global(.isSolo)) {
 		border-color: var(--ink);
 	}
 }
@@ -674,13 +674,13 @@ span.filter:global(.is-solo) {
 	border-color: var(--ink);
 }
 
-.filter:global(.is-on) {
+.filter:global(.isOn) {
 	background: var(--ink);
 	color: var(--bg);
 	border-color: var(--ink);
 }
 
-.filter:global(.is-peek) {
+.filter:global(.isPeek) {
 	border-color: var(--ink);
 }
 
@@ -751,7 +751,7 @@ span.filter:global(.is-solo) {
 	}
 
 	.mastIntroWrap,
-	.mastIntroWrap:not(:global(.is-about)) .mastIntro {
+	.mastIntroWrap:not(:global(.isAbout)) .mastIntro {
 		grid-column: 1;
 		max-width: none;
 	}
@@ -800,7 +800,7 @@ span.filter:global(.is-solo) {
 	}
 
 	.filters,
-	.filters:not(:global(.is-open)) {
+	.filters:not(:global(.isOpen)) {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		width: 100%;
@@ -826,7 +826,7 @@ span.filter:global(.is-solo) {
 		grid-row: 1;
 	}
 
-	.filters > :global(.is-peek),
+	.filters > :global(.isPeek),
 	.filters > .filterMineRow,
 	.filters > .filterChips {
 		grid-column: 1 / -1;
@@ -852,14 +852,14 @@ span.filter:global(.is-solo) {
 		width: auto;
 	}
 
-	.mast:has(.filters:global(.is-open)) {
+	.mast:has(.filters:global(.isOpen)) {
 		max-height: calc(100svh - var(--player-height));
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
 	}
 
-	.mast:has(.filters:global(.is-open)) .mastInner {
+	.mast:has(.filters:global(.isOpen)) .mastInner {
 		display: flex;
 		flex-direction: column;
 		flex: 1 1 auto;
@@ -868,12 +868,12 @@ span.filter:global(.is-solo) {
 		width: 100%;
 	}
 
-	.mast:has(.filters:global(.is-open)) .mastTop,
-	.mast:has(.filters:global(.is-open)) .mastHeadline {
+	.mast:has(.filters:global(.isOpen)) .mastTop,
+	.mast:has(.filters:global(.isOpen)) .mastHeadline {
 		flex: 0 0 auto;
 	}
 
-	.mast:has(.filters:global(.is-open)) .mastTools {
+	.mast:has(.filters:global(.isOpen)) .mastTools {
 		display: flex;
 		flex-direction: column;
 		flex: 0 0 auto;
@@ -881,7 +881,7 @@ span.filter:global(.is-solo) {
 		width: 100%;
 	}
 
-	.filters:global(.is-open) {
+	.filters:global(.isOpen) {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		flex: 0 0 auto;
@@ -889,7 +889,7 @@ span.filter:global(.is-solo) {
 		width: 100%;
 	}
 
-	.filters:global(.is-open) .filterMineRow {
+	.filters:global(.isOpen) .filterMineRow {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) auto;
 		grid-column: 1 / -1;
@@ -899,7 +899,7 @@ span.filter:global(.is-solo) {
 		gap: 0.35rem;
 	}
 
-	.filters:global(.is-open) .filterScroller {
+	.filters:global(.isOpen) .filterScroller {
 		display: flex;
 		grid-column: 1;
 		grid-row: 1;
@@ -908,16 +908,16 @@ span.filter:global(.is-solo) {
 		gap: 0.35rem;
 	}
 
-	.filters:global(.is-open) .filterScroller::-webkit-scrollbar {
+	.filters:global(.isOpen) .filterScroller::-webkit-scrollbar {
 		display: none;
 	}
 
-	.filters:global(.is-open) .filterScroller > .filter {
+	.filters:global(.isOpen) .filterScroller > .filter {
 		width: auto;
 		flex: 0 0 auto;
 	}
 
-	.filters:global(.is-open) .filterClose {
+	.filters:global(.isOpen) .filterClose {
 		grid-column: 2;
 		grid-row: 1;
 		flex: 0 0 auto;
@@ -941,7 +941,7 @@ span.filter:global(.is-solo) {
 		touch-action: pan-y;
 	}
 
-	.mastInner > .filterChips:global(.is-overflow) {
+	.mastInner > .filterChips:global(.isOverflow) {
 		-webkit-mask-image: linear-gradient(#0000, #000 1em, #000 calc(100% - 1em), #0000);
 		mask-image: linear-gradient(#0000, #000 1em, #000 calc(100% - 1em), #0000);
 	}
@@ -951,7 +951,7 @@ span.filter:global(.is-solo) {
 		box-sizing: border-box;
 	}
 
-	.mastInner > .filterChips > .filter:global(.has-x) {
+	.mastInner > .filterChips > .filter:global(.hasX) {
 		justify-content: space-between;
 		padding-right: 0.35rem;
 	}
@@ -963,17 +963,17 @@ span.filter:global(.is-solo) {
 		opacity: 1;
 	}
 
-	.filterScroller:global(.is-overflow-right) {
+	.filterScroller:global(.isOverflowRight) {
 		-webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 1em), transparent);
 		mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 1em), transparent);
 	}
 
-	.filterScroller:global(.is-overflow-left) {
+	.filterScroller:global(.isOverflowLeft) {
 		-webkit-mask-image: linear-gradient(90deg, transparent, #000 1em, #000 100%);
 		mask-image: linear-gradient(90deg, transparent, #000 1em, #000 100%);
 	}
 
-	.filterScroller:global(.is-overflow-left):global(.is-overflow-right) {
+	.filterScroller:global(.isOverflowLeft):global(.isOverflowRight) {
 		-webkit-mask-image: linear-gradient(
 			90deg,
 			transparent,
@@ -1001,9 +1001,9 @@ span.filter:global(.is-solo) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.mastIntroWrap:global(.is-down),
-	.mastIntroWrap:global(.is-down) .mastIntro,
-	.mastIntroWrap:global(.is-down) .mastAboutClose {
+	.mastIntroWrap:global(.isDown),
+	.mastIntroWrap:global(.isDown) .mastIntro,
+	.mastIntroWrap:global(.isDown) .mastAboutClose {
 		animation: none;
 	}
 

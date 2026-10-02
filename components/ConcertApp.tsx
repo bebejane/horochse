@@ -26,7 +26,7 @@ function scrollToCard(event: ConcertEvent, opts: { force?: boolean; behavior?: S
   const mast = document.querySelector<HTMLElement>("[data-mast]");
   const bar = document.getElementById("nowplaying");
   let topBound = mast ? mast.getBoundingClientRect().bottom : 0;
-  const bottomBound = bar && bar.classList.contains("is-on")
+  const bottomBound = bar && bar.classList.contains("isOn")
     ? bar.getBoundingClientRect().top
     : window.innerHeight;
   const motion = opts.behavior || (prefersReducedMotion() ? "auto" : "smooth");
@@ -141,8 +141,8 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
   }, []);
 
   useEffect(() => {
-    document.body.classList.toggle("is-calendar", effectiveView === "calendar");
-    document.body.classList.toggle("is-cal-simple", effectiveView === "calendar" && calStyle === "simple");
+    document.body.classList.toggle("isCalendar", effectiveView === "calendar");
+    document.body.classList.toggle("isCalSimple", effectiveView === "calendar" && calStyle === "simple");
   }, [effectiveView, calStyle]);
 
   useEffect(() => {
@@ -191,7 +191,7 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
     }
     const bar = document.getElementById("nowplaying");
     let height = 0;
-    if (bar && !bar.hidden && bar.classList.contains("is-on")) {
+    if (bar && !bar.hidden && bar.classList.contains("isOn")) {
       height = Math.ceil(bar.getBoundingClientRect().height);
     }
     document.documentElement.style.setProperty("--player-height", height + "px");
@@ -348,9 +348,9 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
       />
       <div className={s.shell}>
         <main id="program">
-          <p className={cn(s.status, { "is-hidden": statusHidden })}>{statusText || status}</p>
+          <p className={cn(s.status, { isHidden: statusHidden })}>{statusText || status}</p>
           {emptyList ? (
-            <div className={cn(list.weekHead, "is-next")}>
+            <div className={cn(list.weekHead, { isNext: true })}>
               <div className={list.weekHeadMain}>
                 <p className={list.weekHeadTitle}>{statusText}</p>
               </div>

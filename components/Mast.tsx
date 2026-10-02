@@ -120,7 +120,7 @@ export function Mast({
       if (!drag.moved) {
         if (Math.abs(dx) < 12) return;
         drag.moved = true;
-        node.classList.add("is-dragging");
+        node.classList.add("isDragging");
         try { node.setPointerCapture(event.pointerId); } catch { /* ignore */ }
       }
       event.preventDefault();
@@ -129,7 +129,7 @@ export function Mast({
     function onUp(event: PointerEvent) {
       if (event.pointerId !== drag.id) return;
       drag.id = -1;
-      node.classList.remove("is-dragging");
+      node.classList.remove("isDragging");
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
@@ -220,7 +220,7 @@ export function Mast({
           ? (event.relatedTarget instanceof Element ? event.relatedTarget.closest("." + s.filter) : null)
           : null;
         if (root === next) return;
-        root.classList.remove("is-label-scroll");
+        root.classList.remove("isLabelScroll");
         return;
       }
       const label = root.querySelector("." + s.filterLabel);
@@ -230,11 +230,11 @@ export function Mast({
       if (overflow > 1) {
         root.style.setProperty("--label-shift", -overflow + "px");
         root.style.setProperty("--label-duration", Math.min(2.6, Math.max(0.7, overflow / 48)) + "s");
-        root.classList.add("is-label-scroll");
+        root.classList.add("isLabelScroll");
       } else {
         root.style.setProperty("--label-shift", "0px");
         root.style.setProperty("--label-duration", "0s");
-        root.classList.remove("is-label-scroll");
+        root.classList.remove("isLabelScroll");
       }
     }
     update();
@@ -322,8 +322,8 @@ export function Mast({
       return (
         <span
           key={item.slug}
-          className={cn(s.filter, pickerOpen ? ["has-x", "is-on"] : "is-solo", {
-            "is-peek": peeking,
+          className={cn(s.filter, pickerOpen ? { hasX: true, isOn: true } : { isSolo: true }, {
+            isPeek: peeking,
           })}
           data-venue={item.slug}
           role={pickerOpen ? undefined : "button"}
@@ -386,7 +386,7 @@ export function Mast({
           <div className={s.mastTopActions}>
             <button
               type="button"
-              className={cn(s.mastAbout, { "is-on": aboutOpen })}
+              className={cn(s.mastAbout, { isOn: aboutOpen })}
               aria-pressed={aboutOpen ? "true" : "false"}
               aria-expanded={aboutOpen ? "true" : "false"}
               aria-controls="mast-copy"
@@ -433,7 +433,7 @@ export function Mast({
             <MastSymbol />
           </h1>
           {aboutOpen ? (
-            <div className={cn(s.mastIntroWrap, "is-down", "is-about")} id="mast-copy">
+            <div className={cn(s.mastIntroWrap, { isDown: true, isAbout: true })} id="mast-copy">
               <div className={s.mastIntro}>
                 <span className={s.mastIntroP}>
                   På Hör & Se kan du hitta och lyssna på artister som spelar live i Stockholm under den närmaste månaden. Genom att skapa ditt eget urval följer du dom spelställen som du är intresserade av.
@@ -477,12 +477,12 @@ export function Mast({
         <div className={s.mastTools}>
             <nav
               ref={navRef}
-              className={cn(s.filters, { "is-open": pickerOpen })}
+              className={cn(s.filters, { isOpen: pickerOpen })}
               aria-label="Filtrera scener"
             >
               <button
                 type="button"
-                className={cn(s.filter, { "is-on": mode === "all" })}
+                className={cn(s.filter, { isOn: mode === "all" })}
                 data-venue="all"
                 aria-pressed={mode === "all" ? "true" : "false"}
                 onClick={onSelectAll}
@@ -491,7 +491,7 @@ export function Mast({
               </button>
               {!pickerOpen && mode === "all" && peekVenue ? (
                 <span
-                  className={cn(s.filter, "has-x", "is-solo", "is-peek")}
+                  className={cn(s.filter, { hasX: true, isSolo: true, isPeek: true })}
                   data-venue={peekVenue.slug}
                 >
                   {peekVenue.name}
@@ -507,7 +507,7 @@ export function Mast({
               ) : null}
               <button
                 type="button"
-                className={cn(s.filter, { "is-on": mode === "mine" || pickerOpen })}
+                className={cn(s.filter, { isOn: mode === "mine" || pickerOpen })}
                 data-venue="mine"
                 aria-pressed={mode === "mine" ? "true" : "false"}
                 aria-expanded={pickerOpen ? "true" : "false"}
@@ -526,14 +526,14 @@ export function Mast({
                   <div
                     ref={scrollerRef}
                     className={cn(s.filterScroller, {
-                      "is-overflow": chipFade.canScroll,
-                      "is-overflow-left": chipFade.left,
-                      "is-overflow-right": chipFade.right,
+                      isOverflow: chipFade.canScroll,
+                      isOverflowLeft: chipFade.left,
+                      isOverflowRight: chipFade.right,
                     })}
                   >
                     {pickerOpen
                       ? selectedVenues.map((item) => (
-                          <span key={item.slug} className={cn(s.filter, "is-solo")} data-venue={item.slug}>
+                          <span key={item.slug} className={cn(s.filter, { isSolo: true })} data-venue={item.slug}>
                             <span className={s.filterLabel}><span className={s.filterLabelInner}>{item.name}</span></span>
                           </span>
                         ))
@@ -571,7 +571,7 @@ export function Mast({
               <div className={s.views} role="group" aria-label="Välj vy">
                 <button
                   type="button"
-                  className={cn(s.view, { "is-on": view === "list" })}
+                  className={cn(s.view, { isOn: view === "list" })}
                   aria-pressed={view === "list" ? "true" : "false"}
                   onClick={() => onSetView("list")}
                 >
@@ -580,7 +580,7 @@ export function Mast({
                 <div className={s.viewCal}>
                   <button
                     type="button"
-                    className={cn(s.view, { "is-on": view === "calendar" })}
+                    className={cn(s.view, { isOn: view === "calendar" })}
                     aria-pressed={view === "calendar" ? "true" : "false"}
                     onClick={() => onSetView("calendar")}
                   >
@@ -589,7 +589,7 @@ export function Mast({
                   {view === "calendar" ? (
                     <button
                       type="button"
-                      className={cn(s.view, s.viewEnkel, { "is-on": calStyle === "simple" })}
+                      className={cn(s.view, s.viewEnkel, { isOn: calStyle === "simple" })}
                       aria-pressed={calStyle === "simple" ? "true" : "false"}
                       onClick={() => onSetCalStyle(calStyle === "simple" ? "full" : "simple")}
                     >
@@ -604,9 +604,9 @@ export function Mast({
           <div
             ref={pickerListRef}
             className={cn(s.filterChips, {
-              "is-overflow": pickerFade.canScroll,
-              "is-overflow-top": pickerFade.top,
-              "is-overflow-bottom": pickerFade.bottom,
+              isOverflow: pickerFade.canScroll,
+              isOverflowTop: pickerFade.top,
+              isOverflowBottom: pickerFade.bottom,
             })}
             style={{ ["--picker-rows"]: String(Math.max(1, Math.ceil(chips.length / 5))) }}
           >
@@ -620,9 +620,9 @@ export function Mast({
 
 export function MastSymbol() {
   return (
-    <span className="mast-symbol-lockup">
-      <img className="mast-symbol mast-symbol-dark" src="/symbol-black.svg" alt="" />
-      <img className="mast-symbol mast-symbol-light" src="/symbol.svg" alt="" />
+    <span className="mastSymbolLockup">
+      <img className="mastSymbol mastSymbolDark" src="/symbol-black.svg" alt="" />
+      <img className="mastSymbol mastSymbolLight" src="/symbol.svg" alt="" />
     </span>
   );
 }

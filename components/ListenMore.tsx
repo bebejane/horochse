@@ -62,7 +62,7 @@ export function ListenMore({ event }: { event: ConcertEvent }) {
   return (
       <div
         ref={wrapRef}
-        className={cn(s.listenMore, { "is-open": open })}
+        className={cn(s.listenMore, { isOpen: open })}
         data-listen-more
         data-open={open ? "true" : undefined}
       >

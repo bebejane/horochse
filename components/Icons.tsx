@@ -1,6 +1,6 @@
 export function PlayIcon() {
   return (
-    <svg className="icon-play" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="iconPlay" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M8 5.5v13l11-6.5z" />
     </svg>
   );
@@ -8,7 +8,7 @@ export function PlayIcon() {
 
 export function PauseIcon() {
   return (
-    <svg className="icon-pause" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="iconPause" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M7 5h4v14H7zm6 0h4v14h-4z" />
     </svg>
   );

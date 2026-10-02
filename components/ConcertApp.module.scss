@@ -14,11 +14,11 @@
 	grid-column: 2;
 }
 
-:global(body.is-calendar) .shell > * {
+:global(body.isCalendar) .shell > * {
 	grid-column: 1 / -1;
 }
 
-:global(body:not(.is-calendar)) #program {
+:global(body:not(.isCalendar)) #program {
 	grid-column: 1 / -1;
 }
 
@@ -30,11 +30,11 @@
 	margin-bottom: 1.5rem;
 }
 
-.status:global(.is-hidden) {
+.status:global(.isHidden) {
 	display: none;
 }
 
-:global(body:not(.is-calendar)) .status {
+:global(body:not(.isCalendar)) .status {
 	margin-left: calc(var(--title-col) + var(--title-gap));
 }
 
@@ -61,14 +61,14 @@
 	font-size: 0.78rem;
 }
 
-.colophon :global(.mast-symbol-lockup),
+.colophon :global(.mastSymbolLockup),
 .colophonReset {
 	grid-column: 1;
 	justify-self: start;
 }
 
-.colophon :global(.mast-symbol-lockup),
-.colophon :global(.mast-symbol) {
+.colophon :global(.mastSymbolLockup),
+.colophon :global(.mastSymbol) {
 	height: 3.5rem;
 }
 
@@ -128,7 +128,7 @@
 		grid-column: 1;
 	}
 
-	:global(body:not(.is-calendar)) #program,
+	:global(body:not(.isCalendar)) #program,
 	.status {
 		margin-left: 0;
 	}
@@ -139,7 +139,7 @@
 		column-gap: 1rem;
 	}
 
-	.colophon :global(.mast-symbol-lockup),
+	.colophon :global(.mastSymbolLockup),
 	.colophonReset {
 		grid-column: 1;
 		grid-row: 1 / span 2;

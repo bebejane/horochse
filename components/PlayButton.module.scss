@@ -32,13 +32,13 @@
 	border-color: var(--ink);
 }
 
-.play:global(.is-on) {
+.play:global(.isOn) {
 	background: var(--ink);
 	color: var(--bg);
 	border-color: var(--ink);
 }
 
-.play:global(.is-loading) {
+.play:global(.isLoading) {
 	opacity: 0.45;
 }
 
@@ -85,7 +85,7 @@
 	transform: translateY(-50%) translateX(-0.55rem) scale(0.72);
 }
 
-.playCluster:global(.is-open) .playSkip {
+.playCluster:global(.isOpen) .playSkip {
 	opacity: 1;
 	pointer-events: auto;
 	transform: translateY(-50%) translateX(0) scale(1);
@@ -120,7 +120,7 @@
 	pointer-events: none;
 }
 
-.play:global(.is-on) .playCount {
+.play:global(.isOn) .playCount {
 	background: var(--bg);
 	color: var(--ink);
 }

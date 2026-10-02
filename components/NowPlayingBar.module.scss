@@ -17,7 +17,7 @@
 	display: none;
 }
 
-.nowplaying:global(.is-on) {
+.nowplaying:global(.isOn) {
 	transform: translateY(0);
 	pointer-events: auto;
 }
@@ -59,7 +59,7 @@
 	user-select: none;
 }
 
-.nowplayingProgress:global(.is-dragging) {
+.nowplayingProgress:global(.isDragging) {
 	cursor: grabbing;
 }
 
@@ -152,7 +152,7 @@
 	border: 1px solid var(--line);
 }
 
-.npPlay:global(.is-on) {
+.npPlay:global(.isOn) {
 	background: var(--ink);
 	color: var(--bg);
 	border-color: var(--ink);

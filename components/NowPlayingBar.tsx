@@ -43,7 +43,7 @@ export function NowPlayingBar({
     if (event.button !== undefined && event.button !== 0) return;
     event.preventDefault();
     scrubbingRef.current = true;
-    event.currentTarget.classList.add("is-dragging");
+    event.currentTarget.classList.add("isDragging");
     try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* ignore */ }
     onSeek(seekFromPoint(event.clientX));
   }
@@ -57,12 +57,12 @@ export function NowPlayingBar({
     if (!scrubbingRef.current) return;
     try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* ignore */ }
     scrubbingRef.current = false;
-    event.currentTarget.classList.remove("is-dragging");
+    event.currentTarget.classList.remove("isDragging");
   }
 
   return (
     <aside
-      className={cn(s.nowplaying, { "is-on": on })}
+      className={cn(s.nowplaying, { isOn: on })}
       id="nowplaying"
       aria-live="polite"
       hidden={hidden}
@@ -135,7 +135,7 @@ export function NowPlayingBar({
             </button>
             <button
               type="button"
-              className={cn(s.npBtn, s.npPlay, { "is-on": playing })}
+              className={cn(s.npBtn, s.npPlay, { isOn: playing })}
               aria-label={playing ? "Pausa" : "Spela"}
               aria-pressed={playing ? "true" : "false"}
               onClick={onToggle}

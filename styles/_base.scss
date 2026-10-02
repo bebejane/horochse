@@ -3,7 +3,7 @@
 /*
  * Global layer: design tokens, resets, page/body state and the small set of
  * cross-cutting primitives that more than one component composes
- * (.skip, .mast-symbol*, .go, .icon-*). Everything component-specific
+ * (.skip, .mastSymbol*, .go, .icon-*). Everything component-specific
  * (including the play control) lives in a *.module.scss next to the component.
  */
 
@@ -116,27 +116,27 @@ body {
 }
 
 /* Brand symbol, shared by Mast, EventCard, CalendarView and the colophon. */
-.mast-symbol-lockup {
+.mastSymbolLockup {
 	display: block;
 	flex: 0 0 auto;
 	height: 3.8rem;
 }
 
-.mast-symbol {
+.mastSymbol {
 	display: block;
 	height: 3.8rem;
 	width: auto;
 }
 
-.mast-symbol-light {
+.mastSymbolLight {
 	display: none;
 }
 
-html[data-theme='light'] .mast-symbol-dark {
+html[data-theme='light'] .mastSymbolDark {
 	display: none;
 }
 
-html[data-theme='light'] .mast-symbol-light {
+html[data-theme='light'] .mastSymbolLight {
 	display: block;
 }
 
@@ -179,13 +179,13 @@ html[data-theme='light'] .mast-symbol-light {
 	transform: translate3d(0, 0, 0);
 }
 
-.go-down::after {
+.goDown::after {
 	content: '\2193';
 	transform: translate3d(0, -0.4em, 0);
 }
 
-.go-down:hover::after,
-.go-down:focus-visible::after {
+.goDown:hover::after,
+.goDown:focus-visible::after {
 	transform: translate3d(0, 0, 0);
 }
 
@@ -196,15 +196,15 @@ html[data-theme='light'] .mast-symbol-light {
 }
 
 /* Play/pause glyph toggle, shared by every play control. */
-.icon-pause {
+.iconPause {
 	display: none;
 }
 
-.is-on .icon-play {
+.isOn .iconPlay {
 	display: none;
 }
 
-.is-on .icon-pause {
+.isOn .iconPause {
 	display: block;
 }
 

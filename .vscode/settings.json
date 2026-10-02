@@ -3,6 +3,8 @@
     "**/.jj": true,
     ".next": true,
     "node_modules": true,
-    ".vscode": true
+    ".vscode": true,
+    ".cache": true,
+    ".vercel": true
   }
 }

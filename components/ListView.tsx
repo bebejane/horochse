@@ -43,7 +43,7 @@ function WeekHead({
       : "Spela " + title;
   const on = playing && currentWeek === weekKey;
   return (
-    <div className={cn(s.weekHead, { "is-next": !isFirst })}>
+    <div className={cn(s.weekHead, { isNext: !isFirst })}>
       <div className={s.weekHeadMain}>
         <p className={s.weekHeadTitle}>{title}</p>
         {playable && !hidePlay ? (
@@ -51,7 +51,7 @@ function WeekHead({
             <span className={s.weekHeadListenLabel}>Hör exempel på veckans musik</span>
             <button
               type="button"
-              className={cn(play.play, { "is-on": on })}
+              className={cn(play.play, { isOn: on })}
               data-week={weekKey}
               aria-pressed={on ? "true" : "false"}
               aria-label={label}
@@ -122,7 +122,7 @@ export function ListView({
           {groupByDay(group.events).map((day, dayIndex) => {
             const heading = formatDay(day.date);
             return (
-              <section className={cn(s.day, { "is-week-start": dayIndex === 0 })} data-day key={day.date}>
+              <section className={cn(s.day, { isWeekStart: dayIndex === 0 })} data-day key={day.date}>
                 <h2 className={s.dayTitle} data-day-title>
                   <b>{heading.kicker}</b>
                   <span>{heading.rest}</span>
