@@ -102,6 +102,13 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   const scReadyRef = useRef<Promise<ScApi> | null>(null);
   const scrubbingRef = useRef(false);
   const pauseRequestedRef = useRef(false);
+  // Bumped on every track switch. Async widget/YouTube callbacks capture the
+  // value at load time and bail if it changed, so a superseded track can never
+  // restart playback after the user has switched.
+  const widgetGenRef = useRef(0);
+  const ytGenRef = useRef(0);
+  // Generation of the widget load that is allowed to auto-play on READY.
+  const scLoadGenRef = useRef(-1);
   const playlistRef = useRef<PlaylistItem[]>([]);
   const onNeedScrollRef = useRef(onNeedScroll);
   const playAtRef = useRef<(index: number, fromSkip: boolean) => void>(() => {});
@@ -254,6 +261,8 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   }, []);
 
   const pauseWidget = useCallback(() => {
+    // Invalidate any in-flight widget load so its READY handler can't auto-play.
+    widgetGenRef.current += 1;
     pauseRequestedRef.current = true;
     scPlayingRef.current = false;
     if (widgetRef.current) {
@@ -305,7 +314,10 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     widgetRef.current = widget;
     widget.bind(Widget.Events.READY, () => {
       applyPlaybackVolume();
-      if (modeRef.current !== "widget" || !scUrlRef.current) return;
+      // Only auto-play if this is still the load that was requested last; a
+      // stale READY from a superseded track must not restart audio after the
+      // user has switched to another track.
+      if (scLoadGenRef.current !== widgetGenRef.current || modeRef.current !== "widget" || !scUrlRef.current) return;
       try { widget.play(); } catch { /* ignore */ }
     });
     widget.bind(Widget.Events.PLAY, () => {
@@ -329,8 +341,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       scPlayingRef.current = false;
       if (modeRef.current !== "widget" || indexRef.current < 0) return;
       playAtRef.current(indexRef.current + 1, true);
-    });
-    widget.bind(Widget.Events.PLAY_PROGRESS, (data) => {
+    });    widget.bind(Widget.Events.PLAY_PROGRESS, (data) => {
       scPositionRef.current = data?.currentPosition || 0;
       if (data?.currentPosition && scDurationRef.current <= 0 && data.relativePosition) {
         scDurationRef.current = data.currentPosition / data.relativePosition;
@@ -424,8 +435,10 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   }, []);
 
   const playYt = useCallback((videoId: string, token: number): Promise<void> => {
+    const gen = widgetGenRef.current + 1;
+    ytGenRef.current = gen;
     return ensureYtPlayer().then((player) => {
-      if (token !== tokenRef.current) return;
+      if (token !== tokenRef.current || gen !== ytGenRef.current) return;
       ytVideoRef.current = videoId;
       modeRef.current = "yt";
       pauseHtmlAudio();
@@ -437,8 +450,11 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   }, [applyPlaybackVolume, ensureYtPlayer, markYtPlaying, pauseHtmlAudio, pauseWidget]);
 
   const playWidget = useCallback((url: string, token: number) => {
+    const gen = widgetGenRef.current + 1;
+    widgetGenRef.current = gen;
+    scLoadGenRef.current = gen;
     return loadScApi().then((Widget) => {
-      if (token !== tokenRef.current) return;
+      if (token !== tokenRef.current || gen !== widgetGenRef.current) return;
       const widget = bindScWidget(Widget);
       scUrlRef.current = url;
       scPositionRef.current = 0;
@@ -606,6 +622,12 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     eventIdRef.current = event.id;
     itemKeyRef.current = item.key;
     const token = ++tokenRef.current;
+    // Stop whatever is playing *now*, before any async stream resolution, so
+    // switching tracks never leaves the previous audio running under the new
+    // title/thumbnail while the next stream is fetched.
+    pauseHtmlAudio();
+    pauseWidget();
+    pauseYt();
     onNeedScrollRef.current?.(event);
     preloadIndexRef.current(index + 1);
     if (!req) {
