@@ -28,6 +28,7 @@ export async function GET(request: Request) {
 	const tracks = url.searchParams.get('tracks') !== 'false';
 
 	try {
+		console.log('starting scrape', { only, tracks });
 		const summary = await scrapeAndStore({ only, tracks, quiet: true });
 		revalidatePath('/', 'layout');
 		return NextResponse.json(summary, { status: summary.ok ? 200 : 207 });

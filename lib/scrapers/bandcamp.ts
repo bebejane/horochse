@@ -1,32 +1,42 @@
 import { httpJson, httpRequest, HttpError } from "./http";
 import { parseBcDate } from "./dates";
 import { parseBandcampIds } from "./links";
+import { warn } from "./log";
 import { albumTitleScore, cleanPersonName, cluesCacheKey, eventLookupClues, foldName, namesMatch, sameArtist } from "./text";
 
 type Release = Record<string, any>;
 
 /**
- * Bandcamp's search API (`autocomplete_elastic`) can rate-limit an IP outright,
- * returning 429 even for a single request. Once that happens, retrying every
- * artist is pointless work, so open a circuit that skips searches for a while.
- * The rest of Bandcamp (mobile API, artist pages) keeps working; only the
- * search-assisted lookups are skipped.
+ * Bandcamp's search API (`autocomplete_elastic`) rate-limits per IP and can
+ * return 429 on bursts. On serverless a long time-based pause is wrong: the
+ * function budget is a few minutes, so pausing 10 min would disable search for
+ * the whole run. Instead use a short, adaptive cooldown that grows only with
+ * consecutive 429s and resets on any success. The rest of Bandcamp (mobile API,
+ * artist pages) is unaffected — only search-assisted lookups pause.
  */
-const SEARCH_CIRCUIT_COOLDOWN_MS = 10 * 60 * 1000;
-let searchCircuitOpenUntil = 0;
+const COOLDOWN_BASE_MS = 5_000;
+const COOLDOWN_MAX_MS = 60_000;
+let searchCooldownUntil = 0;
+let consecutive429 = 0;
 
 export function isBandcampSearchBlocked(): boolean {
-  return Date.now() < searchCircuitOpenUntil;
+  return Date.now() < searchCooldownUntil;
 }
 
-function tripSearchCircuit(): void {
-  const wasOpen = isBandcampSearchBlocked();
-  searchCircuitOpenUntil = Date.now() + SEARCH_CIRCUIT_COOLDOWN_MS;
-  if (!wasOpen) {
-    console.error(
-      "bandcamp-sökning: 429 — pausar sökningar i 10 min (övriga Bandcamp-anrop fortsätter)",
-    );
-  }
+function noteSearch429(): void {
+  consecutive429 += 1;
+  const cooldown = Math.min(COOLDOWN_BASE_MS * 2 ** (consecutive429 - 1), COOLDOWN_MAX_MS);
+  searchCooldownUntil = Date.now() + cooldown;
+  warn(
+    `bandcamp-sökning: 429 (${consecutive429} i rad) — pausar sökningar i ${Math.round(
+      cooldown / 1000,
+    )}s, fortsätter sedan`,
+  );
+}
+
+function noteSearchOk(): void {
+  consecutive429 = 0;
+  searchCooldownUntil = 0;
 }
 
 export async function searchBandcampRowsAsync(query: string, searchFilter: string): Promise<any[]> {
@@ -36,10 +46,11 @@ export async function searchBandcampRowsAsync(query: string, searchFilter: strin
       "https://bandcamp.com/api/bcsearch_public_api/1/autocomplete_elastic",
       { search_text: query, search_filter: searchFilter, full_page: false, fan_id: null },
     );
+    noteSearchOk();
     return (data?.auto?.results as any[]) || [];
   } catch (err) {
     if (err instanceof HttpError && err.status === 429) {
-      tripSearchCircuit();
+      noteSearch429();
       return [];
     }
     throw err;

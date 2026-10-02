@@ -136,7 +136,7 @@ export async function httpJson(url: string, payload: Record<string, unknown>): P
     Referer: "https://bandcamp.com/",
   };
   let lastError: unknown;
-  const attempts = 5;
+  const attempts = 4;
   for (let attempt = 0; attempt < attempts; attempt++) {
     // Bandcamp's search API is rate-limited per host; serialize same-host calls
     // so bursts from many concurrent artists don't trip 429s.
@@ -147,9 +147,10 @@ export async function httpJson(url: string, payload: Record<string, unknown>): P
     if (res.ok) return await res.json();
     lastError = new HttpError(res.status, `HTTP ${res.status} for ${url}`);
     if (res.status !== 429 || attempt === attempts - 1) throw lastError;
-    // Exponential backoff with jitter; honour Retry-After when present.
+    // Honor Retry-After; otherwise a short exponential backoff with jitter. The
+    // caller's circuit handles sustained 429s, so keep this bounded and small.
     const retryAfter = Number(res.headers.get("retry-after") || 0);
-    const base = retryAfter > 0 ? retryAfter * 1000 : Math.min(15000, 1000 * 2 ** attempt);
+    const base = retryAfter > 0 ? retryAfter * 1000 : Math.min(6000, 1000 * 2 ** attempt);
     await sleep(base + Math.floor(Math.random() * 500));
   }
   throw lastError;
@@ -159,7 +160,7 @@ export async function httpJson(url: string, payload: Record<string, unknown>): P
 // Some APIs (Bandcamp search) 429 if several requests land at once. These
 // limits apply globally per host so concurrency in the caller can stay high.
 const HOST_LIMITS: { match: RegExp; minIntervalMs: number; maxConcurrent: number }[] = [
-  { match: /bandcamp\.com$/i, minIntervalMs: 250, maxConcurrent: 2 },
+  { match: /bandcamp\.com$/i, minIntervalMs: 400, maxConcurrent: 1 },
 ];
 
 type HostState = { last: number; active: number; queue: Array<() => void> };
