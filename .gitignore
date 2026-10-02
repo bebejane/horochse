@@ -6,4 +6,4 @@ TODO
 .vercel
 .env*
 /docs*
-__pycache__
+/.openchamber

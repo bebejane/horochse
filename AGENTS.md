@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Hör & Se — agent notes
 
-Stockholm concert aggregator. A Next.js 16 App Router client app (React 19, Turbopack) reads `public/data/events.json`; a TypeScript scraper in `lib/scrapers/` regenerates that file and resolves Bandcamp/SoundCloud playback. UI text, identifiers, and comments are in Swedish. The scraper used to be Python and has been fully ported to TS — do not reintroduce Python.
+Stockholm concert aggregator. A Next.js 16 App Router client app (React 19, Turbopack) reads `public/data/events.json`; a TypeScript scraper in `lib/scrapers/` regenerates that file and resolves Bandcamp/SoundCloud playback. UI text, identifiers, and comments are in Swedish. All scraping/streaming is TypeScript — the Python implementation has been removed; do not reintroduce Python or `child_process`.
 
 ## Commands
 

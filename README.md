@@ -7,7 +7,7 @@ Konsertaggregator för Stockholm. Next.js-appen visar aktuella konserter; en scr
 - **Node.js 20.9** eller nyare
 - **pnpm** (README använder pnpm; npm fungerar också)
 
-Scrapern körs i Node och behöver inga pip-paket eller Python.
+Scrapern körs helt i Node/TypeScript – inga pip-paket eller Python behövs.
 
 Kolla versionerna:
 

@@ -139,7 +139,7 @@ export function ConcertApp() {
         setLoaded(true);
       })
       .catch((err: Error) => {
-        setStatus("Kunde inte läsa konsertlistan. Kör python3 fetch.py. " + err.message);
+        setStatus("Kunde inte läsa konsertlistan. Kör pnpm run fetch. " + err.message);
         setLoaded(true);
       });
   }, []);

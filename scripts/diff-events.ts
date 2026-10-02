@@ -70,9 +70,9 @@ async function main() {
   console.log(`  (unchanged counts omitted: ${slugs.filter((s) => (ca.get(s) || 0) === (cb.get(s) || 0)).length} venues)`);
   console.log(`\nA errors: ${JSON.stringify(a.errors)}`);
   console.log(`B errors: ${JSON.stringify(b.errors)}`);
-  console.log(`\nonly in A (python): ${onlyA.length}`);
+  console.log(`\nonly in A: ${onlyA.length}`);
   onlyA.slice(0, 30).forEach((id) => console.log("  " + id));
-  console.log(`only in B (ts): ${onlyB.length}`);
+  console.log(`only in B: ${onlyB.length}`);
   onlyB.slice(0, 30).forEach((id) => console.log("  " + id));
   console.log(`\nfield diffs: ${fieldDiffs.length}`);
   fieldDiffs.slice(0, 40).forEach((line) => console.log(line));
