@@ -1,54 +1,63 @@
 # Hör & Se
 
-Konsertaggregator för Stockholm. Next.js-appen visar aktuella konserter; Python hämtar programmet från scenerna och löser uppspelning från Bandcamp och SoundCloud.
+Konsertaggregator för Stockholm. Next.js-appen visar aktuella konserter; en scraper i TypeScript hämtar programmet från scenerna och löser uppspelning från Bandcamp och SoundCloud.
 
 ## Förutsättningar
 
 - **Node.js 20.9** eller nyare
-- **npm**
-- **Python 3** (standardbiblioteket räcker, inga pip-paket)
+- **pnpm** (README använder pnpm; npm fungerar också)
+
+Scrapern körs i Node och behöver inga pip-paket eller Python.
 
 Kolla versionerna:
 
 ```bash
 node -v
-python3 --version
+pnpm -v
 ```
 
 ## Kom igång
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 Öppna [http://localhost:3000](http://localhost:3000).
 
 Konsertlistan läses från `public/data/events.json`. Den filen följer med, så sidan går att köra direkt utan att hämta om data.
 
-Inga miljövariabler eller `.env`-filer behövs.
+Inga miljövariabler behövs för appen eller scrapern.
 
 ## Hämta konserter
 
 Scrapern går igenom scenerna för de kommande fem veckorna och skriver om `public/data/events.json`.
 
 ```bash
-npm run fetch
+pnpm run fetch
 ```
 
-Det kör `python3 fetch.py`. Körningen tar ett tag och vissa scener kan svara med 429. Om en scen misslyckas hamnar felet i `errors` i JSON-filen; övriga konserter skrivs ändå.
+Använd `pnpm run fetch`, inte `pnpm fetch` (det är ett inbyggt pnpm-kommando).
+
+Körningen tar ett tag och vissa scener kan svara med 429. Om en scen misslyckas hamnar felet i `errors` i JSON-filen; övriga konserter skrivs ändå.
+
+En enskild scen:
+
+```bash
+pnpm run fetch -- --only debaser
+```
 
 Ladda om sajten efteråt så syns den nya listan.
 
 ## Uppspelning
 
-Spellistan går via `python3 scripts/stream.py`. Utvecklingsservern anropar det skriptet när någon trycker play, så Python måste finnas i PATH även om du inte kör fetch.
+Bandcamp- och SoundCloud-strömmar löses av `lib/scrapers/stream.ts` direkt i Node – ingen extern process behövs.
 
 ## Andra kommandon
 
 ```bash
-npm run build    # produktionsbygge
-npm run start    # kör bygget (efter npm run build)
+pnpm build    # produktionsbygge
+pnpm start    # kör bygget (efter pnpm build)
 ```
 
 ICS-filer ligger på `/kalender/{id}.ics`.

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { pythonStream } from "@/lib/python-stream";
+import { soundcloudStreamUrl } from "@/lib/scrapers/stream";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   if (!/^\d+$/.test(id)) {
     return NextResponse.json({ error: "Ogiltig förfrågan." }, { status: 400 });
   }
-  const payload = await pythonStream(["soundcloud", id]);
+  const payload = await soundcloudStreamUrl(Number(id));
   if (!payload || payload.error || !(payload.stream || payload.widget)) {
     return NextResponse.json({ error: payload?.error || "Ingen stream hittades." }, { status: 404 });
   }
