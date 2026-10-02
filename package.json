@@ -13,6 +13,7 @@
 		"db:studio": "drizzle-kit studio",
 		"scrape": "tsx scripts/scrape-to-db.ts",
 		"scrape:db": "tsx scripts/scrape-to-db.ts",
+		"scrape:logs": "tsx scripts/scrape-logs.ts",
 		"diff:events": "tsx scripts/diff-events.ts"
 	},
 	"dependencies": {
@@ -25,7 +26,8 @@
 		"next": "16.3.6",
 		"react": "^19.3.0",
 		"react-dom": "19.2.8",
-		"server-only": "^0.0.1"
+		"server-only": "^0.0.1",
+		"sharp": "^0.35.5"
 	},
 	"devDependencies": {
 		"@types/he": "^1.2.3",

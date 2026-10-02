@@ -35,7 +35,7 @@ export function PlayButton({
     ? "Spela " + n + " låtar från " + (event.title || "konserten")
     : "Spela " + (first.track || first.album || "en låt") +
       (first.artist ? " av " + first.artist : "") +
-      (source === "soundcloud" ? " från SoundCloud" : " från Bandcamp");
+      (source === "soundcloud" ? " från SoundCloud" : source === "youtube" ? " från YouTube" : " från Bandcamp");
   const playBtn = (
     <button
       type="button"

@@ -27,6 +27,7 @@ function EventPoster({ src }: { src?: string }) {
         src={src}
         alt=""
         loading="lazy"
+        decoding="async"
         referrerPolicy="no-referrer"
         onError={() => setFailed(true)}
       />

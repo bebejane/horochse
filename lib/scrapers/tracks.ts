@@ -1,12 +1,14 @@
 import { bcTrack, lookupBandcamp, lookupBandcampUrl } from "./bandcamp";
 import { lookupSoundcloudArtist, lookupSoundcloudUrl, scTrack } from "./soundcloud";
-import { takePageLinks } from "./links";
+import { lookupYoutubeArtist, youtubeDisabled, ytTrack } from "./youtube";
+import { takePageLinks, spotifyMeta } from "./links";
 import { mapPool, memoInflight, log, warn, seconds, withTimeout } from "./log";
 import {
   artistCandidates,
   billArtists,
   foldName,
   isGenericEvent,
+  namesMatch,
   sameArtist,
 } from "./text";
 import type { ScrapedEvent, ScrapedTrack } from "./types";
@@ -39,6 +41,7 @@ export function trackFitsEvent(track: any, artists: string[], title: string): bo
 export function applyPrimaryMedia(event: ScrapedEvent, tracks: ScrapedTrack[]): void {
   delete event.bandcamp;
   delete event.soundcloud;
+  delete event.youtube;
   if (!tracks.length) {
     delete event.tracks;
     return;
@@ -55,6 +58,14 @@ export function applyPrimaryMedia(event: ScrapedEvent, tracks: ScrapedTrack[]): 
       album_id: first.album_id,
       track_id: first.track_id,
       type: first.type || "a",
+    };
+  } else if (first.source === "youtube") {
+    event.youtube = {
+      artist: first.artist || "",
+      track: first.track || "",
+      video_id: first.video_id,
+      url: first.url || "",
+      image: first.image || "",
     };
   } else {
     event.soundcloud = {
@@ -95,6 +106,10 @@ export type AttachOptions = {
   bandcampCache?: Map<string, ArtistCacheEntry>;
   /** Receives newly resolved artists (folded name → { artist, release }) to persist. */
   bandcampUpdates?: Map<string, { artist: string; release: Record<string, unknown> | null }>;
+  /** Preloaded YouTube cache (folded name → entry) from Turso. */
+  youtubeCache?: Map<string, ArtistCacheEntry>;
+  /** Receives newly resolved YouTube artists to persist. */
+  youtubeUpdates?: Map<string, { artist: string; release: Record<string, unknown> | null }>;
 };
 
 function trim(value: string): string {
@@ -106,17 +121,21 @@ const DEFAULT_ARTIST_TIMEOUT_MS = 45000;
 export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions = {}): Promise<void> {
   const bc = new Map<string, Release | null>();
   const sc = new Map<string, Release | null>();
+  const yt = new Map<string, Release | null>();
   const bcInflight = new Map<string, Promise<Release | null>>();
   const scInflight = new Map<string, Promise<Release | null>>();
   // Persistent across the whole run: an artist already resolved (or ruled out)
   // is never looked up again, so repeated names cost nothing.
   const bcResolved = new Map<string, Release | null>();
   const scResolved = new Map<string, Release | null>();
+  const ytResolved = new Map<string, Release | null>();
   // Persisted across runs (Turso): resolved artists are never searched again,
   // which is the main lever against Bandcamp 429s and slow lookups.
   const persistent = opts.bandcampCache;
   const persistentUpdates = opts.bandcampUpdates;
-  const stats = { found: 0, fromPage: 0, extra: 0, cached: 0, persistentHits: 0 };
+  const persistentYt = opts.youtubeCache;
+  const ytUpdates = opts.youtubeUpdates;
+  const stats = { found: 0, fromPage: 0, extra: 0, cached: 0, persistentHits: 0, spotifyHits: 0, youtubeHits: 0 };
   const total = events.length;
   const quiet = opts.quiet ?? false;
   const concurrency = opts.concurrency ?? 8;
@@ -177,6 +196,39 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
     scInflight.set(contextKey, promise);
     return promise;
   };
+  // YouTube is the last resort and its search is rate-sensitive, so — unlike
+  // Bandcamp/SoundCloud — this is never run wide; callers cap the pool at 2 and
+  // the module serializes the requests.
+  const lookupYoutubeFor = (person: string, context: string): Promise<Release | null> => {
+    const nameKey = foldName(person);
+    if (ytResolved.has(nameKey)) {
+      stats.cached += 1;
+      return Promise.resolve(ytResolved.get(nameKey) ?? null);
+    }
+    const persisted = persistentYt?.get(nameKey);
+    if (persisted !== undefined) {
+      const release = (persisted.release as Release | null) ?? null;
+      ytResolved.set(nameKey, release);
+      stats.persistentHits += 1;
+      return Promise.resolve(release);
+    }
+    const promise = withTimeout(lookupYoutubeArtist(person, yt, context), artistTimeoutMs, `youtube ${person}`)
+      .catch((err) => {
+        warn(String(err));
+        return null;
+      })
+      .then((release) => {
+        ytResolved.set(nameKey, release);
+        // Only persist real search outcomes. `lookupYoutubeArtist` returns null
+        // without searching when YouTube is disabled, and caching that as a
+        // "definitive miss" would wrongly exclude the artist once re-enabled.
+        if (release || !youtubeDisabled()) {
+          ytUpdates?.set(nameKey, { artist: person, release: release ?? null });
+        }
+        return release;
+      });
+    return promise;
+  };
 
   const lookupPerson = async (
     person: string,
@@ -219,7 +271,7 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
       stats.found += 1;
       stats.extra += Math.max(0, existing.length - 1);
     } else {
-      const [bcLinks, scLinks] = await takePageLinks(event);
+      const [bcLinks, scLinks, spotifyLinks] = await takePageLinks(event);
       const pageTracks: ScrapedTrack[] = [];
       for (const url of bcLinks) {
         const release = await lookupBandcampUrl(url, bc);
@@ -279,6 +331,62 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
       }
       if (!tracks.length) addTrack(takeUnusedPage("soundcloud"));
 
+      // Spotify fallback: pages (Nalen, Fasching, Hartwig, …) often embed a
+      // Spotify artist/album the normal lookup missed. The public oembed endpoint
+      // gives the authoritative name without credentials; use it as a stronger
+      // search key for Bandcamp/SoundCloud. The link itself is kept for the UI.
+      if (!tracks.length && spotifyLinks.length) {
+        const spArtist = spotifyLinks.find((l) => l.kind === "artist");
+        const spAlbum = spotifyLinks.find((l) => l.kind === "album");
+        if (spArtist || spAlbum) event.spotify = (spArtist || spAlbum)!.url;
+        const meta = await spotifyMeta(spArtist || spAlbum!);
+        if (meta?.title) {
+          const already = tracks.some((item) =>
+            sameArtist(meta.title, item.artist || "") || namesMatch(meta.title, item.artist || ""),
+          );
+          if (!already) {
+            for (const source of ["bandcamp", "soundcloud"] as const) {
+              const release =
+                source === "bandcamp"
+                  ? await lookupBandcampFor(meta.title, context)
+                  : await lookupSoundcloudFor(meta.title, context);
+              if (release) {
+                addTrack((source === "bandcamp" ? bcTrack(release) : scTrack(release)) as ScrapedTrack);
+                stats.spotifyHits += 1;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // YouTube is the last resort: only when Bandcamp, SoundCloud and the
+      // Spotify-metadata fallback all came up empty. Strict matching plus the
+      // persistent cache keep the key-less search both accurate and cheap.
+      if (!tracks.length && people.length) {
+        // Skip any artist that the Spotify-metadata step already ruled out, so
+        // a wrong name (e.g. a sentence-like event title) is not searched twice.
+        let spTitle = "";
+        if (spotifyLinks.length) {
+          const spArtist = spotifyLinks.find((l) => l.kind === "artist");
+          const spAlbum = spotifyLinks.find((l) => l.kind === "album");
+          const meta = await spotifyMeta(spArtist || spAlbum!);
+          spTitle = meta?.title || "";
+        }
+        const ytPeople = spTitle
+          ? people.filter((person) => !sameArtist(person, spTitle) && !namesMatch(person, spTitle))
+          : people;
+        const youtubeItems = await mapPool(ytPeople, 2, (person) =>
+          tracks.some((item) => sameArtist(person, item.artist || ""))
+            ? Promise.resolve(null)
+            : lookupYoutubeFor(person, context).then((release) =>
+                release ? (ytTrack(release) as ScrapedTrack) : null,
+              ),
+        );
+        for (const item of youtubeItems) addTrack(item);
+        if (tracks.length) stats.youtubeHits += 1;
+      }
+
       applyPrimaryMedia(event, tracks);
       if (tracks.length) {
         stats.found += 1;
@@ -299,6 +407,7 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
   log(
     `Låtar klara: ${stats.found}/${total} poster med spelbar låt ` +
       `(${stats.fromPage} från evenemangssida, ${stats.extra} extra artistspår, ` +
+      `${stats.spotifyHits} via Spotify-metadata, ${stats.youtubeHits} via YouTube, ` +
       `${stats.cached} cachade i körningen, ${stats.persistentHits} från tidigare körningar) ` +
       `på ${seconds(Date.now() - started)}`,
   );

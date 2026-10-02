@@ -55,6 +55,8 @@ export const events = sqliteTable(
     image: text("image"),
     text: text("text"),
     url: text("url").notNull(),
+    /** Spotify artist/album link found on the venue page (no inline playback). */
+    spotify: text("spotify"),
     // 'active' | 'missing'
     status: text("status").notNull().default("active"),
     cancelled: integer("cancelled", { mode: "boolean" }).notNull().default(false),
@@ -92,6 +94,8 @@ export const tracks = sqliteTable(
     bandId: integer("band_id"),
     albumId: integer("album_id"),
     trackId: integer("track_id"),
+    /** YouTube: the video id for the embedded player (no direct stream). */
+    videoId: text("video_id"),
     // Bandcamp: "a" (album) | "t" (track).
     type: text("type"),
   },
@@ -141,4 +145,24 @@ export const bandcampArtists = sqliteTable(
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   },
   (table) => [index("bandcamp_artists_updated_idx").on(table.updatedAt)],
+);
+
+/**
+ * Persistent cache of YouTube lookups, keyed by the folded artist name.
+ * YouTube is the last-resort source: it is searched only when Bandcamp and
+ * SoundCloud both miss. Resolved outcomes (including "no usable video") are
+ * reused across runs, so the same artist is never searched twice — which is
+ * what keeps the key-less, rate-limited search sustainable.
+ */
+export const youtubeVideos = sqliteTable(
+  "youtube_videos",
+  {
+    artistKey: text("artist_key").primaryKey(),
+    artist: text("artist").notNull(),
+    /** Serialized track JSON, or NULL for a known miss. */
+    video: text("video"),
+    found: integer("found", { mode: "boolean" }).notNull().default(false),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [index("youtube_videos_updated_idx").on(table.updatedAt)],
 );

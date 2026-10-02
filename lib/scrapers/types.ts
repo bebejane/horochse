@@ -10,6 +10,8 @@ export type ScrapedTrack = {
   band_id?: number | null;
   album_id?: number | null;
   track_id?: number | null;
+  /** YouTube video id (embedded player, no direct stream). */
+  video_id?: string | null;
   type?: string;
 };
 
@@ -28,8 +30,12 @@ export type ScrapedEvent = {
   tracks?: ScrapedTrack[];
   bandcamp?: Record<string, unknown>;
   soundcloud?: Record<string, unknown>;
+  youtube?: Record<string, unknown>;
+  /** Spotify link shown in the UI (no inline playback). */
+  spotify?: string;
   _bandcamp_links?: string[];
   _soundcloud_links?: string[];
+  _spotify_links?: { kind: string; id: string; url: string }[];
 };
 
 export type VenueFetch = (start: DateTime, end: DateTime) => Promise<ScrapedEvent[]>;

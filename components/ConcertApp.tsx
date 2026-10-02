@@ -441,6 +441,9 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
         allow="autoplay; encrypted-media"
         src="https://w.soundcloud.com/player/?auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false"
       />
+      <div id="yt-host" aria-hidden="true">
+        <div ref={player.ytContainerRef} />
+      </div>
     </div>
   );
 }

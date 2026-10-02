@@ -20,7 +20,8 @@ import {
 import type { ConcertEvent, EventsPayload, Track } from "@/lib/types";
 
 import { db } from "./client";
-import { bandcampArtists, events, scrapeErrors, scrapeRuns, sources, tracks, venues } from "./schema";
+import { signedImageUrl } from "@/lib/image-sign";
+import { bandcampArtists, events, scrapeErrors, scrapeRuns, sources, tracks, venues, youtubeVideos } from "./schema";
 
 type EventRow = typeof events.$inferSelect;
 type TrackRow = typeof tracks.$inferSelect;
@@ -56,6 +57,7 @@ export type TrackInput = {
   bandId?: number | null;
   albumId?: number | null;
   trackId?: number | null;
+  videoId?: string | null;
   type?: string | null;
 };
 
@@ -73,6 +75,7 @@ export type EventInput = {
   image?: string | null;
   text?: string | null;
   url: string;
+  spotify?: string | null;
   cancelled?: boolean;
   isClub?: boolean;
   tracks?: TrackInput[];
@@ -178,6 +181,7 @@ function eventRow(runId: number, input: EventInput, now: Date): EventRow {
     image: input.image ?? null,
     text: input.text ?? null,
     url: input.url,
+    spotify: input.spotify ?? null,
     status: "active",
     cancelled: input.cancelled ?? false,
     isClub: input.isClub ?? false,
@@ -202,6 +206,7 @@ function trackRow(eventId: string, position: number, input: TrackInput) {
     bandId: input.bandId ?? null,
     albumId: input.albumId ?? null,
     trackId: input.trackId ?? null,
+    videoId: input.videoId ?? null,
     type: input.type ?? null,
   };
 }
@@ -224,6 +229,7 @@ function eventUpsertStatement(runId: number, input: EventInput, now: Date) {
         image: row.image,
         text: row.text,
         url: row.url,
+        spotify: row.spotify,
         status: "active",
         cancelled: row.cancelled,
         isClub: row.isClub,
@@ -308,6 +314,47 @@ export async function saveBandcampArtists(
     });
 }
 
+/* -------------------------------------------------------------------------- */
+/* YouTube video cache                                                         */
+/* -------------------------------------------------------------------------- */
+
+/** Load the whole YouTube cache into memory (folded name → entry). */
+export async function loadYoutubeVideos(): Promise<Map<string, ArtistCacheEntry>> {
+  const map = new Map<string, ArtistCacheEntry>();
+  const rows = await db.select().from(youtubeVideos);
+  for (const row of rows) {
+    map.set(row.artistKey, { release: row.video ? JSON.parse(row.video) : null, found: row.found });
+  }
+  return map;
+}
+
+/** Persist cache entries (upsert) in one batch. Only pass keys touched this run. */
+export async function saveYoutubeVideos(
+  entries: Map<string, { artist: string; release: Record<string, unknown> | null }>,
+): Promise<void> {
+  if (!entries.size) return;
+  const now = new Date();
+  const rows = [...entries].map(([artistKey, entry]) => ({
+    artistKey,
+    artist: entry.artist,
+    video: entry.release ? JSON.stringify(entry.release) : null,
+    found: entry.release !== null,
+    updatedAt: now,
+  }));
+  await db
+    .insert(youtubeVideos)
+    .values(rows)
+    .onConflictDoUpdate({
+      target: youtubeVideos.artistKey,
+      set: {
+        artist: sql`excluded.artist`,
+        video: sql`excluded.video`,
+        found: sql`excluded.found`,
+        updatedAt: sql`excluded.updated_at`,
+      },
+    });
+}
+
 /**
  * Demote the active events of a source that did not reappear this run.
  * Only call for sources that actually ran and finished without error, so a
@@ -357,6 +404,7 @@ function toTrack(row: TrackRow): Track {
     band_id: row.bandId ?? undefined,
     album_id: row.albumId ?? undefined,
     track_id: row.trackId ?? undefined,
+    video_id: row.videoId ?? undefined,
     type: row.type ?? undefined,
   };
 }
@@ -371,16 +419,18 @@ function toConcertEvent(row: EventRow, venueName: string, trackRows: TrackRow[])
     date: row.date,
     time: row.time,
     datetime: isoFromDate(row.startsAt),
-    image: row.image ?? "",
+    image: signedImageUrl(row.image),
     text: row.text ?? "",
     url: row.url,
     place: row.place ?? "",
   };
+  if (row.spotify) event.spotify = row.spotify;
   if (list.length) {
     event.tracks = list;
     const first = list[0];
     if (first.source === "bandcamp") event.bandcamp = first;
-    else event.soundcloud = first;
+    else if (first.source === "soundcloud") event.soundcloud = first;
+    else if (first.source === "youtube") event.youtube = first;
   }
   return event;
 }

@@ -51,6 +51,9 @@ export function eventTracks(event?: ConcertEvent | null): Track[] {
   if (event && event.soundcloud && event.soundcloud.track_id) {
     return [{ source: "soundcloud", ...event.soundcloud }];
   }
+  if (event && event.youtube && event.youtube.video_id) {
+    return [{ source: "youtube", ...event.youtube }];
+  }
   return [];
 }
 
@@ -159,8 +162,10 @@ export function isPlayable(event: ConcertEvent): boolean {
 export function trackSource(track?: Track | null): TrackSource | "" {
   if (track && track.source === "bandcamp") return "bandcamp";
   if (track && track.source === "soundcloud") return "soundcloud";
+  if (track && track.source === "youtube") return "youtube";
   if (track && track.band_id && track.album_id) return "bandcamp";
   if (track && track.track_id) return "soundcloud";
+  if (track && track.video_id) return "youtube";
   return "";
 }
 
@@ -168,6 +173,8 @@ export type StreamRequest = {
   href: string;
   source: TrackSource;
   fallback: string;
+  /** YouTube only: the video id for the embedded player (no /api fetch). */
+  videoId?: string;
 };
 
 export function streamRequest(track?: Track | null): StreamRequest | null {
@@ -190,6 +197,12 @@ export function streamRequest(track?: Track | null): StreamRequest | null {
       fallback: track?.url || "",
     };
   }
+  if (source === "youtube") {
+    const videoId = String(track?.video_id || "");
+    if (!videoId) return null;
+    // No stream to resolve: the embedded player takes the id directly.
+    return { href: "", source, fallback: track?.url || "", videoId };
+  }
   return null;
 }
 
@@ -199,6 +212,9 @@ export function mediaPageUrl(value?: string | Track | null): string {
 }
 
 export function artistExploreUrl(track?: Track | null): string {
+  // YouTube has no separate artist page in this model; don't link out to a
+  // meaningless "watch" URL. `trackExploreUrl` handles the video itself.
+  if (track?.source === "youtube" || /youtube\.com|youtu\.be/i.test(track?.url || "")) return "";
   const url = mediaPageUrl(track);
   if (!url) return "";
   const bandcamp = url.match(/^(https?:\/\/(?:www\.)?[^/]+\.bandcamp\.com)/i);
@@ -209,6 +225,10 @@ export function artistExploreUrl(track?: Track | null): string {
 }
 
 export function trackExploreUrl(track?: Track | null): string {
+  if (track?.source === "youtube" || /youtube\.com|youtu\.be/i.test(track?.url || "")) {
+    const id = track?.video_id || "";
+    return id ? "https://www.youtube.com/watch?v=" + id : track?.url || "";
+  }
   const url = mediaPageUrl(track);
   return url || "";
 }
@@ -216,6 +236,7 @@ export function trackExploreUrl(track?: Track | null): string {
 export function trackSourceName(track?: Track | null): string {
   const src = (track && track.source) || "";
   const url = (track && track.url) || "";
+  if (src === "youtube" || /youtube\.com|youtu\.be/i.test(url)) return "YouTube";
   if (src === "soundcloud" || /soundcloud\.com/i.test(url)) return "SoundCloud";
   if (src === "bandcamp" || /bandcamp\.com/i.test(url)) return "Bandcamp";
   return "";
@@ -230,6 +251,14 @@ export function listenMoreItems(event: ConcertEvent): { url: string; artist: str
     seen[url] = true;
     items.push({ url, artist: track.artist || "", source: trackSourceName(track) });
   });
+  // Spotify link found on the venue page — opens in the Spotify app/web player.
+  if (event.spotify) {
+    const url = mediaPageUrl(event.spotify);
+    if (url && !seen[url]) {
+      seen[url] = true;
+      items.push({ url, artist: "", source: "Spotify" });
+    }
+  }
   return items;
 }
 

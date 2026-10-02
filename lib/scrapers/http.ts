@@ -127,6 +127,29 @@ export async function httpRequest(url: string, opts: HttpOptions = {}): Promise<
   });
 }
 
+/** Binary fetch for images. `httpRequest` decodes as text (UTF-8), which
+ *  corrupts binary bodies, so image fetching must not use it. */
+export async function httpBuffer(
+  url: string,
+  opts: { extraHeaders?: Record<string, string>; timeoutMs?: number } = {},
+): Promise<Buffer> {
+  const headers: Record<string, string> = {
+    "User-Agent": UA,
+    Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+    ...(opts.extraHeaders || {}),
+  };
+  return withSlot(async () => {
+    const res = await fetch(url, {
+      method: "GET",
+      headers,
+      redirect: "follow",
+      signal: AbortSignal.timeout(opts.timeoutMs ?? 30000),
+    });
+    if (!res.ok) throw new HttpError(res.status, `HTTP ${res.status} for ${url}`);
+    return Buffer.from(await res.arrayBuffer());
+  });
+}
+
 export async function httpJson(url: string, payload: Record<string, unknown>): Promise<any> {
   const body = JSON.stringify(payload);
   const headers = {

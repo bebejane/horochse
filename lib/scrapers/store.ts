@@ -20,9 +20,11 @@ import type { EventInput, SourceInput, VenueInput } from "@/lib/db/queries";
 import {
   finishScrapeRun,
   loadBandcampArtists,
+  loadYoutubeVideos,
   reconcileSource,
   recordScrapeErrors,
   saveBandcampArtists,
+  saveYoutubeVideos,
   startScrapeRun,
   upsertEvents,
   upsertSources,
@@ -114,6 +116,7 @@ function toEventInput(event: ScrapedEvent, sourceKey: string): EventInput {
     image: event.image ?? null,
     text: event.text ?? null,
     url: event.url,
+    spotify: event.spotify ?? null,
     tracks: (event.tracks ?? []).map((track) => ({
       source: track.source,
       artist: track.artist ?? null,
@@ -124,6 +127,7 @@ function toEventInput(event: ScrapedEvent, sourceKey: string): EventInput {
       bandId: track.band_id ?? null,
       albumId: track.album_id ?? null,
       trackId: track.track_id ?? null,
+      videoId: track.video_id ?? null,
       type: track.type ?? null,
     })),
   };
@@ -143,12 +147,24 @@ export async function scrapeAndStore(opts: CollectOptions = {}): Promise<StoreSu
     >();
     if (bandcampCache.size) log(`DB: ${bandcampCache.size} bandcamp-artister i cache`);
 
-    const result = await collect({ ...opts, bandcampCache, bandcampUpdates });
+    const youtubeCache = await loadYoutubeVideos();
+    const youtubeUpdates = new Map<
+      string,
+      { artist: string; release: Record<string, unknown> | null }
+    >();
+    if (youtubeCache.size) log(`DB: ${youtubeCache.size} youtube-videor i cache`);
+
+    const result = await collect({ ...opts, bandcampCache, bandcampUpdates, youtubeCache, youtubeUpdates });
     const { events, provenance, okSources, errors } = result;
 
     if (bandcampUpdates.size) {
       await saveBandcampArtists(bandcampUpdates);
       log(`DB: ${bandcampUpdates.size} bandcamp-artister cachade`);
+    }
+
+    if (youtubeUpdates.size) {
+      await saveYoutubeVideos(youtubeUpdates);
+      log(`DB: ${youtubeUpdates.size} youtube-videor cachade`);
     }
 
     const { venueRows, sourceRows } = await seedReference(events, provenance);

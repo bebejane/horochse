@@ -66,6 +66,7 @@ function CalendarEvent({
             src={event.image}
             alt=""
             loading="lazy"
+            decoding="async"
             referrerPolicy="no-referrer"
             onError={() => setArtFailed(true)}
           />

@@ -32,9 +32,27 @@ type ScApi = {
   Events: { READY: string; PLAY: string; PAUSE: string; FINISH: string; PLAY_PROGRESS: string };
 };
 
+type YtPlayer = {
+  playVideo: () => void;
+  pauseVideo: () => void;
+  seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+  setVolume: (volume: number) => void;
+  loadVideoById: (id: string) => void;
+  getDuration: () => number;
+  getCurrentTime: () => number;
+  destroy: () => void;
+};
+
+type YtApi = {
+  Player: new (el: HTMLElement, opts: Record<string, unknown>) => YtPlayer;
+  PlayerState: { ENDED: number; PLAYING: number; PAUSED: number; BUFFERING: number; CUED: number };
+};
+
 declare global {
   interface Window {
     SC?: { Widget: ScApi };
+    YT?: YtApi;
+    onYouTubeIframeAPIReady?: () => void;
   }
 }
 
@@ -62,6 +80,11 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const widgetRef = useRef<ScWidget | null>(null);
   const widgetApiRef = useRef<ScApi | null>(null);
+  const ytContainerRef = useRef<HTMLDivElement | null>(null);
+  const ytPlayerRef = useRef<YtPlayer | null>(null);
+  const ytApiRef = useRef<Promise<YtApi> | null>(null);
+  const ytPlayingRef = useRef(false);
+  const ytVideoRef = useRef("");
   const tokenRef = useRef(0);
   const skipGuardRef = useRef(0);
   const hideTimerRef = useRef<number | null>(null);
@@ -69,7 +92,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   const eventIdRef = useRef("");
   const itemKeyRef = useRef("");
   const sourceRef = useRef("");
-  const modeRef = useRef<"audio" | "widget">("audio");
+  const modeRef = useRef<"audio" | "widget" | "yt">("audio");
   const scPlayingRef = useRef(false);
   const scDurationRef = useRef(0);
   const scPositionRef = useRef(0);
@@ -135,6 +158,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
 
   const isPlaying = useCallback(() => {
     if (modeRef.current === "widget") return !!scPlayingRef.current;
+    if (modeRef.current === "yt") return !!ytPlayingRef.current;
     return !!(audioRef.current && !audioRef.current.paused);
   }, []);
 
@@ -142,12 +166,17 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     if (modeRef.current === "widget") {
       return scDurationRef.current > 0 ? scDurationRef.current / 1000 : 0;
     }
+    if (modeRef.current === "yt") {
+      const duration = ytPlayerRef.current?.getDuration?.() || 0;
+      return duration && isFinite(duration) && duration > 0 ? duration : 0;
+    }
     const duration = audioRef.current?.duration || 0;
     return duration && isFinite(duration) && duration > 0 ? duration : 0;
   }, []);
 
   const mediaCurrent = useCallback(() => {
     if (modeRef.current === "widget") return (scPositionRef.current || 0) / 1000;
+    if (modeRef.current === "yt") return ytPlayerRef.current?.getCurrentTime?.() || 0;
     return audioRef.current?.currentTime || 0;
   }, []);
 
@@ -166,6 +195,9 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     if (widgetRef.current && modeRef.current === "widget") {
       try { widgetRef.current.setVolume(Math.round(SOUNDCLOUD_VOLUME * 100)); } catch { /* ignore */ }
     }
+    if (ytPlayerRef.current && modeRef.current === "yt") {
+      try { ytPlayerRef.current.setVolume(100); } catch { /* ignore */ }
+    }
   }, []);
 
   const updateProgress = useCallback(() => {
@@ -181,6 +213,16 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     const t = duration ? ratio * duration : mediaCurrent();
     setProgress({ ratio, current: t, duration });
   }, [mediaCurrent, mediaDuration]);
+
+  // The YouTube player emits no progress event; poll it while it is the
+  // active mode so the now-playing bar keeps up.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (modeRef.current !== "yt") return;
+      updateProgress();
+    }, 500);
+    return () => window.clearInterval(id);
+  }, [updateProgress]);
 
   const showNowPlaying = useCallback(() => {
     if (hideTimerRef.current) {
@@ -296,6 +338,102 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     return widget;
   }, [applyPlaybackVolume, showNowPlaying, syncPlaying, updateProgress]);
 
+  const loadYtApi = useCallback(() => {
+    if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
+    if (ytApiRef.current) return ytApiRef.current;
+    ytApiRef.current = new Promise((resolve, reject) => {
+      const previous = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        previous?.();
+        if (window.YT && window.YT.Player) resolve(window.YT);
+        else reject(new Error("yt"));
+      };
+      const script = document.createElement("script");
+      script.src = "https://www.youtube.com/iframe_api";
+      script.onerror = () => {
+        ytApiRef.current = null;
+        reject(new Error("yt"));
+      };
+      document.head.appendChild(script);
+    });
+    return ytApiRef.current;
+  }, []);
+
+  const markYtPlaying = useCallback(() => {
+    pauseRequestedRef.current = false;
+    ytPlayingRef.current = true;
+    syncPlaying();
+  }, [syncPlaying]);
+
+  const ensureYtPlayer = useCallback((): Promise<YtPlayer> => {
+    if (ytPlayerRef.current) return Promise.resolve(ytPlayerRef.current);
+    return loadYtApi().then(
+      (YT) =>
+        new Promise<YtPlayer>((resolve) => {
+          const el = ytContainerRef.current;
+          if (!el) throw new Error("yt");
+          const player = new YT.Player(el, {
+            width: "1",
+            height: "1",
+            playerVars: {
+              autoplay: 0,
+              controls: 0,
+              disablekb: 1,
+              playsinline: 1,
+              rel: 0,
+              origin: window.location.origin,
+            },
+            events: {
+              onReady: () => {
+                ytPlayerRef.current = player;
+                applyPlaybackVolume();
+                resolve(player);
+              },
+              onStateChange: (event: { data: number }) => {
+                const S = YT.PlayerState;
+                if (event.data === S.PLAYING) {
+                  ytPlayingRef.current = true;
+                  if (modeRef.current === "yt") {
+                    showNowPlaying();
+                    syncPlaying();
+                  }
+                } else if (event.data === S.PAUSED) {
+                  ytPlayingRef.current = false;
+                  if (modeRef.current === "yt") syncPlaying();
+                } else if (event.data === S.ENDED) {
+                  ytPlayingRef.current = false;
+                  if (modeRef.current === "yt" && indexRef.current >= 0) {
+                    playAtRef.current(indexRef.current + 1, true);
+                  }
+                }
+              },
+            },
+          });
+        }),
+    );
+  }, [applyPlaybackVolume, loadYtApi, showNowPlaying, syncPlaying]);
+
+  const pauseYt = useCallback(() => {
+    pauseRequestedRef.current = true;
+    ytPlayingRef.current = false;
+    if (ytPlayerRef.current) {
+      try { ytPlayerRef.current.pauseVideo(); } catch { /* ignore */ }
+    }
+  }, []);
+
+  const playYt = useCallback((videoId: string, token: number): Promise<void> => {
+    return ensureYtPlayer().then((player) => {
+      if (token !== tokenRef.current) return;
+      ytVideoRef.current = videoId;
+      modeRef.current = "yt";
+      pauseHtmlAudio();
+      pauseWidget();
+      markYtPlaying();
+      applyPlaybackVolume();
+      player.loadVideoById(videoId);
+    });
+  }, [applyPlaybackVolume, ensureYtPlayer, markYtPlaying, pauseHtmlAudio, pauseWidget]);
+
   const playWidget = useCallback((url: string, token: number) => {
     return loadScApi().then((Widget) => {
       if (token !== tokenRef.current) return;
@@ -378,7 +516,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     const n = list.length;
     index = ((index % n) + n) % n;
     const req = streamRequest(list[index]?.track);
-    if (!req) return;
+    if (!req || !req.href) return;
     void resolveStream(req.href).then((data) => {
       if (!data) return;
       const next = indexRef.current >= 0 ? list[(indexRef.current + 1) % n] : null;
@@ -420,16 +558,18 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     modeRef.current = "audio";
     pauseWidget();
     pauseHtmlAudio();
+    pauseYt();
     hideNowPlaying();
     setLoadingId("");
     syncPlaying();
-  }, [hideNowPlaying, pauseHtmlAudio, pauseWidget, syncPlaying]);
+  }, [hideNowPlaying, pauseHtmlAudio, pauseWidget, pauseYt, syncPlaying]);
 
   const pausePlay = useCallback(() => {
     if (modeRef.current === "widget") pauseWidget();
+    else if (modeRef.current === "yt") pauseYt();
     else audioRef.current?.pause();
     syncPlaying();
-  }, [pauseWidget, syncPlaying]);
+  }, [pauseWidget, pauseYt, syncPlaying]);
 
   const seekToRatio = useCallback((ratio: number) => {
     const duration = mediaDuration();
@@ -439,6 +579,10 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     if (modeRef.current === "widget" && widgetRef.current) {
       scPositionRef.current = ratio * scDurationRef.current;
       widgetRef.current.seekTo(scPositionRef.current);
+      return;
+    }
+    if (modeRef.current === "yt" && ytPlayerRef.current) {
+      try { ytPlayerRef.current.seekTo(ratio * duration, true); } catch { /* ignore */ }
       return;
     }
     if (audioRef.current) audioRef.current.currentTime = ratio * duration;
@@ -472,6 +616,39 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       return;
     }
     sourceRef.current = req.source;
+    // YouTube needs no stream resolution: the embedded player takes the id.
+    if (req.source === "youtube") {
+      fillNowPlaying({
+        artist: track.artist || "",
+        track: track.track || "",
+        url: track.url || req.fallback,
+        image: track.image || "",
+        source: "youtube",
+      });
+      showNowPlaying();
+      onNeedScrollRef.current?.(event);
+      setLoadingId(event.id);
+      void playYt(req.videoId || "", token)
+        .then(() => {
+          if (token !== tokenRef.current) return;
+          setLoadingId("");
+          skipGuardRef.current = 0;
+          showNowPlaying();
+          syncPlaying();
+        })
+        .catch(() => {
+          if (token !== tokenRef.current) return;
+          setLoadingId("");
+          if (skipGuardRef.current < n) {
+            skipGuardRef.current += 1;
+            playAt(index + 1, true);
+            return;
+          }
+          skipGuardRef.current = 0;
+          stopPlay();
+        });
+      return;
+    }
     const cached = peekStream(req.href);
     const startFromPayload = (data: StreamPayload) => {
       if (token !== tokenRef.current) return Promise.resolve();
@@ -491,6 +668,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
         if (req.source !== "soundcloud" || (!data.widget && !url)) throw new Error("stream");
         modeRef.current = "widget";
         pauseHtmlAudio();
+        pauseYt();
         markWidgetPlaying();
         if (widgetRef.current) {
           try { widgetRef.current.play(); } catch { /* ignore */ }
@@ -499,6 +677,8 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
         return playWidget(url, token);
       };
       if (data.stream && audioRef.current) {
+        modeRef.current = "audio";
+        pauseYt();
         audioRef.current.src = data.stream;
         applyPlaybackVolume();
         return audioRef.current.play().then(() => {
@@ -587,11 +767,17 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
         skipGuardRef.current = 0;
         stopPlay();
       });
-  }, [applyPlaybackVolume, fillNowPlaying, markWidgetPlaying, pauseHtmlAudio, pauseWidget, peekStream, playWidget, resolveStream, showNowPlaying, stopPlay, syncPlaying, widgetSrc]);
+  }, [applyPlaybackVolume, fillNowPlaying, markWidgetPlaying, pauseHtmlAudio, pauseWidget, pauseYt, peekStream, playWidget, playYt, resolveStream, showNowPlaying, stopPlay, syncPlaying, widgetSrc]);
 
   playAtRef.current = playAt;
 
   const resumePlay = useCallback(() => {
+    if (modeRef.current === "yt") {
+      markYtPlaying();
+      showNowPlaying();
+      try { ytPlayerRef.current?.playVideo(); } catch { /* ignore */ }
+      return;
+    }
     if (modeRef.current === "widget") {
       markWidgetPlaying();
       showNowPlaying();
@@ -612,7 +798,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       showNowPlaying();
       syncPlaying();
     }).catch(() => stopPlay());
-  }, [markWidgetPlaying, playAt, playWidget, showNowPlaying, stopPlay, syncPlaying]);
+  }, [markWidgetPlaying, markYtPlaying, playAt, playWidget, showNowPlaying, stopPlay, syncPlaying]);
 
   const playNext = useCallback(() => playAt((indexRef.current < 0 ? 0 : indexRef.current) + 1, true), [playAt]);
   const playPrev = useCallback(() => {
@@ -667,7 +853,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       pausePlay();
       return;
     }
-    if (!isPlaying() && currentIsWeek && (audioRef.current?.src || modeRef.current === "widget")) {
+    if (!isPlaying() && currentIsWeek && (audioRef.current?.src || modeRef.current === "widget" || (modeRef.current === "yt" && ytVideoRef.current))) {
       resumePlay();
       return;
     }
@@ -727,6 +913,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
 
   return {
     iframeRef,
+    ytContainerRef,
     playing,
     eventId,
     trackIndex,

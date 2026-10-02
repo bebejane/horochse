@@ -6,4 +6,5 @@ TODO
 .vercel
 .env*
 /docs*
+/.cache
 /.openchamber

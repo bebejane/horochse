@@ -155,7 +155,7 @@ export function NowPlayingBar({
               rel="noopener noreferrer"
               hidden={!data?.url}
             >
-              {data?.source === "soundcloud" ? "SoundCloud" : "Bandcamp"}
+              {data?.source === "soundcloud" ? "SoundCloud" : data?.source === "youtube" ? "YouTube" : "Bandcamp"}
             </a>
           </span>
         </div>

@@ -105,6 +105,54 @@ const SOUNDCLOUD_SKIP = new Set([
   "popular", "feed", "about", "jobs",
 ]);
 
+export type SpotifyLink = {
+  /** "artist" | "album" | "track" | "playlist" | "show" | "episode" */
+  kind: string;
+  id: string;
+  url: string;
+};
+
+const SPOTIFY_RE =
+  /https?:\/\/open\.spotify\.com\/(?:embed\/)?(artist|album|track|playlist|show|episode)\/([A-Za-z0-9]+)/gi;
+
+/**
+ * Spotify links from a page. Spotify audio cannot be streamed for anonymous
+ * visitors, so these are used two ways: (1) resolve the authoritative artist /
+ * album name via the public oembed endpoint (no credentials), which becomes a
+ * stronger search key for Bandcamp/SoundCloud, and (2) shown as a "listen"
+ * link. Artist links first, then album, then track.
+ */
+export function extractSpotifyLinks(raw: string): SpotifyLink[] {
+  const text = unescape(String(raw || "")).replace(/\\\//g, "/");
+  const order: Record<string, number> = { artist: 0, album: 1, track: 2, playlist: 3, show: 4, episode: 5 };
+  const found: SpotifyLink[] = [];
+  const seen = new Set<string>();
+  for (const match of text.matchAll(SPOTIFY_RE)) {
+    const kind = match[1].toLowerCase();
+    const id = match[2];
+    if (seen.has(id)) continue;
+    seen.add(id);
+    found.push({ kind, id, url: `https://open.spotify.com/${kind}/${id}` });
+  }
+  found.sort((a, b) => (order[a.kind] ?? 9) - (order[b.kind] ?? 9));
+  return found;
+}
+
+/** Spotify oembed metadata (title/author/thumbnail) — public, no credentials. */
+export async function spotifyMeta(link: SpotifyLink): Promise<{ title: string; image: string } | null> {
+  try {
+    const raw = await httpRequest(
+      `https://open.spotify.com/oembed?url=${encodeURIComponent(link.url)}`,
+      { timeoutMs: 12000 },
+    );
+    const data = JSON.parse(raw) as { title?: string; thumbnail_url?: string };
+    if (!data?.title) return null;
+    return { title: data.title, image: data.thumbnail_url || "" };
+  } catch {
+    return null;
+  }
+}
+
 export function extractSoundcloudLinks(raw: string): string[] {
   const text = unescape(String(raw || "")).replace(/\\\//g, "/");
   const found: [number, string][] = [];
@@ -135,23 +183,37 @@ export function extractSoundcloudLinks(raw: string): string[] {
 export function pageMediaFields(raw: string, venueSlug: string): {
   _bandcamp_links: string[];
   _soundcloud_links: string[];
+  _spotify_links: SpotifyLink[];
 } {
   return {
     _bandcamp_links: extractBandcampLinks(raw, venueSlug),
     _soundcloud_links: extractSoundcloudLinks(raw),
+    _spotify_links: extractSpotifyLinks(raw),
   };
 }
 
-export async function takePageLinks(event: ScrapedEvent): Promise<[string[], string[]]> {
+export async function takePageLinks(
+  event: ScrapedEvent,
+): Promise<[string[], string[], SpotifyLink[]]> {
   const bc = event._bandcamp_links;
   const sc = event._soundcloud_links;
+  const sp = event._spotify_links;
   delete event._bandcamp_links;
   delete event._soundcloud_links;
-  if (bc !== undefined || sc !== undefined) return [bc || [], sc || []];
+  delete event._spotify_links;
+  if (bc !== undefined || sc !== undefined || sp !== undefined) {
+    return [bc || [], sc || [], sp || []];
+  }
   const chunks: string[] = [event.text || "", event.title || ""];
   if (event.url && !isSkippableEventPage(event.url)) {
     try {
-      chunks.push(await httpRequest(event.url));
+      const html = await httpRequest(event.url);
+      chunks.push(html);
+      return [
+        extractBandcampLinks(chunks.join("\n"), event.venue_slug || ""),
+        extractSoundcloudLinks(chunks.join("\n")),
+        extractSpotifyLinks(html),
+      ];
     } catch (exc) {
       const msg = exc instanceof HttpError ? `HTTP ${exc.status}` : String(exc);
       warn(`evenemangssida ${event.url}: ${msg} (hoppar över)`);
@@ -159,5 +221,9 @@ export async function takePageLinks(event: ScrapedEvent): Promise<[string[], str
   }
   const blob = chunks.join("\n");
   const slug = event.venue_slug || "";
-  return [extractBandcampLinks(blob, slug), extractSoundcloudLinks(blob)];
+  return [
+    extractBandcampLinks(blob, slug),
+    extractSoundcloudLinks(blob),
+    extractSpotifyLinks(blob),
+  ];
 }

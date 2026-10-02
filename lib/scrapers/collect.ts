@@ -19,6 +19,10 @@ export type CollectOptions = {
   bandcampCache?: Map<string, ArtistCacheEntry>;
   /** Collects newly resolved artists to persist after the run. */
   bandcampUpdates?: Map<string, { artist: string; release: Record<string, unknown> | null }>;
+  /** Preloaded YouTube cache (folded name → entry). */
+  youtubeCache?: Map<string, ArtistCacheEntry>;
+  /** Collects newly resolved YouTube artists to persist after the run. */
+  youtubeUpdates?: Map<string, { artist: string; release: Record<string, unknown> | null }>;
 };
 
 export type CollectResult = EventsPayload & {
@@ -100,6 +104,8 @@ export async function collect(opts: CollectOptions = {}): Promise<CollectResult>
         artistTimeoutMs: opts.artistTimeoutMs,
         bandcampCache: opts.bandcampCache,
         bandcampUpdates: opts.bandcampUpdates,
+        youtubeCache: opts.youtubeCache,
+        youtubeUpdates: opts.youtubeUpdates,
       }),
     );
   } else {

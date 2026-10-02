@@ -38,7 +38,7 @@ export type VenueSlug =
   | "ronnells"
   | "larryscorner";
 
-export type TrackSource = "bandcamp" | "soundcloud";
+export type TrackSource = "bandcamp" | "soundcloud" | "youtube";
 
 export type Track = {
   source?: TrackSource | string;
@@ -50,6 +50,8 @@ export type Track = {
   band_id?: number;
   album_id?: number;
   track_id?: number;
+  /** YouTube video id (embedded player). */
+  video_id?: string;
   type?: string;
 };
 
@@ -68,6 +70,9 @@ export type ConcertEvent = {
   tracks?: Track[];
   bandcamp?: Track;
   soundcloud?: Track;
+  youtube?: Track;
+  /** Spotify link (artist/album). Shown as a "listen" link — not streamable. */
+  spotify?: string;
   times?: string[];
 };
 
