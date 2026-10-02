@@ -1,0 +1,8 @@
+/node_modules
+/.next
+TODO
+.DS_Store
+*.code-workspace
+.vercel
+.env*
+/docs*
