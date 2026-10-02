@@ -11,8 +11,7 @@
 		"db:migrate": "drizzle-kit migrate",
 		"db:push": "drizzle-kit push",
 		"db:studio": "drizzle-kit studio",
-		"fetch": "tsx scripts/fetch.ts",
-		"scrape": "tsx scripts/fetch.ts",
+		"scrape": "tsx scripts/scrape-to-db.ts",
 		"scrape:db": "tsx scripts/scrape-to-db.ts",
 		"diff:events": "tsx scripts/diff-events.ts"
 	},

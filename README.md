@@ -25,26 +25,23 @@ pnpm dev
 
 Öppna [http://localhost:3000](http://localhost:3000).
 
-Konsertlistan läses från `public/data/events.json`. Den filen följer med, så sidan går att köra direkt utan att hämta om data.
-
-Inga miljövariabler behövs för appen eller scrapern.
+Konsertlistan läses från Turso-databasen via `/api/events`. Sätt `TURSO_DATABASE_URL` och `TURSO_AUTH_TOKEN` i `.env` (se `.env`, som är gitignorerad).
 
 ## Hämta konserter
 
-Scrapern går igenom scenerna för de kommande fem veckorna och skriver om `public/data/events.json`.
+Scrapern går igenom scenerna för de kommande fem veckorna och skriver till Turso.
 
 ```bash
-pnpm run fetch
+pnpm scrape:db
 ```
 
-Använd `pnpm run fetch`, inte `pnpm fetch` (det är ett inbyggt pnpm-kommando).
+Körningen tar ett tag och vissa scener kan svara med 429. Om en scen misslyckas sparas felet på scrape-körningen; övriga konserter skrivs ändå.
 
-Körningen tar ett tag och vissa scener kan svara med 429. Om en scen misslyckas hamnar felet i `errors` i JSON-filen; övriga konserter skrivs ändå.
-
-En enskild scen:
+En enskild scen eller en snabb körning utan låtuppslag:
 
 ```bash
-pnpm run fetch -- --only debaser
+pnpm scrape:db --only debaser
+pnpm scrape:db --no-tracks
 ```
 
 Ladda om sajten efteråt så syns den nya listan.

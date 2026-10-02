@@ -73,13 +73,13 @@ function queueScrollToCard(event: ConcertEvent) {
   void id;
 }
 
-export function ConcertApp() {
-  const [events, setEvents] = useState<ConcertEvent[]>([]);
-  const [updated, setUpdated] = useState("");
-  const [rangeTo, setRangeTo] = useState<string | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [status, setStatus] = useState("Hämtar veckans konserter…");
-  const [loaded, setLoaded] = useState(false);
+export function ConcertApp({ payload }: { payload: EventsPayload }) {
+  const events: ConcertEvent[] = payload.events || [];
+  const updated = payload.updated || "";
+  const rangeTo = payload.range?.to || null;
+  const errors = payload.errors || {};
+  const status = "";
+  const loaded = true;
   const [mode, setMode] = useState<FilterMode>("all");
   const [mine, setMine] = useState<string[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -126,22 +126,6 @@ export function ConcertApp() {
     } catch {
       /* ignore */
     }
-    fetch("/data/events.json", { cache: "no-store" })
-      .then((res) => {
-        if (!res.ok) throw new Error("Kunde inte läsa konsertlistan.");
-        return res.json() as Promise<EventsPayload>;
-      })
-      .then((data) => {
-        setEvents(data.events || []);
-        setUpdated(data.updated || "");
-        setRangeTo(data.range?.to || null);
-        setErrors(data.errors || {});
-        setLoaded(true);
-      })
-      .catch((err: Error) => {
-        setStatus("Kunde inte läsa konsertlistan. Kör pnpm run fetch. " + err.message);
-        setLoaded(true);
-      });
   }, []);
 
   useEffect(() => {

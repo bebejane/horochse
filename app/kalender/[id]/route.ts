@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eventIcs } from "@/lib/ics";
-import { findEvent } from "@/lib/load-events";
+import { findEvent } from "@/lib/db/queries";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

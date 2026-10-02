@@ -15,9 +15,9 @@ Stockholm concert aggregator. A Next.js 16 App Router client app (React 19, Turb
 ## Commands
 
 - `pnpm install` then `pnpm dev` → http://localhost:3000. Dev compiles without typechecking.
-- `pnpm run fetch` — runs `tsx scripts/fetch.ts`; rewrites the tracked `public/data/events.json` for the next 5 weeks. Slow and network-heavy (all venue sites + Bandcamp/SoundCloud). Flags: `--only <source>` (single venue, e.g. `debaser`), `--out <file>`, `--concurrency <n>` (venue-stage HTTP cap, default 6), `--track-concurrency <n>` (track-stage HTTP cap, default 16), `--source-timeout <s>` (default 90), `--artist-timeout <s>` (default 45), `--no-tracks` (skip lookups for a fast structural run), `--verbose-http` (log every request to stderr), `--quiet`. A failing venue is recorded under `errors` and does not abort the run. **Use `pnpm run fetch`, not `pnpm fetch`** — the latter is a pnpm built-in.
+- `pnpm scrape:db` (alias `pnpm scrape`) — runs `tsx scripts/scrape-to-db.ts`; scrapes the next 5 weeks and writes to Turso. Slow and network-heavy. Flags: `--only <source>`, `--no-tracks` (fast structural run), `--quiet`. A failing venue is recorded on the run and does not abort it.
 - Execution model: two speed-critical shapes. **Venues** run in a small pool (4) with a 90 s per-source timeout; venue detail-page loops must use `mapPool`, never serial `for … await`. **Tracks** run a 24-wide event pool with each event's artists looked up concurrently (phase-ordered bandcamp → soundcloud), under a wider HTTP cap (`withHttpConcurrency`). The cap is the throttle — never add `sleep()`. Progress uses `lib/scrapers/log.ts` (`log`/`warn`/`mapPool`/`withTimeout`/`memoInflight`); artist results are cached across the run in `tracks.ts`.
-- `pnpm run diff:events <a.json> <b.json>` — parity/diff tool: per-venue counts (flags mismatches and silently-empty scrapers) plus field, image, and track differences.
+- `pnpm run diff:events <a.json> <b.json>` — parity/diff tool: per-venue counts (flags mismatches and silently-empty scrapers) plus field, image, and track differences. Reads two JSON payloads, so it is only useful when you export a scrape snapshot yourself.
 - `pnpm db:generate` / `db:push` / `db:migrate` / `db:studio` — Drizzle/Turso (see Database).
 - `pnpm lint` — `eslint` (flat config). **Currently unusable**: crashes on any file with `TypeError: contextOrFilename.getFilename is not a function` because `eslint-plugin-react@7.37.5` is incompatible with the pinned `eslint@10`. Fix deps before relying on it.
 - `npx tsc --noEmit` — typecheck. **Currently fails** on ~33 pre-existing errors in `components/Mast.tsx` (strict-null DOM lookups and React 19 rejecting custom CSS properties in `style`). `pnpm build` compiles but then fails at the same "Running TypeScript" step. Don't assume a green baseline; touching `Mast.tsx` inherits these.
@@ -25,18 +25,20 @@ Stockholm concert aggregator. A Next.js 16 App Router client app (React 19, Turb
 
 ## Architecture
 
-- `app/page.tsx` (server) renders `components/ConcertApp.tsx`, a single `"use client"` tree. It fetches `/data/events.json` at runtime with `cache: "no-store"` (not imported), so editing the JSON shows on reload with no rebuild. UI state lives in `localStorage` under `konserter-*`.
+- `app/page.tsx` (server) renders `components/ConcertApp.tsx`, a single `"use client"` tree. It fetches `/api/events` at runtime with `cache: "no-store"`; that route returns `loadPayload()` from Turso. UI state lives in `localStorage` under `konserter-*`.
 - Server routes, all `runtime = "nodejs"` + `force-dynamic`:
-  - `app/bandcamp/stream`, `app/soundcloud/stream` — call `lib/scrapers/stream.ts` (`bandcampStreamUrl` / `soundcloudStreamUrl`) directly. No child process, no Python.
-  - `app/kalender/[id]` — serves `.ics`; reads the JSON from disk through `lib/load-events.ts` and drops cancelled events.
-- `lib/types.ts` is the contract shared by `events.json` and the UI.
+  - `app/api/events` — the feed: `loadPayload()` from `lib/db/queries.ts` (active, non-cancelled, non-club), with `s-maxage=300`.
+  - `app/api/bandcamp/stream`, `app/api/soundcloud/stream` — call `lib/scrapers/stream.ts` (`bandcampStreamUrl` / `soundcloudStreamUrl`) directly. No child process, no Python.
+  - `app/api/cron/scrape` — the daily scrape→DB job (see below).
+  - `app/kalender/[id]` — serves `.ics`; `findEvent()` from `lib/db/queries.ts`.
+- `lib/types.ts` is the contract shared by the DB payload and the UI.
 
 ## Scraper (`lib/scrapers/`)
 
 - `http.ts` — `httpRequest`/`httpJson` over global `fetch` (form/JSON bodies, `HttpError.status`, 429 backoff).
 - `dates.ts` — Luxon with `Europe/Stockholm`; `TZ`, `weekBounds`, date parsing, `iso*` formatters. **Do not use `Date` for venue dates** — DST correctness lives here.
 - `html.ts` (`he` entity decode, `stripTags`, `pickImage`, `ogImage`), `text.ts` (folding/artist match/title casing), `filters.ts`, `links.ts`, `jsonld.ts`, `events.ts` (`eventId`, `makeEvent`).
-- `bandcamp.ts`, `soundcloud.ts`, `tracks.ts` — track resolution engine. `collect.ts` runs `registry.SOURCES`, filters club-nights/cancelled, sorts, attaches tracks, and normalizes titles; `scripts/fetch.ts` is the CLI and writes `public/data/events.json`.
+- `bandcamp.ts`, `soundcloud.ts`, `tracks.ts` — track resolution engine. `collect.ts` runs `registry.SOURCES`, filters club-nights/cancelled, sorts, attaches tracks, and normalizes titles. There is no JSON artifact: `lib/scrapers/store.ts` (`scrapeAndStore`) writes results to Turso and is the only CLI entry point (`scrape-to-db.ts`).
 - `sources/{jsonld-site,live,ticketmaster,slakthusen}.ts` — reusable fetchers. `venues/<slug>.ts` — one `fetch(start, end): Promise<ScrapedEvent[]>` per venue.
 - Adding a venue: create `lib/scrapers/venues/<slug>.ts`, register it in `lib/scrapers/registry.ts` (`SOURCES`), add the slug to `VENUES`/`VenueSlug` in `lib/types.ts`, and add an address in `lib/ics.ts` (`VENUE_ADDRESSES`) if calendars should locate it.
 - Slakthusen stages (`slaktkyrkan`, `hus7`) all delegate to `sources/slakthusen.ts` and emit `venue_slug: "slakthusen"` with the stage in `place`.
@@ -65,8 +67,8 @@ Changing one side only makes the stored events and the rendered UI disagree.
 - Two entry points, same function:
   - `pnpm scrape:db` — CLI (`scripts/scrape-to-db.ts`), for system crontab / GitHub Actions. Flags `--only`, `--no-tracks`, `--quiet`.
   - `GET /api/cron/scrape` — Vercel Cron (scheduled in `vercel.json`, daily 05:00 UTC). Guarded by `Authorization: Bearer $CRON_SECRET` (Vercel sends this) or `?secret=`; `&tracks=false` and `&only=` are supported for cheap manual runs. `maxDuration = 300` because a full run is ~5 min — **needs a Vercel plan allowing 300 s**, not Hobby's 60 s.
-- `collect()` returns `provenance` (event id → source key) and `okSources`; these drive `events.source_key` and per-source reconciliation and are **not** part of `events.json`.
-- The app still reads `public/data/events.json` (`lib/load-events.ts`); Turso is write-only for now. Switching the read path to `loadPayload()` is a separate change.
+- `collect()` returns `provenance` (event id → source key) and `okSources`; these drive `events.source_key` and per-source reconciliation and are internal to the write path (not persisted on the event).
+- The app reads from Turso (`/api/events` → `loadPayload()`, ICS → `findEvent()`); there is no JSON feed. The only writer is `scrapeAndStore`.
 - For local runs, load `.env` explicitly: `node --env-file=.env --import tsx scripts/scrape-to-db.ts` (plain `tsx` via the pnpm shim can break under an inherited `NODE_OPTIONS`).
 
 ## Environment / tooling gotchas
