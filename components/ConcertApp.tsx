@@ -1,5 +1,8 @@
 "use client";
 
+import s from "./ConcertApp.module.scss";
+import cn from "classnames";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatUpdated, toIso, todayDate, weekMondayIso } from "@/lib/dates";
 import { clearStoredSettings, filteredEvents, isLocalHost, loadFilterMode, loadMine, loadPickerOpen, saveFilterMode, saveMine, savePickerSeen, upcomingEvents } from "@/lib/events";
@@ -7,6 +10,7 @@ import type { CalStyle, ConcertEvent, EventsPayload, FilterMode, ListDensity, Th
 import { usePlayer } from "@/hooks/usePlayer";
 import { CalendarView } from "./CalendarView";
 import { ListView } from "./ListView";
+import list from "./ListView.module.scss";
 import { Mast, MastSymbol } from "./Mast";
 import { NowPlayingBar } from "./NowPlayingBar";
 
@@ -16,21 +20,21 @@ function prefersReducedMotion() {
 
 function scrollToCard(event: ConcertEvent, opts: { force?: boolean; behavior?: ScrollBehavior } = {}) {
   const card =
-    document.querySelector('.card[data-id="' + event.id + '"]') ||
-    document.querySelector('.cal-event[data-id="' + event.id + '"]');
+    document.querySelector<HTMLElement>('[data-card][data-id="' + event.id + '"]') ||
+    document.querySelector<HTMLElement>('[data-cal-event][data-id="' + event.id + '"]');
   if (!card) return;
-  const mast = document.querySelector(".mast");
+  const mast = document.querySelector<HTMLElement>("[data-mast]");
   const bar = document.getElementById("nowplaying");
   let topBound = mast ? mast.getBoundingClientRect().bottom : 0;
   const bottomBound = bar && bar.classList.contains("is-on")
     ? bar.getBoundingClientRect().top
     : window.innerHeight;
   const motion = opts.behavior || (prefersReducedMotion() ? "auto" : "smooth");
-  if (card.classList.contains("cal-event")) {
-    const week = card.closest(".week");
-    const calHeads = week && week.querySelector(".cal-heads");
+  if (card.matches("[data-cal-event]")) {
+    const week = card.closest<HTMLElement>("[data-week]");
+    const calHeads = week && week.querySelector<HTMLElement>("[data-cal-heads]");
     if (calHeads) topBound += calHeads.getBoundingClientRect().height;
-    const dayCol = card.closest(".cal-day");
+    const dayCol = card.closest<HTMLElement>("[data-cal-day]");
     if (week && dayCol && week.scrollWidth > week.clientWidth + 2) {
       const dayRect = dayCol.getBoundingClientRect();
       const weekRect = week.getBoundingClientRect();
@@ -46,7 +50,8 @@ function scrollToCard(event: ConcertEvent, opts: { force?: boolean; behavior?: S
     });
     return;
   }
-  const heading = card.closest(".day") && card.closest(".day")?.querySelector(".day-title");
+  const day = card.closest<HTMLElement>("[data-day]");
+  const heading = day?.querySelector<HTMLElement>("[data-day-title]");
   if (heading && heading.getBoundingClientRect().bottom <= card.getBoundingClientRect().top + 4) {
     topBound += heading.getBoundingClientRect().height;
   }
@@ -175,13 +180,13 @@ export function ConcertApp() {
   }, [density]);
 
   const syncLayout = useCallback(() => {
-    const mast = document.querySelector(".mast");
-    const title = document.querySelector(".mast h1");
+    const mast = document.querySelector<HTMLElement>("[data-mast]");
+    const title = document.querySelector<HTMLElement>("[data-mast] h1");
     if (mast) {
       document.documentElement.style.setProperty("--mast-height", mast.getBoundingClientRect().height + "px");
     }
-    const inner = document.querySelector(".mast-inner");
-    const heads = document.querySelector(".week .cal-heads");
+    const inner = document.querySelector<HTMLElement>("[data-mast-inner]");
+    const heads = document.querySelector<HTMLElement>("[data-week] [data-cal-heads]");
     if (inner) {
       const cs = getComputedStyle(inner);
       const padL = parseFloat(cs.paddingLeft) || 0;
@@ -210,10 +215,10 @@ export function ConcertApp() {
 
   useEffect(() => {
     syncLayout();
-    const mast = document.querySelector(".mast");
-    const inner = document.querySelector(".mast-inner");
+    const mast = document.querySelector<HTMLElement>("[data-mast]");
+    const inner = document.querySelector<HTMLElement>("[data-mast-inner]");
     const bar = document.getElementById("nowplaying");
-    const heads = document.querySelector(".cal-heads");
+    const heads = document.querySelector<HTMLElement>("[data-cal-heads]");
     const ro = window.ResizeObserver ? new ResizeObserver(syncLayout) : null;
     if (ro && mast) ro.observe(mast);
     if (ro && inner) ro.observe(inner);
@@ -357,13 +362,13 @@ export function ConcertApp() {
         onToggleDensity={() => setDensity(density === "less" ? "more" : "less")}
         onLayout={syncLayout}
       />
-      <div className="shell">
+      <div className={s.shell}>
         <main id="program">
-          <p className={"status" + (statusHidden ? " is-hidden" : "")}>{statusText || status}</p>
+          <p className={cn(s.status, { "is-hidden": statusHidden })}>{statusText || status}</p>
           {emptyList ? (
-            <div className="week-head is-next">
-              <div className="week-head-main">
-                <p className="week-head-title">{statusText}</p>
+            <div className={cn(list.weekHead, "is-next")}>
+              <div className={list.weekHeadMain}>
+                <p className={list.weekHeadTitle}>{statusText}</p>
               </div>
             </div>
           ) : null}
@@ -408,11 +413,11 @@ export function ConcertApp() {
           </div>
         </main>
       </div>
-      <footer className="colophon">
+      <footer className={s.colophon}>
         {localHost ? (
           <button
             type="button"
-            className="colophon-reset"
+            className={s.colophonReset}
             aria-label="Nollställ sidan till första besöket"
             title="Nollställ sidan till första besöket"
             onClick={() => {
@@ -427,11 +432,11 @@ export function ConcertApp() {
         ) : (
           <MastSymbol />
         )}
-        <p className="colophon-copy">
+        <p className={s.colophonCopy}>
           Hör & Se hämtar informationen veckovis från alla scenerna. Fel kan ibland uppstå,{" "}
           <a href="mailto:hos@konst-teknik.se">maila oss</a> gärna i så fall.
         </p>
-        <p className="updated">{formatUpdated(updated)}</p>
+        <p className={s.updated}>{formatUpdated(updated)}</p>
       </footer>
       <NowPlayingBar
         hidden={player.barHidden}

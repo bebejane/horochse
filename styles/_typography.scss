@@ -1,0 +1,12 @@
+@use 'mediaqueries' as *;
+
+/*
+ * Global typography only. Component-level type (headlines, titles,
+ * calendar labels, etc.) lives in the component's own module.
+ */
+
+@include mq($until: tablet) {
+	html {
+		font-size: 90%;
+	}
+}

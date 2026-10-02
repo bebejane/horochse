@@ -1,0 +1,709 @@
+@use '../styles/mediaqueries' as *;
+
+.weeks {
+	display: grid;
+	gap: 1.6rem;
+	isolation: isolate;
+}
+
+.weekBlock {
+	min-width: 0;
+}
+
+.week {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	border-left: 1px solid var(--line);
+}
+
+.calHeads,
+.calCols {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	min-width: 0;
+}
+
+.calHeads {
+	position: sticky;
+	top: calc(var(--mast-height) + 1px);
+	z-index: 16;
+	border-top: 1px solid var(--line);
+	background: var(--bg);
+}
+
+.calDay {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	position: relative;
+	z-index: 0;
+	border-right: 1px solid var(--line);
+	border-bottom: 1px solid var(--line);
+	background: var(--bg);
+}
+
+.calDay:hover,
+.calDay:has(.calEvent:global(.is-live)) {
+	z-index: 18;
+}
+
+.calDay:global(.is-today) {
+	background: var(--today);
+}
+
+.calHead {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 0.4rem;
+	min-width: 0;
+	padding: 0.55rem 0.7rem;
+	border-right: 1px solid var(--line);
+	border-bottom: 1px solid var(--line);
+	background: var(--bg);
+	font-size: 0.78rem;
+	font-weight: 400;
+	color: var(--muted);
+}
+
+.calHead span {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.calHead b {
+	flex: none;
+	color: var(--ink);
+	font-style: italic;
+	font-weight: 400;
+	font-size: 1.2rem;
+	line-height: 1;
+	text-transform: none;
+	letter-spacing: -0.03em;
+}
+
+.calHead:global(.is-today) {
+	background: var(--today);
+}
+
+.calHead:global(.is-today) span {
+	color: var(--ink);
+	font-weight: 700;
+}
+
+.calBody {
+	display: flex;
+	flex-direction: column;
+	gap: 0.45rem;
+	padding: 0.55rem;
+	flex: 1;
+}
+
+.calEvent {
+	--cal-fill: var(--bg-2);
+	--cal-art-filter: saturate(0.74) brightness(0.9) contrast(1.05);
+	--cal-hover-scale: 1.38;
+	display: flex;
+	flex-direction: column;
+	position: relative;
+	isolation: isolate;
+	overflow: hidden;
+	min-height: 7.2rem;
+	color: inherit;
+	background: var(--cal-fill);
+	border-left: 3px solid var(--ink);
+	scroll-margin-top: calc(var(--mast-height) + var(--cal-heads-height) + 10px);
+}
+
+.calEventLink {
+	display: flex;
+	flex-direction: column;
+	gap: 0.12rem;
+	flex: 1;
+	min-height: 7.2rem;
+	padding: 0.5rem 0.55rem 0.55rem 0.65rem;
+	color: inherit;
+	text-decoration: none;
+	position: relative;
+	z-index: 2;
+}
+
+.calEventHit {
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+}
+
+.calEvent:global(.has-play) .calEventLink {
+	padding-bottom: 2.15rem;
+}
+
+.calEvent > [data-play],
+.calEvent [data-play-cluster] {
+	position: absolute;
+	right: 0.35rem;
+	bottom: 0.35rem;
+	z-index: 3;
+}
+
+.calEvent [data-play-cluster] {
+	transition: right 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.calEvent [data-play-cluster]:global(.is-open) {
+	right: 1.7rem;
+}
+
+.calEvent [data-play] {
+	width: 1.85rem;
+	height: 1.85rem;
+	background: rgba(20, 18, 15, 0.62);
+	color: #f3eee4;
+}
+
+.calEvent [data-play-cluster] [data-play] {
+	position: relative;
+	right: auto;
+	bottom: auto;
+}
+
+.calEvent [data-play-skip] {
+	width: 1.45rem;
+	height: 1.45rem;
+	background: rgba(20, 18, 15, 0.62);
+	color: #f3eee4;
+}
+
+.calEvent [data-play-skip] svg {
+	width: 0.7rem;
+	height: 0.7rem;
+}
+
+.calEvent [data-play] svg {
+	width: 0.78rem;
+	height: 0.78rem;
+}
+
+.calEvent [data-play]:global(.is-on) {
+	background: var(--ink);
+	color: var(--bg);
+}
+
+.calEvent [data-play-count] {
+	font-size: 0.52rem;
+	min-width: 0.92rem;
+	height: 0.92rem;
+	line-height: 0.92rem;
+	top: -0.18rem;
+	right: -0.18rem;
+}
+
+.calEventArt {
+	position: absolute;
+	inset: -1px;
+	width: calc(100% + 2px);
+	height: calc(100% + 2px);
+	object-fit: cover;
+	object-position: center;
+	z-index: 0;
+	pointer-events: none;
+	opacity: 0.88;
+	filter: var(--cal-art-filter);
+}
+
+.calEventFallback {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	display: grid;
+	place-items: center;
+	pointer-events: none;
+}
+
+.calEventFallback :global(.mast-symbol-lockup),
+.calEventFallback :global(.mast-symbol) {
+	height: 4.8rem;
+	width: auto;
+}
+
+.calEventFallback :global(.mast-symbol) {
+	opacity: 0.28;
+}
+
+.calEvent:global(.has-art) {
+	--cal-fill: #1c1914;
+	color: #f3eee4;
+}
+
+.calEvent:global(.has-art)::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+	background: linear-gradient(
+		to right,
+		var(--cal-fill) 0%,
+		color-mix(in srgb, var(--cal-fill) 88%, transparent) 32%,
+		color-mix(in srgb, var(--cal-fill) 38%, transparent) 62%,
+		color-mix(in srgb, var(--cal-fill) 6%, transparent) 100%
+	);
+}
+
+.calEventLink > .calEventArt,
+.calEventLink > .calEventFallback {
+	z-index: 0;
+}
+
+.calEventLink > span {
+	position: relative;
+	z-index: 3;
+	pointer-events: none;
+}
+
+.calEvent .calVenue {
+	pointer-events: auto;
+}
+
+.calEvent:global(.has-art) .calTime,
+.calEvent:global(.has-art) .calTitle,
+.calEvent:global(.has-art) .calVenue,
+.calEvent:global(.has-art) .calPlace,
+.calEvent:global(.has-art) .calIcs {
+	text-shadow: 0 1px 10px var(--cal-fill);
+}
+
+.calEvent:global(.has-art) .calTime {
+	color: #b7b0a4;
+}
+
+.calEvent:global(.has-art) .calTitle {
+	color: #f3eee4;
+}
+
+.calEvent[data-venue='debaser'] {
+	border-left-color: var(--debaser);
+}
+.calEvent[data-venue='nalen'] {
+	border-left-color: var(--nalen);
+}
+.calEvent[data-venue='fallan'] {
+	border-left-color: var(--fallan);
+}
+.calEvent[data-venue='slakthusen'] {
+	border-left-color: var(--slakthusen);
+}
+.calEvent[data-venue='kollektivetlivet'] {
+	border-left-color: var(--kollektivetlivet);
+}
+.calEvent[data-venue='sodrateatern'] {
+	border-left-color: var(--sodrateatern);
+}
+.calEvent[data-venue='berns'] {
+	border-left-color: var(--berns);
+}
+.calEvent[data-venue='cirkus'] {
+	border-left-color: var(--cirkus);
+}
+.calEvent[data-venue='fryshuset'] {
+	border-left-color: var(--fryshuset);
+}
+.calEvent[data-venue='kulturhuset'] {
+	border-left-color: var(--kulturhuset);
+}
+.calEvent[data-venue='hartwig'] {
+	border-left-color: var(--hartwig);
+}
+.calEvent[data-venue='annexet'] {
+	border-left-color: var(--annexet);
+}
+.calEvent[data-venue='hovet'] {
+	border-left-color: var(--hovet);
+}
+.calEvent[data-venue='aviciiarena'] {
+	border-left-color: var(--aviciiarena);
+}
+.calEvent[data-venue='trearena'] {
+	border-left-color: var(--trearena);
+}
+.calEvent[data-venue='strawberryarena'] {
+	border-left-color: var(--strawberryarena);
+}
+.calEvent[data-venue='konserthuset'] {
+	border-left-color: var(--konserthuset);
+}
+.calEvent[data-venue='berwaldhallen'] {
+	border-left-color: var(--berwaldhallen);
+}
+.calEvent[data-venue='fasching'] {
+	border-left-color: var(--fasching);
+}
+.calEvent[data-venue='stampen'] {
+	border-left-color: var(--stampen);
+}
+.calEvent[data-venue='glennmillercafe'] {
+	border-left-color: var(--glennmillercafe);
+}
+.calEvent[data-venue='kungcarls'] {
+	border-left-color: var(--kungcarls);
+}
+.calEvent[data-venue='engelen'] {
+	border-left-color: var(--engelen);
+}
+.calEvent[data-venue='petsoundsbar'] {
+	border-left-color: var(--petsoundsbar);
+}
+.calEvent[data-venue='reimersholme'] {
+	border-left-color: var(--reimersholme);
+}
+.calEvent[data-venue='riche'] {
+	border-left-color: var(--riche);
+}
+.calEvent[data-venue='landet'] {
+	border-left-color: var(--landet);
+}
+.calEvent[data-venue='encore'] {
+	border-left-color: var(--encore);
+}
+.calEvent[data-venue='bioaspen'] {
+	border-left-color: var(--bioaspen);
+}
+.calEvent[data-venue='scalateatern'] {
+	border-left-color: var(--scalateatern);
+}
+.calEvent[data-venue='gotalejon'] {
+	border-left-color: var(--gotalejon);
+}
+.calEvent[data-venue='bagarmossen'] {
+	border-left-color: var(--bagarmossen);
+}
+.calEvent[data-venue='kmh'] {
+	border-left-color: var(--kmh);
+}
+.calEvent[data-venue='ericericsonhallen'] {
+	border-left-color: var(--ericericsonhallen);
+}
+.calEvent[data-venue='gronalund'] {
+	border-left-color: var(--gronalund);
+}
+.calEvent[data-venue='fylkingen'] {
+	border-left-color: var(--fylkingen);
+}
+.calEvent[data-venue='ronnells'] {
+	border-left-color: var(--ronnells);
+}
+.calEvent[data-venue='larryscorner'] {
+	border-left-color: var(--larryscorner);
+}
+
+.calEvent:hover,
+.calEvent:global(.is-live) {
+	--cal-fill: var(--cal-hover);
+}
+
+.calEvent:global(.has-art):hover,
+.calEvent:global(.has-art):global(.is-live) {
+	--cal-fill: #191612;
+	--cal-art-filter: saturate(0.62) brightness(0.38) contrast(1.05);
+}
+
+.calEvent:global(.has-art):hover::after,
+.calEvent:global(.has-art):global(.is-live)::after {
+	background: linear-gradient(
+		to right,
+		color-mix(in srgb, var(--cal-fill) 86%, transparent) 0%,
+		color-mix(in srgb, var(--cal-fill) 64%, transparent) 40%,
+		color-mix(in srgb, var(--cal-fill) 32%, transparent) 100%
+	);
+}
+
+.calTime,
+.calMeta .calVenue,
+.calMeta .calPlace {
+	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	letter-spacing: 0.04em;
+	font-size: calc(0.75rem / var(--cal-hover-scale));
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+.calMeta {
+	display: flex;
+	flex-wrap: nowrap;
+	align-items: baseline;
+	gap: 0.25rem 0.45rem;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.calTime {
+	flex: 0 0 auto;
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: 'tnum';
+}
+
+.calMeta .calVenue {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.calMeta .calPlace {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.calTitle {
+	font-size: 0.95rem;
+	line-height: 1.2;
+	letter-spacing: -0.02em;
+	display: -webkit-box;
+	-webkit-line-clamp: 4;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.calEvent:hover,
+.calEvent:global(.is-live) {
+	z-index: 18;
+	transform: scale(var(--cal-hover-scale));
+	transform-origin: center center;
+	box-shadow: 0 1rem 2.2rem rgba(0, 0, 0, 0.38);
+}
+
+:global(body.is-cal-simple) .weeks {
+	gap: 0;
+}
+
+:global(body.is-cal-simple) .week + .week .calHeads {
+	border-top: 0;
+}
+
+:global(body.is-cal-simple) .calEvent {
+	min-height: 0;
+}
+
+:global(body.is-cal-simple) .calEventLink {
+	min-height: 0;
+	padding: 0.42rem 0.5rem 0.48rem 0.55rem;
+}
+
+:global(body.is-cal-simple) .calTitle {
+	font-size: 0.92rem;
+	-webkit-line-clamp: 5;
+}
+
+:global(body.is-cal-simple) .calEvent:hover,
+:global(body.is-cal-simple) .calEvent:global(.is-live) {
+	z-index: 1;
+	transform: none;
+	box-shadow: none;
+}
+
+:global(body.is-cal-simple) .calDay:hover,
+:global(body.is-cal-simple) .calDay:has(.calEvent:global(.is-live)) {
+	z-index: 1;
+}
+
+.calEvent .calIcs {
+	display: none;
+	position: absolute;
+	left: 0.65rem;
+	right: 2.35rem;
+	bottom: 0.35rem;
+	height: 1.85rem;
+	align-items: center;
+	z-index: 4;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: calc(0.75rem / var(--cal-hover-scale));
+}
+
+.calEvent:hover .calIcs,
+.calEvent:global(.is-live) .calIcs {
+	display: flex;
+}
+
+.calEvent .calIcs:hover,
+.calEvent .calIcs:focus-visible {
+	overflow: visible;
+}
+
+.calEvent:has([data-play-cluster]:global(.is-open)) .calIcs {
+	right: 4.6rem;
+}
+
+.calEvent:has([data-play-cluster]:global(.is-open)) .calIcsRest {
+	display: none;
+}
+
+.calVenue {
+	appearance: none;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	margin: 0;
+	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	text-align: inherit;
+	cursor: pointer;
+}
+
+button.calVenue:hover,
+button.calVenue:focus-visible {
+	text-decoration: underline;
+	text-underline-offset: 0.12em;
+}
+
+.calEvent[data-venue='debaser'] .calVenue {
+	color: var(--debaser);
+}
+.calEvent[data-venue='nalen'] .calVenue {
+	color: var(--nalen);
+}
+.calEvent[data-venue='fallan'] .calVenue {
+	color: var(--fallan);
+}
+.calEvent[data-venue='slakthusen'] .calVenue {
+	color: var(--slakthusen);
+}
+.calEvent[data-venue='kollektivetlivet'] .calVenue {
+	color: var(--kollektivetlivet);
+}
+.calEvent[data-venue='sodrateatern'] .calVenue {
+	color: var(--sodrateatern);
+}
+.calEvent[data-venue='berns'] .calVenue {
+	color: var(--berns);
+}
+.calEvent[data-venue='cirkus'] .calVenue {
+	color: var(--cirkus);
+}
+.calEvent[data-venue='fryshuset'] .calVenue {
+	color: var(--fryshuset);
+}
+.calEvent[data-venue='kulturhuset'] .calVenue {
+	color: var(--kulturhuset);
+}
+.calEvent[data-venue='hartwig'] .calVenue {
+	color: var(--hartwig);
+}
+.calEvent[data-venue='annexet'] .calVenue {
+	color: var(--annexet);
+}
+.calEvent[data-venue='hovet'] .calVenue {
+	color: var(--hovet);
+}
+.calEvent[data-venue='aviciiarena'] .calVenue {
+	color: var(--aviciiarena);
+}
+.calEvent[data-venue='trearena'] .calVenue {
+	color: var(--trearena);
+}
+.calEvent[data-venue='strawberryarena'] .calVenue {
+	color: var(--strawberryarena);
+}
+.calEvent[data-venue='konserthuset'] .calVenue {
+	color: var(--konserthuset);
+}
+.calEvent[data-venue='berwaldhallen'] .calVenue {
+	color: var(--berwaldhallen);
+}
+.calEvent[data-venue='fasching'] .calVenue {
+	color: var(--fasching);
+}
+.calEvent[data-venue='stampen'] .calVenue {
+	color: var(--stampen);
+}
+.calEvent[data-venue='glennmillercafe'] .calVenue {
+	color: var(--glennmillercafe);
+}
+.calEvent[data-venue='kungcarls'] .calVenue {
+	color: var(--kungcarls);
+}
+.calEvent[data-venue='engelen'] .calVenue {
+	color: var(--engelen);
+}
+.calEvent[data-venue='petsoundsbar'] .calVenue {
+	color: var(--petsoundsbar);
+}
+.calEvent[data-venue='reimersholme'] .calVenue {
+	color: var(--reimersholme);
+}
+.calEvent[data-venue='riche'] .calVenue {
+	color: var(--riche);
+}
+.calEvent[data-venue='landet'] .calVenue {
+	color: var(--landet);
+}
+.calEvent[data-venue='encore'] .calVenue {
+	color: var(--encore);
+}
+.calEvent[data-venue='bioaspen'] .calVenue {
+	color: var(--bioaspen);
+}
+.calEvent[data-venue='scalateatern'] .calVenue {
+	color: var(--scalateatern);
+}
+.calEvent[data-venue='gotalejon'] .calVenue {
+	color: var(--gotalejon);
+}
+.calEvent[data-venue='bagarmossen'] .calVenue {
+	color: var(--bagarmossen);
+}
+.calEvent[data-venue='kmh'] .calVenue {
+	color: var(--kmh);
+}
+.calEvent[data-venue='ericericsonhallen'] .calVenue {
+	color: var(--ericericsonhallen);
+}
+.calEvent[data-venue='gronalund'] .calVenue {
+	color: var(--gronalund);
+}
+.calEvent[data-venue='fylkingen'] .calVenue {
+	color: var(--fylkingen);
+}
+.calEvent[data-venue='ronnells'] .calVenue {
+	color: var(--ronnells);
+}
+.calEvent[data-venue='larryscorner'] .calVenue {
+	color: var(--larryscorner);
+}
+
+@include mq($until: tablet) {
+	.week {
+		overflow-x: auto;
+	}
+
+	.calHeads {
+		top: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.calEvent [data-play-cluster],
+	.calEvent {
+		transition: none;
+	}
+
+	.calEvent:hover,
+	.calEvent:focus-within,
+	.calEvent:global(.is-live) {
+		transform: none;
+	}
+
+	.calEvent {
+		--cal-hover-scale: 1;
+	}
+}

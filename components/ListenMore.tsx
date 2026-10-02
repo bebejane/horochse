@@ -1,5 +1,8 @@
 "use client";
 
+import s from "./ListenMore.module.scss";
+import cn from "classnames";
+
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { listenMoreItems } from "@/lib/events";
 import type { ConcertEvent } from "@/lib/types";
@@ -32,8 +35,8 @@ export function ListenMore({ event }: { event: ConcertEvent }) {
 
   useLayoutEffect(() => {
     if (!open || !wrapRef.current) return;
-    const menu = wrapRef.current.querySelector(".listen-more-menu") as HTMLElement | null;
-    const btn = wrapRef.current.querySelector(".listen-more-btn") as HTMLElement | null;
+    const menu = wrapRef.current.querySelector("." + s.listenMoreMenu) as HTMLElement | null;
+    const btn = wrapRef.current.querySelector("." + s.listenMoreBtn) as HTMLElement | null;
     if (!menu || !btn) return;
     menu.style.top = "calc(100% + 0.4rem)";
     menu.style.bottom = "auto";
@@ -50,17 +53,22 @@ export function ListenMore({ event }: { event: ConcertEvent }) {
   if (!items.length) return null;
   if (items.length === 1) {
     return (
-      <a className="go card-listen" href={items[0].url} target="_blank" rel="noopener noreferrer">
+      <a className="go" data-listen-more href={items[0].url} target="_blank" rel="noopener noreferrer">
         Hör mer
       </a>
     );
   }
 
   return (
-      <div ref={wrapRef} className={"listen-more card-listen" + (open ? " is-open" : "")}>
+      <div
+        ref={wrapRef}
+        className={cn(s.listenMore, { "is-open": open })}
+        data-listen-more
+        data-open={open ? "true" : undefined}
+      >
       <button
         type="button"
-        className="go listen-more-btn"
+        className={cn("go", s.listenMoreBtn)}
         aria-haspopup="listbox"
         aria-expanded={open ? "true" : "false"}
         onPointerDown={(e) => e.stopPropagation()}
@@ -71,23 +79,23 @@ export function ListenMore({ event }: { event: ConcertEvent }) {
         }}
       >
         Hör mer
-        <span className="listen-more-caret" aria-hidden="true" />
+        <span className={s.listenMoreCaret} aria-hidden="true" />
       </button>
       {open ? (
-        <div className="listen-more-menu" role="listbox">
+        <div className={s.listenMoreMenu} role="listbox">
           {items.map((item) => (
             <a
               key={item.url}
-              className="listen-more-option"
+              className={s.listenMoreOption}
               role="option"
               aria-selected="false"
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
             >
-              <span className="listen-more-name">{item.artist || item.source || "Artist"}</span>
+              <span>{item.artist || item.source || "Artist"}</span>
               {item.source && item.source !== item.artist ? (
-                <span className="listen-more-src">{item.source}</span>
+                <span className={s.listenMoreSrc}>{item.source}</span>
               ) : null}
             </a>
           ))}

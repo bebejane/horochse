@@ -1,0 +1,538 @@
+@use '../styles/mediaqueries' as *;
+
+.card {
+	position: relative;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: 0.8rem 1rem;
+	color: inherit;
+	padding: 0.2rem 0 1rem;
+	border-bottom: 1px solid var(--line);
+	overflow: visible;
+}
+
+.card:has([data-listen-more][data-open]) {
+	z-index: 30;
+	overflow: visible;
+}
+
+.card:global(.has-play) {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.cardMain {
+	display: grid;
+	grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr);
+	grid-template-areas: 'poster text';
+	column-gap: 1.2rem;
+	align-items: start;
+	color: inherit;
+	text-decoration: none;
+	min-width: 0;
+	overflow: visible;
+}
+
+.card:global(.has-play) .cardMain {
+	grid-template-columns: minmax(9rem, 14rem) minmax(0, 1fr) auto;
+	grid-template-areas: 'poster text play';
+}
+
+.posterSlot {
+	display: contents;
+}
+
+.posterSlot > [data-play],
+.posterSlot > [data-play-cluster] {
+	grid-area: play;
+	align-self: center;
+}
+
+.cardText {
+	grid-area: text;
+	display: flex;
+	flex-direction: column;
+	gap: 0.55rem;
+	min-width: 0;
+}
+
+.cardText > .meta {
+	margin-bottom: 0;
+}
+
+.cardBody {
+	min-width: 0;
+	overflow: visible;
+}
+
+.cardMain .meta {
+	grid-area: meta;
+}
+
+.cardTitleLink:hover,
+.cardTitleLink:focus-visible {
+	text-decoration: underline;
+	text-underline-offset: 0.18em;
+}
+
+.cardCopy {
+	color: inherit;
+}
+
+.cardTitleLink {
+	color: inherit;
+	text-decoration: none;
+}
+
+.posterWrap {
+	position: relative;
+	display: block;
+	width: 100%;
+	aspect-ratio: 16 / 10;
+	grid-area: poster;
+	align-self: stretch;
+	overflow: hidden;
+	background: var(--bg-2);
+	color: inherit;
+	text-decoration: none;
+}
+
+.posterWrap:global(.is-fallback) {
+	display: grid;
+	place-items: center;
+}
+
+.posterWrap:global(.is-fallback) :global(.mast-symbol-lockup) {
+	display: grid;
+	place-items: center;
+	height: 92%;
+	width: auto;
+}
+
+.posterWrap:global(.is-fallback) :global(.mast-symbol) {
+	height: 100%;
+	width: auto;
+	max-height: none;
+	opacity: 0.42;
+}
+
+.poster {
+	position: absolute;
+	inset: 0;
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center;
+	filter: saturate(0.86) contrast(1.04);
+}
+
+.meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.4rem 0.75rem;
+	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	letter-spacing: 0.04em;
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: 'tnum';
+	color: var(--muted);
+	margin-bottom: 0.2rem;
+	position: relative;
+}
+
+.metaHint {
+	position: absolute;
+	left: 0;
+	top: 0;
+	display: none;
+	align-items: baseline;
+	white-space: nowrap;
+	pointer-events: none;
+}
+
+.metaHint::after {
+	content: '\2192';
+	margin-left: 0.32em;
+	text-transform: none;
+	letter-spacing: 0;
+}
+
+.card:has(.cardTitleLink:is(:hover, :focus-visible), .cardRead:is(:hover, :focus-visible)) .meta > :not(.metaHint) {
+	visibility: hidden;
+}
+
+.card:has(.cardTitleLink:is(:hover, :focus-visible), .cardRead:is(:hover, :focus-visible)) .metaRead {
+	display: flex;
+}
+
+.card:has([data-listen-more]:is(:hover, :focus-within)):not(:has([data-listen-more][data-open])) .meta > :not(.metaHint) {
+	visibility: hidden;
+}
+
+.card:has([data-listen-more]:is(:hover, :focus-within)):not(:has([data-listen-more][data-open])) .metaListen {
+	display: flex;
+}
+
+.metaTimeSep {
+	margin-right: 0.22em;
+}
+
+.venue {
+	color: var(--ink);
+}
+
+button.venue {
+	appearance: none;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	margin: 0;
+	font: inherit;
+	line-height: inherit;
+	letter-spacing: inherit;
+	text-transform: inherit;
+	color: inherit;
+	cursor: pointer;
+	display: inline;
+	vertical-align: baseline;
+}
+
+button.venue:hover,
+button.venue:focus-visible {
+	text-decoration: underline;
+	text-underline-offset: 0.18em;
+}
+
+.venue[data-venue='debaser'] {
+	color: var(--debaser);
+}
+.venue[data-venue='nalen'] {
+	color: var(--nalen);
+}
+.venue[data-venue='fallan'] {
+	color: var(--fallan);
+}
+.venue[data-venue='slakthusen'] {
+	color: var(--slakthusen);
+}
+.venue[data-venue='kollektivetlivet'] {
+	color: var(--kollektivlivet);
+}
+.venue[data-venue='sodrateatern'] {
+	color: var(--sodrateatern);
+}
+.venue[data-venue='berns'] {
+	color: var(--berns);
+}
+.venue[data-venue='cirkus'] {
+	color: var(--cirkus);
+}
+.venue[data-venue='fryshuset'] {
+	color: var(--fryshuset);
+}
+.venue[data-venue='kulturhuset'] {
+	color: var(--kulturhuset);
+}
+.venue[data-venue='hartwig'] {
+	color: var(--hartwig);
+}
+.venue[data-venue='annexet'] {
+	color: var(--annexet);
+}
+.venue[data-venue='hovet'] {
+	color: var(--hovet);
+}
+.venue[data-venue='aviciiarena'] {
+	color: var(--aviciiarena);
+}
+.venue[data-venue='trearena'] {
+	color: var(--trearena);
+}
+.venue[data-venue='strawberryarena'] {
+	color: var(--strawberryarena);
+}
+.venue[data-venue='konserthuset'] {
+	color: var(--konserthuset);
+}
+.venue[data-venue='berwaldhallen'] {
+	color: var(--berwaldhallen);
+}
+.venue[data-venue='fasching'] {
+	color: var(--fasching);
+}
+.venue[data-venue='stampen'] {
+	color: var(--stampen);
+}
+.venue[data-venue='glennmillercafe'] {
+	color: var(--glennmillercafe);
+}
+.venue[data-venue='kungcarls'] {
+	color: var(--kungcarls);
+}
+.venue[data-venue='engelen'] {
+	color: var(--engelen);
+}
+.venue[data-venue='petsoundsbar'] {
+	color: var(--petsoundsbar);
+}
+.venue[data-venue='reimersholme'] {
+	color: var(--reimersholme);
+}
+.venue[data-venue='riche'] {
+	color: var(--riche);
+}
+.venue[data-venue='landet'] {
+	color: var(--landet);
+}
+.venue[data-venue='encore'] {
+	color: var(--encore);
+}
+.venue[data-venue='bioaspen'] {
+	color: var(--bioaspen);
+}
+.venue[data-venue='scalateatern'] {
+	color: var(--scalateatern);
+}
+.venue[data-venue='gotalejon'] {
+	color: var(--gotalejon);
+}
+.venue[data-venue='bagarmossen'] {
+	color: var(--bagarmossen);
+}
+.venue[data-venue='kmh'] {
+	color: var(--kmh);
+}
+.venue[data-venue='ericericsonhallen'] {
+	color: var(--ericericsonhallen);
+}
+.venue[data-venue='gronalund'] {
+	color: var(--gronalund);
+}
+.venue[data-venue='fylkingen'] {
+	color: var(--fylkingen);
+}
+.venue[data-venue='ronnells'] {
+	color: var(--ronnells);
+}
+.venue[data-venue='larryscorner'] {
+	color: var(--larryscorner);
+}
+
+.nowLabel {
+	display: none;
+	color: var(--ink);
+	letter-spacing: 0.08em;
+}
+
+.card:global(.is-live) .nowLabel {
+	display: inline;
+	animation: now-pulse 5.2s ease-in-out infinite;
+}
+
+@keyframes now-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.32;
+	}
+}
+
+.title {
+	font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+	font-weight: 400;
+	line-height: 1.15;
+	letter-spacing: -0.02em;
+}
+
+.card:global(.has-play) .title {
+	width: fit-content;
+	max-width: calc(100% - (1.75rem * 2) - 0.16rem - 1.2rem);
+}
+
+.nowArrow {
+	display: none;
+	width: 0.72em;
+	height: 0.72em;
+	margin-right: 0.22em;
+	vertical-align: -0.02em;
+}
+
+.nowArrow svg {
+	display: block;
+	width: 100%;
+	height: 100%;
+	fill: currentColor;
+}
+
+.card:global(.is-current) .title:not(:global(.has-current-artist)) .nowArrowLead,
+.card:global(.is-current) .titleArtist:global(.is-current) .nowArrow {
+	display: inline-block;
+}
+
+.text {
+	margin-top: 0.45rem;
+	color: var(--muted);
+	max-width: 38rem;
+	font-size: 0.98rem;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.cardActions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.35rem 1.15rem;
+	margin-top: 0.7rem;
+	overflow: visible;
+}
+
+.card [data-play-cluster] {
+	transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.card [data-play-cluster]:global(.is-open) {
+	transform: translateX(-1.75rem);
+}
+
+@include mq($until: tablet) {
+	.cardMain {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 25%;
+		grid-template-areas:
+			'meta meta'
+			'body poster'
+			'actions actions';
+		column-gap: 0.75rem;
+		row-gap: 0.35rem;
+		align-items: start;
+	}
+
+	.card:global(.has-play) .cardMain {
+		grid-template-columns: minmax(0, 1fr) 25%;
+		grid-template-areas:
+			'meta meta'
+			'body poster'
+			'actions actions';
+	}
+
+	.cardText {
+		display: contents;
+	}
+
+	.posterSlot {
+		display: block;
+		grid-area: poster;
+		position: relative;
+		width: 100%;
+	}
+
+	.posterWrap {
+		grid-area: auto;
+		float: none;
+		width: 100%;
+		margin: 0;
+		aspect-ratio: 5 / 4;
+		align-self: start;
+	}
+
+	.cardMain .meta {
+		margin-bottom: 0;
+	}
+
+	.cardBody {
+		display: contents;
+	}
+
+	.cardCopy {
+		grid-area: body;
+		min-width: 0;
+	}
+
+	.card:global(.has-play) .title {
+		width: auto;
+		max-width: none;
+	}
+
+	.cardActions {
+		grid-area: actions;
+	}
+
+	.card {
+		padding-bottom: 2rem;
+		container-type: inline-size;
+	}
+
+	.card:global(.is-compact) {
+		cursor: pointer;
+	}
+
+	.card:global(.is-compact-closed) {
+		padding-bottom: 0.9rem;
+	}
+
+	.card:global(.is-compact-closed) .cardMain,
+	.card:global(.is-compact-closed):global(.has-play) .cardMain {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas:
+			'meta'
+			'body';
+	}
+
+	.card:global(.is-compact-closed) .posterSlot,
+	.card:global(.is-compact-closed) .text,
+	.card:global(.is-compact-closed) .cardActions,
+	.card:global(.is-compact-closed) .nowLabel,
+	.card:global(.is-compact-closed) .nowArrow {
+		display: none;
+	}
+
+	.card:global(.has-play) {
+		grid-template-columns: 1fr;
+	}
+
+	.posterSlot > [data-play],
+	.posterSlot > [data-play-cluster] {
+		position: absolute;
+		z-index: 4;
+		left: 50%;
+		top: 50%;
+		right: auto;
+		transform: translate(-50%, -50%);
+	}
+
+	.posterSlot > [data-play-cluster]:global(.is-open) {
+		transform: translate(-50%, -50%);
+	}
+
+	.posterSlot > [data-play],
+	.posterSlot > [data-play-cluster] [data-play] {
+		width: 2.45rem;
+		height: 2.45rem;
+		background: rgba(20, 18, 15, 0.62);
+		color: #f3eee4;
+		border: 1px solid color-mix(in srgb, var(--ink) 42%, transparent);
+	}
+
+	.posterSlot > [data-play]:global(.is-on),
+	.posterSlot > [data-play-cluster] [data-play]:global(.is-on) {
+		background: var(--ink);
+		color: var(--bg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.card:global(.is-live) .nowLabel {
+		animation: none;
+	}
+
+	.card [data-play-cluster] {
+		transition: none;
+	}
+}

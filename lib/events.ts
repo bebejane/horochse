@@ -174,7 +174,7 @@ export function streamRequest(track?: Track | null): StreamRequest | null {
   const source = trackSource(track);
   if (source === "bandcamp") {
     return {
-      href: "/bandcamp/stream?" + new URLSearchParams({
+      href: "/api/bandcamp/stream?" + new URLSearchParams({
         band: String(track?.band_id || ""),
         album: String(track?.album_id || ""),
         type: track?.type || "a",
@@ -185,7 +185,7 @@ export function streamRequest(track?: Track | null): StreamRequest | null {
   }
   if (source === "soundcloud") {
     return {
-      href: "/soundcloud/stream?id=" + encodeURIComponent(String(track?.track_id || "")),
+      href: "/api/soundcloud/stream?id=" + encodeURIComponent(String(track?.track_id || "")),
       source,
       fallback: track?.url || "",
     };

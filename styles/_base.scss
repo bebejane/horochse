@@ -1,0 +1,228 @@
+@use 'mediaqueries' as *;
+
+/*
+ * Global layer: design tokens, resets, page/body state and the small set of
+ * cross-cutting primitives that more than one component composes
+ * (.skip, .mast-symbol*, .go, .icon-*). Everything component-specific
+ * (including the play control) lives in a *.module.scss next to the component.
+ */
+
+:root {
+	--bg: #14120f;
+	--bg-2: #1c1914;
+	--ink: #f3eee4;
+	--muted: #b7b0a4;
+	--line: rgba(243, 238, 228, 0.14);
+	--hover: rgba(243, 238, 228, 0.08);
+	--player: #1a1814;
+	--today: #1a1814;
+	--cal-hover: #25221c;
+	--debaser: #d4573c;
+	--nalen: #e0b25a;
+	--fallan: #7ea4c9;
+	--slakthusen: #e0b25a;
+	--kollektivetlivet: #9a7bb8;
+	--sodrateatern: #d98b4a;
+	--berns: #5aa0c8;
+	--cirkus: #c46b6b;
+	--fryshuset: #8ab07a;
+	--kulturhuset: #7ea4c9;
+	--hartwig: #9a7bb8;
+	--annexet: #7b8ec4;
+	--hovet: #b57a9a;
+	--aviciiarena: #6aa89a;
+	--trearena: #d4a07a;
+	--strawberryarena: #8c7ab8;
+	--konserthuset: #d4573c;
+	--berwaldhallen: #e0b25a;
+	--fasching: #d4573c;
+	--stampen: #6bb3a0;
+	--glennmillercafe: #c47a8a;
+	--kungcarls: #9a7bb8;
+	--engelen: #d98b4a;
+	--petsoundsbar: #c46b6b;
+	--reimersholme: #8ab07a;
+	--riche: #c45c48;
+	--landet: #c9a05a;
+	--encore: #d4573c;
+	--bioaspen: #6aa89a;
+	--scalateatern: #d4a07a;
+	--gotalejon: #8c7ab8;
+	--bagarmossen: #6bb3a0;
+	--kmh: #c47a8a;
+	--ericericsonhallen: #9a7bb8;
+	--gronalund: #d98b4a;
+	--fylkingen: #6bb3a0;
+	--ronnells: #c47a8a;
+	--larryscorner: #9a7bb8;
+	--margin: clamp(1.1rem, 4vw, 3rem);
+	--mast-height: 14rem;
+	--cal-heads-height: 2.6rem;
+	--player-height: 0px;
+	--title-col: 14rem;
+	--title-gap: 1.2rem;
+	color-scheme: dark;
+}
+
+html[data-theme='light'] {
+	--bg: #fafafa;
+	--bg-2: #f1f1f1;
+	--ink: #161616;
+	--muted: #5c5c5c;
+	--line: rgba(0, 0, 0, 0.12);
+	--hover: rgba(0, 0, 0, 0.06);
+	--player: #f4f4f4;
+	--today: #f3f3f3;
+	--cal-hover: #ebebeb;
+	color-scheme: light;
+}
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html {
+	scroll-padding-top: calc(var(--mast-height) + 0.4rem);
+	scroll-padding-bottom: var(--player-height);
+}
+
+html,
+body {
+	min-height: 100%;
+	background: var(--bg);
+	color: var(--ink);
+}
+
+body {
+	font-family: var(--font-william), Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+	line-height: 1.45;
+	padding-bottom: var(--player-height);
+}
+
+.skip {
+	position: absolute;
+	left: -999px;
+	top: 0.5rem;
+	background: var(--ink);
+	color: var(--bg);
+	padding: 0.4rem 0.7rem;
+}
+
+.skip:focus {
+	left: 0.5rem;
+	z-index: 30;
+}
+
+/* Brand symbol, shared by Mast, EventCard, CalendarView and the colophon. */
+.mast-symbol-lockup {
+	display: block;
+	flex: 0 0 auto;
+	height: 3.8rem;
+}
+
+.mast-symbol {
+	display: block;
+	height: 3.8rem;
+	width: auto;
+}
+
+.mast-symbol-light {
+	display: none;
+}
+
+html[data-theme='light'] .mast-symbol-dark {
+	display: none;
+}
+
+html[data-theme='light'] .mast-symbol-light {
+	display: block;
+}
+
+/* Generic link/action primitive. */
+.go {
+	display: inline-flex;
+	align-items: baseline;
+	color: inherit;
+	text-decoration: none;
+	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	font-size: 0.75rem;
+	line-height: 1;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+
+.go::after {
+	content: '\2192';
+	display: inline-block;
+	overflow: hidden;
+	max-width: 0;
+	margin-left: 0;
+	opacity: 0;
+	letter-spacing: 0;
+	text-transform: none;
+	transform: translate3d(-0.4em, 0, 0);
+	pointer-events: none;
+	transition:
+		max-width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+		margin-left 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+		opacity 0.2s ease,
+		transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.go:hover::after,
+.go:focus-visible::after {
+	max-width: 1.25em;
+	margin-left: 0.32em;
+	opacity: 1;
+	transform: translate3d(0, 0, 0);
+}
+
+.go-down::after {
+	content: '\2193';
+	transform: translate3d(0, -0.4em, 0);
+}
+
+.go-down:hover::after,
+.go-down:focus-visible::after {
+	transform: translate3d(0, 0, 0);
+}
+
+.go:hover,
+.go:focus-visible {
+	text-decoration: underline;
+	text-underline-offset: 0.18em;
+}
+
+/* Play/pause glyph toggle, shared by every play control. */
+.icon-pause {
+	display: none;
+}
+
+.is-on .icon-play {
+	display: none;
+}
+
+.is-on .icon-pause {
+	display: block;
+}
+
+#sc-widget {
+	position: fixed;
+	left: 0;
+	bottom: 0;
+	width: 40px;
+	height: 40px;
+	opacity: 0.02;
+	border: 0;
+	overflow: hidden;
+	pointer-events: none;
+	z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.go::after {
+		transition: none;
+	}
+}

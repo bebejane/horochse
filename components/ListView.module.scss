@@ -1,0 +1,201 @@
+@use '../styles/mediaqueries' as *;
+
+.weekHead {
+	display: grid;
+	grid-template-columns: var(--title-col) minmax(0, 1fr);
+	column-gap: var(--title-gap);
+	align-items: center;
+}
+
+.weekHeadMain {
+	grid-column: 2;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 0.8rem 1rem;
+	min-width: 0;
+	padding: 0.2rem 0 1.25rem;
+}
+
+.weekHeadTitle {
+	font-size: clamp(1.55rem, 2.8vw, 2.15rem);
+	font-style: italic;
+	font-weight: 400;
+	letter-spacing: -0.03em;
+	line-height: 1.1;
+	margin: 0;
+}
+
+@include mq($from: tablet) {
+	.weekHeadTitle {
+		font-size: 1.95rem;
+	}
+}
+
+.weekHead:global(.is-next) {
+	margin-top: 0.4rem;
+}
+
+.weekHead:global(.is-next) .weekHeadMain {
+	padding-top: 1.6rem;
+}
+
+.weekHeadListen {
+	display: flex;
+	align-items: center;
+	gap: 0.7rem;
+}
+
+.weekHeadListenLabel {
+	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+:global(body:not(.is-calendar)) .day {
+	display: grid;
+	grid-template-columns: var(--title-col) minmax(0, 1fr);
+	column-gap: var(--title-gap);
+	align-items: start;
+}
+
+.dayTitle {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.12rem;
+	font-size: 0.95rem;
+	color: var(--muted);
+	padding: 0.85rem 0.4rem 0.7rem 0;
+	border-top: 1px solid var(--ink);
+	position: sticky;
+	top: calc(var(--mast-height) + 0.4rem);
+	align-self: start;
+	background: var(--bg);
+	box-shadow: 0 -0.4rem 0 var(--bg);
+	z-index: 5;
+}
+
+:global(body:not(.is-calendar)) .dayTitle {
+	grid-column: 1;
+}
+
+.dayTitle b {
+	color: var(--ink);
+	font-weight: 400;
+	font-style: italic;
+	text-transform: none;
+	font-size: 1.35rem;
+	line-height: 1.15;
+}
+
+.list {
+	display: grid;
+	gap: 1rem;
+	padding-top: 0.85rem;
+	padding-bottom: 2.4rem;
+	border-top: 1px solid var(--line);
+	min-width: 0;
+}
+
+.listRule {
+	display: none;
+}
+
+:global(body:not(.is-calendar)) .day:global(.is-week-start) {
+	scroll-margin-top: calc(var(--mast-height) + 0.4rem);
+}
+
+:global(body:not(.is-calendar)) .day:global(.is-week-start) .list {
+	padding-bottom: 0.85rem;
+}
+
+:global(body:not(.is-calendar)) .list {
+	grid-column: 2;
+}
+
+@include mq($from: tablet) {
+	:global(body:not(.is-calendar)) .list {
+		padding-top: 0;
+		border-top-color: transparent;
+	}
+
+	:global(body:not(.is-calendar)) .listRule {
+		display: block;
+		position: sticky;
+		top: calc(var(--mast-height) + 0.4rem);
+		height: 0.85rem;
+		margin-bottom: -1rem;
+		border-top: 1px solid var(--ink);
+		background: var(--bg);
+		box-shadow: 0 -0.4rem 0 var(--bg);
+		z-index: 4;
+		pointer-events: none;
+	}
+}
+
+.empty {
+	color: var(--muted);
+	font-style: italic;
+}
+
+.list > [data-card]:last-child {
+	border-bottom: 0;
+}
+
+:global(body.is-calendar) .weekHead {
+	display: block;
+}
+
+:global(body.is-calendar) .weekHeadMain {
+	grid-column: 1;
+	padding: 0.2rem 0 0.85rem;
+}
+
+:global(body.is-calendar) .weekHead:global(.is-next) {
+	margin-top: 0;
+}
+
+:global(body.is-calendar) .weekHead:global(.is-next) .weekHeadMain {
+	padding-top: 0.2rem;
+}
+
+@include mq($until: tablet) {
+	:global(body:not(.is-calendar)) .day,
+	.weekHead {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		align-items: stretch;
+		width: 100%;
+	}
+
+	:global(body:not(.is-calendar)) .dayTitle,
+	:global(body:not(.is-calendar)) .list,
+	.weekHeadMain {
+		grid-column: 1;
+		width: 100%;
+	}
+
+	:global(body:not(.is-calendar)) .dayTitle {
+		width: 100%;
+		align-self: stretch;
+		box-sizing: border-box;
+		flex-direction: row;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.dayTitle b,
+	.dayTitle span {
+		white-space: nowrap;
+	}
+
+	.weekHeadListenLabel {
+		display: none;
+	}
+}

@@ -1,10 +1,14 @@
 "use client";
 
+import s from "./ListView.module.scss";
+import cn from "classnames";
+
 import { formatDay, toIso, todayDate, weekTitle } from "@/lib/dates";
 import { groupByDay, groupEventsByWeek, isPlayable } from "@/lib/events";
 import type { ConcertEvent } from "@/lib/types";
 import { EventCard } from "./EventCard";
 import { PauseIcon, PlayIcon } from "./Icons";
+import play from "./PlayButton.module.scss";
 
 function WeekHead({
   title,
@@ -39,15 +43,15 @@ function WeekHead({
       : "Spela " + title;
   const on = playing && currentWeek === weekKey;
   return (
-    <div className={"week-head" + (isFirst ? "" : " is-next")}>
-      <div className="week-head-main">
-        <p className="week-head-title">{title}</p>
+    <div className={cn(s.weekHead, { "is-next": !isFirst })}>
+      <div className={s.weekHeadMain}>
+        <p className={s.weekHeadTitle}>{title}</p>
         {playable && !hidePlay ? (
-          <div className="week-head-listen">
-            <span className="week-head-listen-label">Hör exempel på veckans musik</span>
+          <div className={s.weekHeadListen}>
+            <span className={s.weekHeadListenLabel}>Hör exempel på veckans musik</span>
             <button
               type="button"
-              className={"play week-play" + (on ? " is-on" : "")}
+              className={cn(play.play, { "is-on": on })}
               data-week={weekKey}
               aria-pressed={on ? "true" : "false"}
               aria-label={label}
@@ -118,13 +122,13 @@ export function ListView({
           {groupByDay(group.events).map((day, dayIndex) => {
             const heading = formatDay(day.date);
             return (
-              <section className={"day" + (dayIndex === 0 ? " is-week-start" : "")} key={day.date}>
-                <h2 className="day-title">
+              <section className={cn(s.day, { "is-week-start": dayIndex === 0 })} data-day key={day.date}>
+                <h2 className={s.dayTitle} data-day-title>
                   <b>{heading.kicker}</b>
                   <span>{heading.rest}</span>
                 </h2>
-                <div className="list">
-                  <div className="list-rule" aria-hidden="true" />
+                <div className={s.list}>
+                  <div className={s.listRule} aria-hidden="true" />
                   {day.events.map((event) => (
                     <EventCard
                       key={event.id}

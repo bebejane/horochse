@@ -1,5 +1,8 @@
 "use client";
 
+import s from "./Mast.module.scss";
+import cn from "classnames";
+
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { VENUES } from "@/lib/types";
 import type { CalStyle, FilterMode, ListDensity, ThemeMode, ViewMode } from "@/lib/types";
@@ -141,7 +144,7 @@ export function Mast({
     function onDown(event: PointerEvent) {
       if (event.pointerType !== "mouse" || event.button !== 0) return;
       if (node.scrollWidth <= node.clientWidth + 1) return;
-      if (event.target instanceof Element && event.target.closest(".filter-x")) return;
+      if (event.target instanceof Element && event.target.closest("." + s.filterX)) return;
       drag.id = event.pointerId;
       drag.x = event.clientX;
       drag.scroll = node.scrollLeft;
@@ -210,18 +213,18 @@ export function Mast({
       });
     }
     function prepareLabel(event: Event) {
-      const root = event.target instanceof Element ? event.target.closest(".filter") : null;
+      const root = event.target instanceof Element ? event.target.closest("." + s.filter) : null;
       if (!root || !node.contains(root)) return;
       if (event.type === "pointerout" || event.type === "focusout") {
         const next = event instanceof PointerEvent || event instanceof FocusEvent
-          ? (event.relatedTarget instanceof Element ? event.relatedTarget.closest(".filter") : null)
+          ? (event.relatedTarget instanceof Element ? event.relatedTarget.closest("." + s.filter) : null)
           : null;
         if (root === next) return;
         root.classList.remove("is-label-scroll");
         return;
       }
-      const label = root.querySelector(".filter-label");
-      const inner = root.querySelector(".filter-label-inner");
+      const label = root.querySelector("." + s.filterLabel);
+      const inner = root.querySelector("." + s.filterLabelInner);
       if (!(label instanceof HTMLElement) || !(inner instanceof HTMLElement)) return;
       const overflow = inner.scrollWidth - label.clientWidth;
       if (overflow > 1) {
@@ -259,7 +262,7 @@ export function Mast({
     const chips = pickerListRef.current;
     if (!nav || !chips || !pickerOpen) return;
     function syncWidth() {
-      const close = nav.querySelector(".filter-close");
+      const close = nav.querySelector("." + s.filterClose);
       const left = nav.getBoundingClientRect().left;
       const right = close
         ? close.getBoundingClientRect().right
@@ -319,11 +322,9 @@ export function Mast({
       return (
         <span
           key={item.slug}
-          className={
-            "filter"
-            + (pickerOpen ? " has-x is-on" : " is-solo")
-            + (peeking ? " is-peek" : "")
-          }
+          className={cn(s.filter, pickerOpen ? ["has-x", "is-on"] : "is-solo", {
+            "is-peek": peeking,
+          })}
           data-venue={item.slug}
           role={pickerOpen ? undefined : "button"}
           tabIndex={pickerOpen ? undefined : 0}
@@ -348,11 +349,11 @@ export function Mast({
                 }
           }
         >
-          <span className="filter-label"><span className="filter-label-inner">{item.name}</span></span>
+          <span className={s.filterLabel}><span className={s.filterLabelInner}>{item.name}</span></span>
           {pickerOpen ? (
             <button
               type="button"
-              className="filter-x"
+              className={s.filterX}
               aria-label={"Ta bort " + item.name}
               onClick={() => onRemoveMine(item.slug)}
             >
@@ -366,26 +367,26 @@ export function Mast({
       <button
         key={item.slug}
         type="button"
-        className="filter"
+        className={s.filter}
         data-venue={item.slug}
         aria-pressed="false"
         aria-label={"Lägg till " + item.name}
         onClick={() => onAddMine(item.slug)}
       >
-        <span className="filter-label"><span className="filter-label-inner">{item.name}</span></span>
+        <span className={s.filterLabel}><span className={s.filterLabelInner}>{item.name}</span></span>
       </button>
     );
   });
 
   return (
-    <header className="mast">
-      <div className="mast-inner">
-        <div className="mast-top">
-          <p className="eyebrow">UPPTÄCK LIVEMUSIK I STOCKHOLM DEN KOMMANDE MÅNADEN</p>
-          <div className="mast-top-actions">
+    <header className={s.mast} data-mast>
+      <div className={s.mastInner} data-mast-inner>
+        <div className={s.mastTop}>
+          <p className={s.eyebrow}>UPPTÄCK LIVEMUSIK I STOCKHOLM DEN KOMMANDE MÅNADEN</p>
+          <div className={s.mastTopActions}>
             <button
               type="button"
-              className={"mast-about" + (aboutOpen ? " is-on" : "")}
+              className={cn(s.mastAbout, { "is-on": aboutOpen })}
               aria-pressed={aboutOpen ? "true" : "false"}
               aria-expanded={aboutOpen ? "true" : "false"}
               aria-controls="mast-copy"
@@ -393,57 +394,57 @@ export function Mast({
             >
               Om &amp; Kontakt
             </button>
-            <div className="mast-top-tools">
+            <div className={s.mastTopTools}>
             <button
               type="button"
-              className="theme-switch density-switch"
+              className={cn(s.themeSwitch, s.densitySwitch)}
               role="switch"
               aria-checked={density === "less" ? "true" : "false"}
               aria-label={density === "less" ? "Visa som text" : "Visa med bild"}
               onClick={onToggleDensity}
             >
-              <span className="theme-switch-label density-switch-label-more">Bild</span>
-              <span className="theme-switch-track" aria-hidden="true"><i className="theme-switch-knob" /></span>
-              <span className="theme-switch-label density-switch-label-less">Text</span>
+              <span className={cn(s.themeSwitchLabel, s.densitySwitchLabelMore)}>Bild</span>
+              <span className={s.themeSwitchTrack} aria-hidden="true"><i className={s.themeSwitchKnob} /></span>
+              <span className={cn(s.themeSwitchLabel, s.densitySwitchLabelLess)}>Text</span>
             </button>
             <button
               type="button"
-              className="theme-switch"
+              className={s.themeSwitch}
               role="switch"
               aria-checked={light ? "true" : "false"}
               aria-label={light ? "Byt till mörkt tema" : "Byt till ljust tema"}
               onClick={onToggleTheme}
             >
-              <span className="theme-switch-label theme-switch-label-dark">Mörk</span>
-              <span className="theme-switch-track" aria-hidden="true"><i className="theme-switch-knob" /></span>
-              <span className="theme-switch-label theme-switch-label-light">Ljus</span>
+              <span className={cn(s.themeSwitchLabel, s.themeSwitchLabelDark)}>Mörk</span>
+              <span className={s.themeSwitchTrack} aria-hidden="true"><i className={s.themeSwitchKnob} /></span>
+              <span className={cn(s.themeSwitchLabel, s.themeSwitchLabelLight)}>Ljus</span>
             </button>
             </div>
           </div>
         </div>
-        <div className="mast-headline">
+        <div className={s.mastHeadline}>
           <h1
             onClick={() => {
               const motion = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
               window.scrollTo({ top: 0, behavior: motion });
             }}
           >
-            <span className="mast-wordmark">Hor<span className="mast-amp">&</span>Se</span>
+            <span className={s.mastWordmark}>Hor<span className={s.mastAmp}>&</span>Se</span>
             <MastSymbol />
           </h1>
           {aboutOpen ? (
-            <div className="mast-intro-wrap is-down is-about" id="mast-copy">
-              <div className="mast-intro">
-                <span className="mast-intro-p">
+            <div className={cn(s.mastIntroWrap, "is-down", "is-about")} id="mast-copy">
+              <div className={s.mastIntro}>
+                <span className={s.mastIntroP}>
                   På Hör & Se kan du hitta och lyssna på artister som spelar live i Stockholm under den närmaste månaden. Genom att skapa ditt eget urval följer du dom spelställen som du är intresserade av.
                 </span>
-                <span className="mast-intro-p">
+                <span className={s.mastIntroP}>
                   Sidan är under utveckling och drivs ideellt av{" "}
                   <a href="https://konst-teknik.se" target="_blank" rel="noopener noreferrer">Konst & Teknik</a>
                   . <a href="mailto:hos@konst-teknik.se">Hör gärna av dig</a> du har frågor eller ser något konstigt.{" "}
                   <button
                     type="button"
-                    className="mast-intro-hide mast-about-close"
+                    className={cn(s.mastIntroHide, s.mastAboutClose)}
                     onClick={() => setAboutOpen(false)}
                   >
                     Stäng
@@ -452,12 +453,12 @@ export function Mast({
               </div>
             </div>
           ) : !introHidden ? (
-            <div className="mast-intro-wrap" id="mast-copy">
-              <p className="mast-intro">
+            <div className={s.mastIntroWrap} id="mast-copy">
+              <p className={s.mastIntro}>
                 Välj vilka scener du är intresserad av och få en överblick av aktuella konserter i Stockholm (du kan alltid ändra ditt urval i efterhand sen).{" "}
                 <button
                   type="button"
-                  className="mast-intro-hide"
+                  className={s.mastIntroHide}
                   onClick={() => {
                     setIntroHidden(true);
                     try {
@@ -473,15 +474,15 @@ export function Mast({
             </div>
           ) : null}
         </div>
-        <div className="mast-tools">
+        <div className={s.mastTools}>
             <nav
               ref={navRef}
-              className={"filters" + (pickerOpen ? " is-open" : "")}
+              className={cn(s.filters, { "is-open": pickerOpen })}
               aria-label="Filtrera scener"
             >
               <button
                 type="button"
-                className={"filter" + (mode === "all" ? " is-on" : "")}
+                className={cn(s.filter, { "is-on": mode === "all" })}
                 data-venue="all"
                 aria-pressed={mode === "all" ? "true" : "false"}
                 onClick={onSelectAll}
@@ -490,13 +491,13 @@ export function Mast({
               </button>
               {!pickerOpen && mode === "all" && peekVenue ? (
                 <span
-                  className="filter has-x is-solo is-peek"
+                  className={cn(s.filter, "has-x", "is-solo", "is-peek")}
                   data-venue={peekVenue.slug}
                 >
                   {peekVenue.name}
                   <button
                     type="button"
-                    className="filter-x"
+                    className={s.filterX}
                     aria-label={"Ta bort " + peekVenue.name}
                     onClick={onClearPeek}
                   >
@@ -506,7 +507,7 @@ export function Mast({
               ) : null}
               <button
                 type="button"
-                className={"filter" + (mode === "mine" || pickerOpen ? " is-on" : "")}
+                className={cn(s.filter, { "is-on": mode === "mine" || pickerOpen })}
                 data-venue="mine"
                 aria-pressed={mode === "mine" ? "true" : "false"}
                 aria-expanded={pickerOpen ? "true" : "false"}
@@ -516,38 +517,37 @@ export function Mast({
               >
                 {mine.length ? "Dina scener" : "Välj dina scener"}
                 {mine.length ? (
-                  <span className="filter-count" aria-hidden="true">{mine.length}</span>
+                  <span className={s.filterCount} aria-hidden="true">{mine.length}</span>
                 ) : null}
               </button>
               {chips.length || pickerOpen ? (
-                <div className="filter-mine-row">
+                <div className={s.filterMineRow}>
                   {pickerOpen || collapsedChips ? (
                   <div
                     ref={scrollerRef}
-                    className={
-                      "filter-scroller"
-                      + (chipFade.canScroll ? " is-overflow" : "")
-                      + (chipFade.left ? " is-overflow-left" : "")
-                      + (chipFade.right ? " is-overflow-right" : "")
-                    }
+                    className={cn(s.filterScroller, {
+                      "is-overflow": chipFade.canScroll,
+                      "is-overflow-left": chipFade.left,
+                      "is-overflow-right": chipFade.right,
+                    })}
                   >
                     {pickerOpen
                       ? selectedVenues.map((item) => (
-                          <span key={item.slug} className="filter is-solo" data-venue={item.slug}>
-                            <span className="filter-label"><span className="filter-label-inner">{item.name}</span></span>
+                          <span key={item.slug} className={cn(s.filter, "is-solo")} data-venue={item.slug}>
+                            <span className={s.filterLabel}><span className={s.filterLabelInner}>{item.name}</span></span>
                           </span>
                         ))
                       : chipNodes}
                   </div>
                   ) : (
-                  <div className="filter-chips">
+                  <div className={s.filterChips}>
                     {chipNodes}
                   </div>
                   )}
                   {pickerOpen ? (
                     <button
                       type="button"
-                      className="filter filter-close"
+                      className={cn(s.filter, s.filterClose)}
                       aria-label="Stäng"
                       onClick={onClosePicker}
                     >
@@ -556,7 +556,7 @@ export function Mast({
                   ) : mode === "mine" && mine.length ? (
                     <button
                       type="button"
-                      className="filter filter-gear"
+                      className={cn(s.filter, s.filterGear)}
                       aria-label="Redigera dina scener"
                       aria-expanded="false"
                       onClick={onTogglePicker}
@@ -567,20 +567,20 @@ export function Mast({
                 </div>
               ) : null}
             </nav>
-            <div className="views-wrap">
-              <div className="views" role="group" aria-label="Välj vy">
+            <div className={s.viewsWrap}>
+              <div className={s.views} role="group" aria-label="Välj vy">
                 <button
                   type="button"
-                  className={"view" + (view === "list" ? " is-on" : "")}
+                  className={cn(s.view, { "is-on": view === "list" })}
                   aria-pressed={view === "list" ? "true" : "false"}
                   onClick={() => onSetView("list")}
                 >
                   Lista
                 </button>
-                <div className="view-cal">
+                <div className={s.viewCal}>
                   <button
                     type="button"
-                    className={"view" + (view === "calendar" ? " is-on" : "")}
+                    className={cn(s.view, { "is-on": view === "calendar" })}
                     aria-pressed={view === "calendar" ? "true" : "false"}
                     onClick={() => onSetView("calendar")}
                   >
@@ -589,7 +589,7 @@ export function Mast({
                   {view === "calendar" ? (
                     <button
                       type="button"
-                      className={"view view-enkel" + (calStyle === "simple" ? " is-on" : "")}
+                      className={cn(s.view, s.viewEnkel, { "is-on": calStyle === "simple" })}
                       aria-pressed={calStyle === "simple" ? "true" : "false"}
                       onClick={() => onSetCalStyle(calStyle === "simple" ? "full" : "simple")}
                     >
@@ -603,12 +603,11 @@ export function Mast({
         {pickerOpen ? (
           <div
             ref={pickerListRef}
-            className={
-              "filter-chips"
-              + (pickerFade.canScroll ? " is-overflow" : "")
-              + (pickerFade.top ? " is-overflow-top" : "")
-              + (pickerFade.bottom ? " is-overflow-bottom" : "")
-            }
+            className={cn(s.filterChips, {
+              "is-overflow": pickerFade.canScroll,
+              "is-overflow-top": pickerFade.top,
+              "is-overflow-bottom": pickerFade.bottom,
+            })}
             style={{ ["--picker-rows"]: String(Math.max(1, Math.ceil(chips.length / 5))) }}
           >
             {chipNodes}

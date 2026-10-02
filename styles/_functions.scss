@@ -1,0 +1,25 @@
+@use 'sass:math';
+
+/// Base font size on the `<body>` element
+/// @type Number (unit)
+$mq-base-font-size: 16px !default;
+
+/// Convert pixels to ems
+///
+/// @param {Number} $px - value to convert
+/// @param {Number} $base-font-size ($mq-base-font-size) - `<body>` font size
+///
+/// @example scss
+///   $font-size-in-ems: mq-px2em(16px);
+///   p { font-size: mq-px2em(16px); }
+///
+/// @requires $mq-base-font-size
+/// @returns {Number}
+@function mq-px2em($px, $base-font-size: $mq-base-font-size) {
+	@if math.is-unitless($px) {
+		@return mq-px2em($px * 1px, $base-font-size);
+	} @else if math.unit($px) == em {
+		@return $px;
+	}
+	@return math.div($px, $base-font-size) * 1em;
+}

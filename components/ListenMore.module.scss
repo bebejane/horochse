@@ -1,0 +1,102 @@
+@use '../styles/mediaqueries' as *;
+
+.listenMore {
+	position: relative;
+	display: inline-block;
+	z-index: 1;
+	overflow: visible;
+}
+
+.listenMore:global(.is-open) {
+	z-index: 30;
+}
+
+.listenMoreBtn {
+	appearance: none;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	margin: 0;
+	cursor: pointer;
+	line-height: inherit;
+}
+
+.listenMoreBtn:global(.go)::after {
+	content: none;
+}
+
+.listenMoreCaret {
+	display: inline-block;
+	width: 0;
+	height: 0;
+	margin-left: 0.4em;
+	border-left: 0.24rem solid transparent;
+	border-right: 0.24rem solid transparent;
+	border-top: 0.28rem solid currentColor;
+	align-self: center;
+	transform: translateY(-0.14em);
+}
+
+.listenMore:global(.is-open) .listenMoreCaret {
+	transform: translateY(-0.14em) rotate(180deg);
+}
+
+.listenMoreMenu {
+	display: block;
+	position: absolute;
+	left: 0;
+	top: calc(100% + 0.4rem);
+	z-index: 30;
+	width: max-content;
+	min-width: 16rem;
+	max-width: min(22rem, calc(100vw - 2 * var(--margin)));
+	padding: 0.25rem;
+	background: var(--bg);
+	border: 1px solid var(--line);
+}
+
+.listenMoreOption {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1.1rem;
+	min-height: 1.85rem;
+	padding: 0 0.7rem;
+	color: inherit;
+	text-decoration: none;
+	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	font-size: 0.78rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	white-space: nowrap;
+}
+
+.listenMoreOption:hover,
+.listenMoreOption:focus-visible {
+	background: var(--ink);
+	color: var(--bg);
+	outline: none;
+}
+
+.listenMoreOption:hover .listenMoreSrc,
+.listenMoreOption:focus-visible .listenMoreSrc {
+	color: inherit;
+	opacity: 0.62;
+}
+
+.listenMoreSrc {
+	color: var(--muted);
+	letter-spacing: 0.06em;
+}
+
+@include mq($until: tablet) {
+	.listenMoreMenu {
+		top: auto;
+		bottom: calc(100% + 0.4rem);
+		min-width: min(18rem, calc(100vw - 2 * var(--margin)));
+	}
+
+	.listenMoreOption {
+		min-height: 2.4rem;
+	}
+}

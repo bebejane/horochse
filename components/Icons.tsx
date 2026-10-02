@@ -46,9 +46,9 @@ export function CloseIcon() {
   );
 }
 
-export function NowArrow({ kind }: { kind?: string }) {
+export function NowArrow({ className }: { className?: string }) {
   return (
-    <span className={"now-arrow" + (kind ? " now-arrow-" + kind : "")} aria-hidden="true">
+    <span className={className} aria-hidden="true">
       <svg viewBox="0 0 24 24">
         <path d="M8 5.5v13l11-6.5z" />
       </svg>

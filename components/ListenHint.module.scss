@@ -1,0 +1,73 @@
+@use '../styles/mediaqueries' as *;
+
+.listenHint {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 22;
+	display: flex;
+	align-items: center;
+	gap: 0.7rem;
+	max-width: min(28rem, calc(100vw - 2 * var(--margin)));
+	padding: 0.5rem;
+	padding-left: 1rem;
+	border: 0;
+	border-radius: 999px;
+	background: var(--ink);
+	color: var(--bg);
+	box-shadow: 0 1px 10px rgba(0, 0, 0, 0.2);
+	cursor: pointer;
+	text-align: left;
+	font: inherit;
+	line-height: 1.2;
+	opacity: 0;
+}
+
+:global(html[data-theme='light']) .listenHint {
+	background: var(--bg);
+	color: var(--ink);
+	border: 1px solid rgba(0, 0, 0, 0.12);
+	box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1);
+}
+
+.listenHintSymbol {
+	flex: 0 0 auto;
+	height: 4rem;
+	width: auto;
+	display: block;
+	padding: 0.5rem;
+	padding-left: 1rem;
+	box-sizing: content-box;
+}
+
+.listenHintCopy {
+	min-width: 0;
+	font-size: 1.05rem;
+	color: inherit;
+	padding-right: 1rem;
+}
+
+.listenHintArrow {
+	display: inline-block;
+	margin-left: 0.35em;
+	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	font-style: normal;
+	font-weight: 400;
+	animation: listen-hint-arrow 1.15s ease-in-out infinite;
+}
+
+@keyframes listen-hint-arrow {
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	50% {
+		transform: translateX(0.28em);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.listenHintArrow {
+		animation: none;
+	}
+}

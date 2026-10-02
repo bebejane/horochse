@@ -1,5 +1,8 @@
 "use client";
 
+import s from "./NowPlayingBar.module.scss";
+import cn from "classnames";
+
 import { formatClock } from "@/lib/dates";
 import { NextIcon, PauseIcon, PlayIcon, PrevIcon } from "./Icons";
 import type { NowPlayingData } from "@/hooks/usePlayer";
@@ -29,7 +32,7 @@ export function NowPlayingBar({
   onNext: () => void;
 }) {
   function seekFromPoint(clientX: number) {
-    const track = document.querySelector(".nowplaying-trackbar");
+    const track = document.querySelector("." + s.nowplayingTrackbar);
     if (!track) return 0;
     const rect = track.getBoundingClientRect();
     if (rect.width <= 0) return 0;
@@ -59,41 +62,41 @@ export function NowPlayingBar({
 
   return (
     <aside
-      className={"nowplaying" + (on ? " is-on" : "")}
+      className={cn(s.nowplaying, { "is-on": on })}
       id="nowplaying"
       aria-live="polite"
       hidden={hidden}
       aria-hidden={on ? "false" : "true"}
     >
-      <div className="nowplaying-inner">
-        <div className="nowplaying-meta">
+      <div className={s.nowplayingInner}>
+        <div className={s.nowplayingMeta}>
           {data?.image ? (
             <img
-              className="nowplaying-art"
+              className={s.nowplayingArt}
               alt={data.album ? "Omslag: " + data.album : ""}
               src={data.image}
             />
           ) : null}
-          <div className="nowplaying-copy">
+          <div className={s.nowplayingCopy}>
             {data?.trackUrl ? (
-              <a className="nowplaying-track" href={data.trackUrl} target="_blank" rel="noopener noreferrer">
+              <a className={s.nowplayingTrack} href={data.trackUrl} target="_blank" rel="noopener noreferrer">
                 {data.track}
               </a>
             ) : (
-              <a className="nowplaying-track">{data?.track || ""}</a>
+              <a className={s.nowplayingTrack}>{data?.track || ""}</a>
             )}
             {data?.artistUrl ? (
-              <a className="nowplaying-artist" href={data.artistUrl} target="_blank" rel="noopener noreferrer">
+              <a className={s.nowplayingArtist} href={data.artistUrl} target="_blank" rel="noopener noreferrer">
                 {data.artist}
               </a>
             ) : (
-              <a className="nowplaying-artist">{data?.artist || ""}</a>
+              <a className={s.nowplayingArtist}>{data?.artist || ""}</a>
             )}
           </div>
         </div>
-        <div className="nowplaying-main">
+        <div className={s.nowplayingMain}>
           <div
-            className="nowplaying-progress"
+            className={s.nowplayingProgress}
             role="slider"
             aria-label="Position i låten"
             aria-valuemin={0}
@@ -119,20 +122,20 @@ export function NowPlayingBar({
               onSeek(nextRatio);
             }}
           >
-            <span className="nowplaying-time">{formatClock(progress.current)}</span>
-            <div className="nowplaying-trackbar">
+            <span className={s.nowplayingTime}>{formatClock(progress.current)}</span>
+            <div className={s.nowplayingTrackbar}>
               <i style={{ width: progress.ratio * 100 + "%" }} />
-              <b className="nowplaying-knob" style={{ left: progress.ratio * 100 + "%" }} />
+              <b className={s.nowplayingKnob} style={{ left: progress.ratio * 100 + "%" }} />
             </div>
-            <span className="nowplaying-time">{formatClock(progress.duration)}</span>
+            <span className={s.nowplayingTime}>{formatClock(progress.duration)}</span>
           </div>
-          <div className="nowplaying-controls">
-            <button type="button" className="np-btn" aria-label="Föregående" onClick={onPrev}>
+          <div className={s.nowplayingControls}>
+            <button type="button" className={s.npBtn} aria-label="Föregående" onClick={onPrev}>
               <PrevIcon />
             </button>
             <button
               type="button"
-              className={"np-btn np-play" + (playing ? " is-on" : "")}
+              className={cn(s.npBtn, s.npPlay, { "is-on": playing })}
               aria-label={playing ? "Pausa" : "Spela"}
               aria-pressed={playing ? "true" : "false"}
               onClick={onToggle}
@@ -140,13 +143,13 @@ export function NowPlayingBar({
               <PlayIcon />
               <PauseIcon />
             </button>
-            <button type="button" className="np-btn" aria-label="Nästa" onClick={onNext}>
+            <button type="button" className={s.npBtn} aria-label="Nästa" onClick={onNext}>
               <NextIcon />
             </button>
           </div>
-          <span className="nowplaying-source">
+          <span className={s.nowplayingSource}>
             <a
-              className="nowplaying-link"
+              className={s.nowplayingLink}
               href={data?.url || "#"}
               target="_blank"
               rel="noopener noreferrer"

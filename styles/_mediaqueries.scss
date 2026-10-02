@@ -1,0 +1,99 @@
+@use 'sass:map';
+@use 'sass:meta';
+@use 'sass:string';
+@use 'functions' as *;
+
+/// Breakpoints
+///
+/// The app has a single responsive switch at 841px (mobile first).
+/// @type Map
+$mq-breakpoints: (
+	mobile: 320px,
+	tablet: 841px,
+) !default;
+
+/// Customize the media type
+/// @type String
+$mq-media-type: all !default;
+
+/// Get a breakpoint's width
+///
+/// @param {String} $name - Name of the breakpoint.
+/// @param {Map} $breakpoints ($mq-breakpoints) - Breakpoints map.
+/// @returns {Number} Value in pixels
+@function mq-get-breakpoint-width($name, $breakpoints: $mq-breakpoints) {
+	@if map.has-key($breakpoints, $name) {
+		@return map.get($breakpoints, $name);
+	} @else {
+		@warn "Breakpoint #{$name} wasn't found in $breakpoints.";
+		@return 0;
+	}
+}
+
+/// Media query mixin
+///
+/// @param {String | Number | Boolean} $from (false) - One of $mq-breakpoints or a px value.
+/// @param {String | Number | Boolean} $until (false) - One of $mq-breakpoints or a px value.
+/// @param {String | Boolean} $and (false) - Additional media query parameters.
+/// @param {String} $media-type ($mq-media-type) - Media type: screen, print…
+///
+/// @example scss
+///   .element {
+///     @include mq($from: mobile) { color: red; }
+///     @include mq($until: tablet) { color: blue; }
+///     @include mq($from: 900px) { color: hotpink; }
+///   }
+@mixin mq(
+	$from: false,
+	$until: false,
+	$and: false,
+	$media-type: $mq-media-type,
+	$breakpoints: $mq-breakpoints
+) {
+	$min-width: 0;
+	$max-width: 0;
+	$media-query: '';
+
+	@if $from {
+		@if meta.type-of($from) == number {
+			$min-width: mq-px2em($from);
+		} @else {
+			$min-width: mq-px2em(mq-get-breakpoint-width($from, $breakpoints));
+		}
+	}
+
+	@if $until {
+		@if meta.type-of($until) == number {
+			$max-width: mq-px2em($until);
+		} @else {
+			$max-width: mq-px2em(mq-get-breakpoint-width($until, $breakpoints)) - 0.01em;
+		}
+	}
+
+	@if $min-width != 0 {
+		$media-query: '#{$media-query} and (min-width: #{$min-width})';
+	}
+	@if $max-width != 0 {
+		$media-query: '#{$media-query} and (max-width: #{$max-width})';
+	}
+	@if $and {
+		$media-query: '#{$media-query} and #{$and}';
+	}
+
+	@if ($media-type == 'all' and $media-query != '') {
+		$media-type: '';
+		$media-query: string.slice(string.unquote($media-query), 6);
+	}
+
+	@media #{$media-type + $media-query} {
+		@content;
+	}
+}
+
+/// Add a breakpoint
+@mixin mq-add-breakpoint($name, $width) {
+	$new-breakpoint: (
+		$name: $width,
+	);
+	$mq-breakpoints: map-merge($mq-breakpoints, $new-breakpoint) !global;
+}

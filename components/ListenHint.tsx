@@ -1,5 +1,7 @@
 "use client";
 
+import s from "./ListenHint.module.scss";
+
 import { useLayoutEffect, useRef } from "react";
 
 function viewBounds() {
@@ -9,8 +11,8 @@ function viewBounds() {
 
 function firstListPlayButton() {
   return (
-    document.querySelector<HTMLElement>(".list .card button.play") ||
-    document.querySelector<HTMLElement>(".cal-event button.play")
+    document.querySelector<HTMLElement>("[data-card] [data-play]") ||
+    document.querySelector<HTMLElement>("[data-cal-event] [data-play]")
   );
 }
 
@@ -58,14 +60,14 @@ export function ListenHint({ onDismiss }: { onDismiss: () => void }) {
     <button
       ref={ref}
       type="button"
-      className="listen-hint"
+      className={s.listenHint}
       onClick={onDismiss}
       aria-label="Glöm inte att du kan lyssna också"
     >
-      <img className="listen-hint-symbol" src="/symbol.svg" alt="" />
-      <span className="listen-hint-copy">
+      <img className={s.listenHintSymbol} src="/symbol.svg" alt="" />
+      <span className={s.listenHintCopy}>
         Glöm inte att du kan lyssna också{" "}
-        <span className="listen-hint-arrow" aria-hidden="true">{"\u2192"}</span>
+        <span className={s.listenHintArrow} aria-hidden="true">{"\u2192"}</span>
       </span>
     </button>
   );

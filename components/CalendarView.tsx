@@ -1,5 +1,8 @@
 "use client";
 
+import s from "./CalendarView.module.scss";
+import cn from "classnames";
+
 import { useState } from "react";
 import { formatDay, parseDay, toIso, todayDate, weekTitle } from "@/lib/dates";
 import { calendarWeeks, displayTitle, eventTimes, isPlayable } from "@/lib/events";
@@ -38,20 +41,20 @@ function CalendarEvent({
   const showSymbol = !simple && !showArt;
   return (
     <article
-      className={
-        "cal-event" +
-        (showArt ? " has-art" : "") +
-        (showSymbol ? " has-symbol" : "") +
-        (playable ? " has-play" : "") +
-        (playing && current ? " is-live" : "") +
-        (current ? " is-current" : "")
-      }
+      className={cn(s.calEvent, {
+        "has-art": showArt,
+        "has-symbol": showSymbol,
+        "has-play": playable,
+        "is-live": playing && current,
+        "is-current": current,
+      })}
+      data-cal-event
       data-venue={event.venue_slug}
       data-id={event.id}
     >
-      <div className="cal-event-link">
+      <div className={s.calEventLink}>
         <a
-          className="cal-event-hit"
+          className={s.calEventHit}
           href={event.url}
           target="_blank"
           rel="noopener noreferrer"
@@ -59,7 +62,7 @@ function CalendarEvent({
         />
         {showArt ? (
           <img
-            className="cal-event-art"
+            className={s.calEventArt}
             src={event.image}
             alt=""
             loading="lazy"
@@ -67,31 +70,31 @@ function CalendarEvent({
             onError={() => setArtFailed(true)}
           />
         ) : showSymbol ? (
-          <div className="cal-event-fallback" aria-hidden="true">
+          <div className={s.calEventFallback} aria-hidden="true">
             <MastSymbol />
           </div>
         ) : null}
-        <span className="cal-meta">
+        <span className={s.calMeta}>
           {eventTimes(event).map((item) => (
-            <span className="cal-time" key={item}>{item}</span>
+            <span className={s.calTime} key={item}>{item}</span>
           ))}
           <button
             type="button"
-            className="cal-venue"
+            className={s.calVenue}
             aria-label={"Visa bara " + event.venue}
             onClick={() => onFilterVenue(event.venue_slug)}
           >
             {event.venue}
           </button>
           {event.place && event.place !== event.venue ? (
-            <span className="cal-place">{event.place}</span>
+            <span className={s.calPlace}>{event.place}</span>
           ) : null}
         </span>
-        <span className="cal-title">{title}</span>
+        <span className={s.calTitle}>{title}</span>
       </div>
       {simple ? null : (
-        <a className="go cal-ics go-down" href={"/kalender/" + encodeURIComponent(event.id) + ".ics"}>
-          Lägg till<span className="cal-ics-rest">&nbsp;i kalender</span>
+        <a className={cn("go", s.calIcs, "go-down")} href={"/kalender/" + encodeURIComponent(event.id) + ".ics"}>
+          Lägg till<span className={s.calIcsRest}>&nbsp;i kalender</span>
         </a>
       )}
       {playable ? (
@@ -169,20 +172,20 @@ export function CalendarView({
 
   if (simple) {
     return (
-      <div className="weeks is-simple">
+      <div className={cn(s.weeks, "is-simple")}>
         {weeks.map((weekDays, index) => {
           const hasEvents = weekDays.some((iso) => (byDay[iso] || []).length);
           if (!hasEvents && index !== 0) return null;
           return (
-          <div className="week" key={weekDays[0]} role="grid" aria-label="Veckokalender">
-            <div className="cal-heads">
+          <div className={s.week} key={weekDays[0]} role="grid" aria-label="Veckokalender" data-week>
+            <div className={s.calHeads} data-cal-heads>
               {weekDays.map((iso) => {
                 const day = parseDay(iso);
                 const heading = formatDay(iso);
                 return (
                   <h2
                     key={iso}
-                    className={"cal-head" + (iso === today ? " is-today" : "")}
+                    className={cn(s.calHead, { "is-today": iso === today })}
                     id={"cal-" + iso}
                     aria-current={iso === today ? "date" : undefined}
                   >
@@ -192,15 +195,16 @@ export function CalendarView({
                 );
               })}
             </div>
-            <div className="cal-cols">
+            <div className={s.calCols}>
               {weekDays.map((iso) => (
                 <section
                   key={iso}
-                  className={"cal-day" + (iso === today ? " is-today" : "")}
+                  className={cn(s.calDay, { "is-today": iso === today })}
                   role="gridcell"
                   aria-labelledby={"cal-" + iso}
+                  data-cal-day
                 >
-                  <div className="cal-body">
+                  <div className={s.calBody}>
                     {(byDay[iso] || []).map(renderEvent)}
                   </div>
                 </section>
@@ -214,7 +218,7 @@ export function CalendarView({
   }
 
   return (
-    <div className="weeks">
+    <div className={s.weeks}>
       {weeks.map((weekDays, index) => {
         const weekEvents: ConcertEvent[] = [];
         weekDays.forEach((iso) => {
@@ -223,7 +227,7 @@ export function CalendarView({
         const key = weekDays[0];
         if (!weekEvents.length && index !== 0) return null;
         return (
-          <div className="week-block" key={key}>
+          <div className={s.weekBlock} key={key}>
             <WeekHead
               title={weekTitle(key, weekDays)}
               weekKey={key}
@@ -235,15 +239,15 @@ export function CalendarView({
               onPlayWeek={onPlayWeek}
               onPreloadWeek={onPreloadWeek}
             />
-            <div className="week" role="grid" aria-label="Veckokalender">
-              <div className="cal-heads">
+            <div className={s.week} role="grid" aria-label="Veckokalender" data-week>
+              <div className={s.calHeads} data-cal-heads>
                 {weekDays.map((iso) => {
                   const day = parseDay(iso);
                   const heading = formatDay(iso);
                   return (
                     <h2
                       key={iso}
-                      className={"cal-head" + (iso === today ? " is-today" : "")}
+                      className={cn(s.calHead, { "is-today": iso === today })}
                       id={"cal-" + iso}
                       aria-current={iso === today ? "date" : undefined}
                     >
@@ -253,15 +257,16 @@ export function CalendarView({
                   );
                 })}
               </div>
-              <div className="cal-cols">
+              <div className={s.calCols}>
                 {weekDays.map((iso) => (
                   <section
                     key={iso}
-                    className={"cal-day" + (iso === today ? " is-today" : "")}
+                    className={cn(s.calDay, { "is-today": iso === today })}
                     role="gridcell"
                     aria-labelledby={"cal-" + iso}
+                    data-cal-day
                   >
-                    <div className="cal-body">
+                    <div className={s.calBody}>
                       {(byDay[iso] || []).map(renderEvent)}
                     </div>
                   </section>

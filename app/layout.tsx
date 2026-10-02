@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import localFont from "next/font/local";
 import Script from "next/script";
-import "./globals.css";
+import "@/styles/index.scss";
 
 const william = localFont({
   src: [
-    { path: "./fonts/WilliamText-Regular.woff2", weight: "400", style: "normal" },
-    { path: "./fonts/WilliamText-Italic.woff2", weight: "400", style: "italic" },
-    { path: "./fonts/WilliamText-Bold.woff2", weight: "700", style: "normal" },
-    { path: "./fonts/WilliamText-BoldItalic.woff2", weight: "700", style: "italic" },
+    { path: "../public/fonts/WilliamText-Regular.woff2", weight: "400", style: "normal" },
+    { path: "../public/fonts/WilliamText-Italic.woff2", weight: "400", style: "italic" },
+    { path: "../public/fonts/WilliamText-Bold.woff2", weight: "700", style: "normal" },
+    { path: "../public/fonts/WilliamText-BoldItalic.woff2", weight: "700", style: "italic" },
   ],
   variable: "--font-william",
   display: "swap",

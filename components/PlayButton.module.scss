@@ -1,0 +1,132 @@
+@use '../styles/mediaqueries' as *;
+
+/*
+ * Play control. Consumers (EventCard, CalendarView) position it through the
+ * `data-play` / `data-play-cluster` hooks rather than reaching into these
+ * scoped classes.
+ */
+
+.play {
+	appearance: none;
+	position: relative;
+	width: 2.85rem;
+	height: 2.85rem;
+	border-radius: 999px;
+	border: 1px solid var(--line);
+	background: transparent;
+	color: var(--ink);
+	display: grid;
+	place-items: center;
+	cursor: pointer;
+	flex: 0 0 auto;
+}
+
+.play svg {
+	width: 1.05rem;
+	height: 1.05rem;
+	fill: currentColor;
+}
+
+.play:hover,
+.play:focus-visible {
+	border-color: var(--ink);
+}
+
+.play:global(.is-on) {
+	background: var(--ink);
+	color: var(--bg);
+	border-color: var(--ink);
+}
+
+.play:global(.is-loading) {
+	opacity: 0.45;
+}
+
+.play:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+.playCluster {
+	position: relative;
+	display: grid;
+	place-items: center;
+	flex: 0 0 auto;
+	z-index: 2;
+}
+
+.playSkip {
+	appearance: none;
+	position: absolute;
+	top: 50%;
+	width: 1.75rem;
+	height: 1.75rem;
+	padding: 0;
+	border: 0;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--ink);
+	display: grid;
+	place-items: center;
+	cursor: pointer;
+	opacity: 0;
+	pointer-events: none;
+	transform: translateY(-50%) scale(0.72);
+	transition: opacity 0.42s ease, transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.playSkipPrev {
+	right: calc(100% + 0.08rem);
+	transform: translateY(-50%) translateX(0.55rem) scale(0.72);
+}
+
+.playSkipNext {
+	left: calc(100% + 0.08rem);
+	transform: translateY(-50%) translateX(-0.55rem) scale(0.72);
+}
+
+.playCluster:global(.is-open) .playSkip {
+	opacity: 1;
+	pointer-events: auto;
+	transform: translateY(-50%) translateX(0) scale(1);
+}
+
+.playSkip svg {
+	width: 0.88rem;
+	height: 0.88rem;
+	fill: currentColor;
+}
+
+.playSkip:hover,
+.playSkip:focus-visible {
+	background: var(--hover);
+}
+
+.playCount {
+	position: absolute;
+	top: -0.22rem;
+	right: -0.22rem;
+	min-width: 1.05rem;
+	height: 1.05rem;
+	padding: 0 0.22rem;
+	border-radius: 999px;
+	background: var(--ink);
+	color: var(--bg);
+	font-size: 0.62rem;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.05rem;
+	text-align: center;
+	pointer-events: none;
+}
+
+.play:global(.is-on) .playCount {
+	background: var(--bg);
+	color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.playSkip {
+		transition: none;
+	}
+}

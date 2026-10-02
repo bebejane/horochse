@@ -1,5 +1,8 @@
 "use client";
 
+import s from "./PlayButton.module.scss";
+import cn from "classnames";
+
 import { eventTracks, trackSource } from "@/lib/events";
 import type { ConcertEvent } from "@/lib/types";
 import { NextIcon, PauseIcon, PlayIcon, PrevIcon } from "./Icons";
@@ -36,7 +39,8 @@ export function PlayButton({
   const playBtn = (
     <button
       type="button"
-      className={"play" + (playing && current ? " is-on" : "") + (loading ? " is-loading" : "")}
+      className={cn(s.play, { "is-on": playing && current, "is-loading": loading })}
+      data-play
       data-id={event.id}
       title={label}
       aria-label={label}
@@ -51,15 +55,16 @@ export function PlayButton({
     >
       <PlayIcon />
       <PauseIcon />
-      {n > 1 ? <span className="play-count">{n}</span> : null}
+      {n > 1 ? <span className={s.playCount} data-play-count>{n}</span> : null}
     </button>
   );
   if (n < 2) return playBtn;
   return (
-    <div className={"play-cluster" + (current ? " is-open" : "")} data-id={event.id}>
+    <div className={cn(s.playCluster, { "is-open": current })} data-play-cluster data-id={event.id}>
       <button
         type="button"
-        className="play-skip play-skip-prev"
+        className={cn(s.playSkip, s.playSkipPrev)}
+        data-play-skip
         tabIndex={current ? 0 : -1}
         aria-hidden={current ? "false" : "true"}
         aria-label="Föregående låt"
@@ -74,7 +79,8 @@ export function PlayButton({
       {playBtn}
       <button
         type="button"
-        className="play-skip play-skip-next"
+        className={cn(s.playSkip, s.playSkipNext)}
+        data-play-skip
         tabIndex={current ? 0 : -1}
         aria-hidden={current ? "false" : "true"}
         aria-label="Nästa låt"
