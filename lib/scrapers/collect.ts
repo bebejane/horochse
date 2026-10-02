@@ -16,19 +16,28 @@ export type CollectOptions = {
   artistTimeoutMs?: number;
 };
 
+export type CollectResult = EventsPayload & {
+  /** Which source produced each event id (not part of events.json). */
+  provenance: Record<string, string>;
+  /** Sources that ran and finished without error. */
+  okSources: string[];
+};
+
 const DEFAULT_SOURCE_TIMEOUT_MS = 90000;
 
 function cmp(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-export async function collect(opts: CollectOptions = {}): Promise<EventsPayload> {
+export async function collect(opts: CollectOptions = {}): Promise<CollectResult> {
   const { only, quiet = false } = opts;
   const concurrency = opts.concurrency ?? 4;
   const sourceTimeoutMs = opts.sourceTimeoutMs ?? DEFAULT_SOURCE_TIMEOUT_MS;
   const [start, end] = weekBounds();
   const sources = only ? SOURCES.filter(([name]) => name === only) : SOURCES;
   const errors: Record<string, string> = {};
+  const provenance: Record<string, string> = {};
+  const okSources: string[] = [];
   let events: ScrapedEvent[] = [];
 
   log(
@@ -43,6 +52,7 @@ export async function collect(opts: CollectOptions = {}): Promise<EventsPayload>
     if (!quiet) log(`→ ${name}`);
     try {
       const batch = await withTimeout(fn(start, end), sourceTimeoutMs, name);
+      okSources.push(name);
       if (!quiet) log(`✓ ${name}: ${batch.length} konserter (${seconds(Date.now() - t)})`);
       return batch;
     } catch (exc) {
@@ -51,7 +61,11 @@ export async function collect(opts: CollectOptions = {}): Promise<EventsPayload>
       return [] as ScrapedEvent[];
     }
   });
-  for (const batch of results) events.push(...batch);
+  results.forEach((batch, i) => {
+    const name = sources[i][0];
+    for (const event of batch) provenance[event.id] = name;
+    events.push(...batch);
+  });
   log(
     `Källor klara: ${events.length} konserter, ${Object.keys(errors).length} fel (${seconds(Date.now() - tSources)})`,
   );
@@ -93,5 +107,7 @@ export async function collect(opts: CollectOptions = {}): Promise<EventsPayload>
     range: { from: start.toFormat("yyyy-MM-dd"), to: end.toFormat("yyyy-MM-dd") },
     errors,
     events,
+    provenance,
+    okSources,
   };
 }

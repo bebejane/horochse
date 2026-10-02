@@ -136,14 +136,65 @@ export async function httpJson(url: string, payload: Record<string, unknown>): P
     Referer: "https://bandcamp.com/",
   };
   let lastError: unknown;
-  for (let attempt = 0; attempt < 4; attempt++) {
+  const attempts = 5;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    // Bandcamp's search API is rate-limited per host; serialize same-host calls
+    // so bursts from many concurrent artists don't trip 429s.
+    await hostThrottle(url);
     const res = await withSlot(() =>
       fetch(url, { method: "POST", headers, body, signal: AbortSignal.timeout(30000) }),
     );
     if (res.ok) return await res.json();
     lastError = new HttpError(res.status, `HTTP ${res.status} for ${url}`);
-    if (res.status !== 429 || attempt === 3) throw lastError;
-    await sleep(3000 * (attempt + 1));
+    if (res.status !== 429 || attempt === attempts - 1) throw lastError;
+    // Exponential backoff with jitter; honour Retry-After when present.
+    const retryAfter = Number(res.headers.get("retry-after") || 0);
+    const base = retryAfter > 0 ? retryAfter * 1000 : Math.min(15000, 1000 * 2 ** attempt);
+    await sleep(base + Math.floor(Math.random() * 500));
   }
   throw lastError;
+}
+
+// --- Per-host throttling ----------------------------------------------------
+// Some APIs (Bandcamp search) 429 if several requests land at once. These
+// limits apply globally per host so concurrency in the caller can stay high.
+const HOST_LIMITS: { match: RegExp; minIntervalMs: number; maxConcurrent: number }[] = [
+  { match: /bandcamp\.com$/i, minIntervalMs: 250, maxConcurrent: 2 },
+];
+
+type HostState = { last: number; active: number; queue: Array<() => void> };
+const hostStates = new Map<string, HostState>();
+
+function hostState(host: string): HostState {
+  let state = hostStates.get(host);
+  if (!state) {
+    state = { last: 0, active: 0, queue: [] };
+    hostStates.set(host, state);
+  }
+  return state;
+}
+
+async function hostThrottle(url: string): Promise<void> {
+  let host: string;
+  try {
+    host = new URL(url).host;
+  } catch {
+    return;
+  }
+  const limit = HOST_LIMITS.find((entry) => entry.match.test(host));
+  if (!limit) return;
+  const state = hostState(host);
+  if (state.active >= limit.maxConcurrent) {
+    await new Promise<void>((resolve) => state.queue.push(resolve));
+  }
+  state.active++;
+  const wait = state.last + limit.minIntervalMs - Date.now();
+  if (wait > 0) await sleep(wait);
+  state.last = Date.now();
+  // Release the concurrency slot once the (throttled) caller proceeds.
+  queueMicrotask(() => {
+    state.active--;
+    const next = state.queue.shift();
+    if (next) next();
+  });
 }

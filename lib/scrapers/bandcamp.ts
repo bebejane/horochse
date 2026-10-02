@@ -1,16 +1,49 @@
-import { httpJson, httpRequest } from "./http";
+import { httpJson, httpRequest, HttpError } from "./http";
 import { parseBcDate } from "./dates";
 import { parseBandcampIds } from "./links";
 import { albumTitleScore, cleanPersonName, cluesCacheKey, eventLookupClues, foldName, namesMatch, sameArtist } from "./text";
 
 type Release = Record<string, any>;
 
+/**
+ * Bandcamp's search API (`autocomplete_elastic`) can rate-limit an IP outright,
+ * returning 429 even for a single request. Once that happens, retrying every
+ * artist is pointless work, so open a circuit that skips searches for a while.
+ * The rest of Bandcamp (mobile API, artist pages) keeps working; only the
+ * search-assisted lookups are skipped.
+ */
+const SEARCH_CIRCUIT_COOLDOWN_MS = 10 * 60 * 1000;
+let searchCircuitOpenUntil = 0;
+
+export function isBandcampSearchBlocked(): boolean {
+  return Date.now() < searchCircuitOpenUntil;
+}
+
+function tripSearchCircuit(): void {
+  const wasOpen = isBandcampSearchBlocked();
+  searchCircuitOpenUntil = Date.now() + SEARCH_CIRCUIT_COOLDOWN_MS;
+  if (!wasOpen) {
+    console.error(
+      "bandcamp-sökning: 429 — pausar sökningar i 10 min (övriga Bandcamp-anrop fortsätter)",
+    );
+  }
+}
+
 export async function searchBandcampRowsAsync(query: string, searchFilter: string): Promise<any[]> {
-  const data = await httpJson(
-    "https://bandcamp.com/api/bcsearch_public_api/1/autocomplete_elastic",
-    { search_text: query, search_filter: searchFilter, full_page: false, fan_id: null },
-  );
-  return (data?.auto?.results as any[]) || [];
+  if (isBandcampSearchBlocked()) return [];
+  try {
+    const data = await httpJson(
+      "https://bandcamp.com/api/bcsearch_public_api/1/autocomplete_elastic",
+      { search_text: query, search_filter: searchFilter, full_page: false, fan_id: null },
+    );
+    return (data?.auto?.results as any[]) || [];
+  } catch (err) {
+    if (err instanceof HttpError && err.status === 429) {
+      tripSearchCircuit();
+      return [];
+    }
+    throw err;
+  }
 }
 
 export async function searchBandcampArtists(query: string, allowFolded = false): Promise<any[]> {
@@ -209,6 +242,7 @@ export async function findBandcampAlbumForArtist(
   hints: string[],
   cache: Map<string, Release | null>,
 ): Promise<Release | null> {
+  if (isBandcampSearchBlocked()) return null;
   const queries: string[] = [];
   for (const hint of hints) {
     queries.push(artist + " " + hint);
@@ -355,12 +389,15 @@ export async function lookupBandcamp(
         return release;
       }
     }
+    if (isBandcampSearchBlocked()) {
+      return null;
+    }
     console.log(`bandcamp (${query}): inget träff (${secs(started)})`);
     cache.set(key, null);
     return null;
   } catch (exc) {
     console.error(`bandcamp (${query}):`, exc);
-    if (!String(exc).includes("429")) cache.set(key, null);
+    if (!(exc instanceof HttpError && exc.status === 429)) cache.set(key, null);
     return null;
   }
 }

@@ -41,6 +41,8 @@ Stockholm concert aggregator. A Next.js 16 App Router client app (React 19, Turb
 - Adding a venue: create `lib/scrapers/venues/<slug>.ts`, register it in `lib/scrapers/registry.ts` (`SOURCES`), add the slug to `VENUES`/`VenueSlug` in `lib/types.ts`, and add an address in `lib/ics.ts` (`VENUE_ADDRESSES`) if calendars should locate it.
 - Slakthusen stages (`slaktkyrkan`, `hus7`) all delegate to `sources/slakthusen.ts` and emit `venue_slug: "slakthusen"` with the stage in `place`.
 - Window is fixed at `WEEKS = 5` in `dates.ts`. No API keys: the SoundCloud `client_id` is scraped from soundcloud.com at runtime; Bandcamp uses its public mobile API.
+- **Bandcamp rate limits:** `autocomplete_elastic` (the search endpoint) can 429 an IP for a while. `httpJson` throttles same-host calls (see `HOST_LIMITS` in `http.ts`) with exponential backoff + jitter, and `bandcamp.ts` opens a 10-min circuit (`isBandcampSearchBlocked`) so a block skips search-assisted lookups instead of retrying every artist. A blocked search just means fewer tracks; the run is unaffected. The mobile API (`tralbum_details`/`band_details`) is not rate-limited the same way.
+- **Event-page fetches in the track phase** (`takePageLinks`) skip Ticketmaster/Live Nation hosts (`EVENT_PAGE_SKIP_HOSTS` in `links.ts`) — they need a session cookie, always 401, and never expose music links. Other hosts log a single `evenemangssida … HTTP 4xx (hoppar över)` line via `warn` instead of a stack trace; the lookup continues using `text`/`title` only.
 - Preserve the `eventId` algorithm and JSON field shape — ICS URLs and `localStorage` keys depend on them.
 
 ## Duplicated logic — keep both sides in sync
@@ -53,10 +55,19 @@ Changing one side only makes the stored events and the rendered UI disagree.
 
 ## Database (Drizzle + Turso)
 
-- `lib/db/index.ts` exports `db` (a `drizzle-orm/libsql` client over `@libsql/client`). It imports `server-only`, so never import it from a client component. The client is cached on `globalThis` to survive dev hot-reloads.
+- `lib/db/schema.ts` holds `venues`, `sources`, `events`, `tracks`, `scrape_runs`, `scrape_errors`. `lib/db/queries.ts` is the data-access layer (write helpers `upsertEvents`/`reconcileSource`/`startScrapeRun`/… plus read helpers `loadPayload`/`loadEvents`/`findEvent`). `lib/db/client.ts` deliberately omits `server-only` so `tsx` scripts can reuse it; `lib/db/index.ts` re-exports it with the `server-only` guard for the app.
 - Env: `TURSO_DATABASE_URL` (required) and `TURSO_AUTH_TOKEN` (optional for a local `file:` DB); both live in the gitignored `.env`.
-- Tables go in `lib/db/schema.ts` (currently empty) and are passed to `drizzle(client, { schema })`. `drizzle.config.ts` points `drizzle-kit` at that schema (`dialect: "turso"`).
 - Migration workflow: `pnpm db:generate` → commit `./drizzle` → `pnpm db:push` (dev) or `pnpm db:migrate`. drizzle-kit loads `.env` itself.
+
+## Scrape → Turso cron
+
+- `lib/scrapers/store.ts` → `scrapeAndStore(opts)`: runs `collect()`, seeds `venues`/`sources`, upserts events + tracks, reconciles sources that ran cleanly, and records a `scrape_run`. It is the single shared writer; do not duplicate this logic.
+- Two entry points, same function:
+  - `pnpm scrape:db` — CLI (`scripts/scrape-to-db.ts`), for system crontab / GitHub Actions. Flags `--only`, `--no-tracks`, `--quiet`.
+  - `GET /api/cron/scrape` — Vercel Cron (scheduled in `vercel.json`, daily 05:00 UTC). Guarded by `Authorization: Bearer $CRON_SECRET` (Vercel sends this) or `?secret=`; `&tracks=false` and `&only=` are supported for cheap manual runs. `maxDuration = 300` because a full run is ~5 min — **needs a Vercel plan allowing 300 s**, not Hobby's 60 s.
+- `collect()` returns `provenance` (event id → source key) and `okSources`; these drive `events.source_key` and per-source reconciliation and are **not** part of `events.json`.
+- The app still reads `public/data/events.json` (`lib/load-events.ts`); Turso is write-only for now. Switching the read path to `loadPayload()` is a separate change.
+- For local runs, load `.env` explicitly: `node --env-file=.env --import tsx scripts/scrape-to-db.ts` (plain `tsx` via the pnpm shim can break under an inherited `NODE_OPTIONS`).
 
 ## Environment / tooling gotchas
 

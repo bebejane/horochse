@@ -1,5 +1,6 @@
-import { httpRequest } from "./http";
+import { HttpError, httpRequest } from "./http";
 import { unescape } from "./html";
+import { warn } from "./log";
 import type { ScrapedEvent } from "./types";
 
 const BANDCAMP_URL_RE =
@@ -9,6 +10,23 @@ const BANDCAMP_SKIP_HOSTS = new Set([
   "help.bandcamp.com",
   "blog.bandcamp.com",
 ]);
+
+// Event pages on these hosts require a session cookie / bot challenge; they
+// only ever return 401 and never expose Bandcamp/SoundCloud links, so fetching
+// them just creates noise. Skip the request entirely.
+const EVENT_PAGE_SKIP_HOSTS = [
+  /(^|\.)ticketmaster\.(se|com|dk|no|fi)$/i,
+  /(^|\.)livenation\.(se|com)$/i,
+];
+
+function isSkippableEventPage(url: string): boolean {
+  try {
+    const host = new URL(url).host;
+    return EVENT_PAGE_SKIP_HOSTS.some((re) => re.test(host));
+  } catch {
+    return false;
+  }
+}
 
 export function cleanBandcampUrl(raw: string): string {
   let url = unescape(String(raw || "")).trim();
@@ -131,11 +149,12 @@ export async function takePageLinks(event: ScrapedEvent): Promise<[string[], str
   delete event._soundcloud_links;
   if (bc !== undefined || sc !== undefined) return [bc || [], sc || []];
   const chunks: string[] = [event.text || "", event.title || ""];
-  if (event.url) {
+  if (event.url && !isSkippableEventPage(event.url)) {
     try {
       chunks.push(await httpRequest(event.url));
     } catch (exc) {
-      console.error(`evenemangssida (${event.url}):`, exc);
+      const msg = exc instanceof HttpError ? `HTTP ${exc.status}` : String(exc);
+      warn(`evenemangssida ${event.url}: ${msg} (hoppar över)`);
     }
   }
   const blob = chunks.join("\n");

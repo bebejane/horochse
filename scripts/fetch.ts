@@ -1,9 +1,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { collect } from "../lib/scrapers/collect";
-import { setHttpConcurrency, setHttpVerbose } from "../lib/scrapers/http";
-import { log, seconds } from "../lib/scrapers/log";
+// CLI entry point for the plain scrape (writes public/data/events.json).
+// Loads .env so any env-dependent import behaves the same as the DB pipeline.
+
+import { config } from "dotenv";
+
+config({ path: [".env.local", ".env"], quiet: true });
+
 const DEFAULT_PATH = path.join(process.cwd(), "public", "data", "events.json");
 
 function argValue(args: string[], name: string): string | undefined {
@@ -42,6 +46,10 @@ async function main(): Promise<number> {
     : undefined;
   const tracks = !args.includes("--no-tracks");
   const quiet = args.includes("--quiet");
+
+  const { collect } = await import("../lib/scrapers/collect");
+  const { setHttpConcurrency, setHttpVerbose } = await import("../lib/scrapers/http");
+  const { log, seconds } = await import("../lib/scrapers/log");
   if (concurrency) setHttpConcurrency(concurrency);
   if (args.includes("--verbose-http")) setHttpVerbose(true);
 
