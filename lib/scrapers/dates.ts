@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { fold } from './html';
 
 export const TZ = 'Europe/Stockholm';
-export const WEEKS = 10;
+export const WEEKS = 5;
 export const WEEK_DAYS = WEEKS * 7;
 
 export const MONTHS_SV: Record<string, number> = {
