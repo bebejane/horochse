@@ -388,6 +388,69 @@ export async function getLatestRun() {
   return row ?? null;
 }
 
+export type RunReport = {
+  run: typeof scrapeRuns.$inferSelect;
+  /** Active events first seen this run (new) vs updated. */
+  newEvents: number;
+  updatedEvents: number;
+  /** Playable events (have ≥1 track) among those seen this run. */
+  withTracks: number;
+  /** Track counts by source across events seen this run. */
+  trackSources: { source: string; count: number }[];
+  /** Events per venue slug seen this run. */
+  perVenue: { venueSlug: string; count: number }[];
+  errors: { source: string; message: string }[];
+};
+
+/** Detailed report for one scrape run, for the cron email. */
+export async function runReport(runId: number): Promise<RunReport | null> {
+  const [run] = await db.select().from(scrapeRuns).where(eq(scrapeRuns.id, runId)).limit(1);
+  if (!run) return null;
+
+  const runEvents = await db
+    .select({ id: events.id, venueSlug: events.venueSlug, firstRunId: events.firstRunId })
+    .from(events)
+    .where(eq(events.lastRunId, runId));
+
+  const ids = runEvents.map((row) => row.id);
+  const newEvents = runEvents.filter((row) => row.firstRunId === runId).length;
+
+  const byEvent =
+    ids.length > 0
+      ? await db
+          .select({ eventId: tracks.eventId, source: tracks.source })
+          .from(tracks)
+          .where(inArray(tracks.eventId, ids))
+      : [];
+
+  const withTracksSet = new Set(byEvent.map((row) => row.eventId));
+  const trackCounts = new Map<string, number>();
+  for (const row of byEvent) {
+    trackCounts.set(row.source, (trackCounts.get(row.source) || 0) + 1);
+  }
+
+  const venueCounts = new Map<string, number>();
+  for (const row of runEvents) {
+    venueCounts.set(row.venueSlug, (venueCounts.get(row.venueSlug) || 0) + 1);
+  }
+
+  const errorRows = await db.select().from(scrapeErrors).where(eq(scrapeErrors.runId, runId));
+
+  return {
+    run,
+    newEvents,
+    updatedEvents: runEvents.length - newEvents,
+    withTracks: withTracksSet.size,
+    trackSources: [...trackCounts]
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count),
+    perVenue: [...venueCounts]
+      .map(([venueSlug, count]) => ({ venueSlug, count }))
+      .sort((a, b) => b.count - a.count),
+    errors: errorRows.map((row) => ({ source: row.source, message: row.message })),
+  };
+}
+
 function isoFromDate(value: Date | number): string {
   const date = value instanceof Date ? value : new Date(value);
   return DateTime.fromJSDate(date).setZone(TZ).toISO({ suppressMilliseconds: true }) ?? "";

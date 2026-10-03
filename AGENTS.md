@@ -82,7 +82,7 @@ Changing one side only makes the stored events and the rendered UI disagree.
 - `lib/scrapers/store.ts` → `scrapeAndStore(opts)`: runs `collect()`, seeds `venues`/`sources`, upserts events + tracks, reconciles sources that ran cleanly, and records a `scrape_run`. It is the single shared writer; do not duplicate this logic.
 - Two entry points, same function:
   - `pnpm scrape:db` — CLI (`scripts/scrape-to-db.ts`), for system crontab / GitHub Actions. Flags `--only`, `--no-tracks`, `--quiet`.
-  - `GET /api/cron/scrape` — Vercel Cron (scheduled in `vercel.json`, daily 05:00 UTC). Guarded by `Authorization: Bearer $CRON_SECRET` (Vercel sends this) or `?secret=`; `&tracks=false` and `&only=` are supported for cheap manual runs. `maxDuration = 300` because a full run is ~5 min — **needs a Vercel plan allowing 300 s**, not Hobby's 60 s.
+  - `GET /api/cron/scrape` — Vercel Cron (scheduled in `vercel.json`, daily 05:00 UTC). Guarded by `Authorization: Bearer $CRON_SECRET` (Vercel sends this) or `?secret=`; `&tracks=false` and `&only=` are supported for cheap manual runs. `maxDuration = 600` because a full run is ~1–5 min. After every run it emails a detailed report via Postmark (`lib/run-report.ts` → `lib/mail.ts`), and a failure email if the run crashes.
 - `collect()` returns `provenance` (event id → source key) and `okSources`; these drive `events.source_key` and per-source reconciliation and are internal to the write path (not persisted on the event).
 - **Never use `db.transaction()` with this remote `libsql://` client** — interactive transactions (BEGIN/COMMIT) hang over Turso's HTTP transport, which stalls the run right after the seed log. Use `db.batch([...])` (one atomic HTTP round-trip; statements run in array order) as `upsertEvents` does. Same applies to any future multi-statement write.
 - The app reads from Turso (`/api/events` → `loadPayload()`, ICS → `findEvent()`); there is no JSON feed. The only writer is `scrapeAndStore`.
@@ -90,7 +90,7 @@ Changing one side only makes the stored events and the rendered UI disagree.
 
 ## Environment / tooling gotchas
 
-- The scraper and app need **no** env vars — YouTube is scraped key-lessly (`ytInitialData` + oembed). The Turso client reads `TURSO_DATABASE_URL` (+ optional `TURSO_AUTH_TOKEN`) from the gitignored `.env`, where the keys already exist.
+- The scraper and app need **no** env vars — YouTube is scraped key-lessly (`ytInitialData` + oembed). The Turso client reads `TURSO_DATABASE_URL` (+ optional `TURSO_AUTH_TOKEN`) from the gitignored `.env`. Postmark email uses `POSTMARK_API_TOKEN`, `POSTMARK_FROM_NAME`, `POSTMARK_FROM_EMAIL`; the report recipient is `SCRAPE_REPORT_TO` (default `dev@konst-teknik.se`).
 - The working install is **pnpm** (`node_modules` is pnpm, `pnpm-workspace.yaml` + `pnpm-lock.yaml` are maintained, `allowBuilds: esbuild` is required by drizzle-kit), even though the README says npm and `package-lock.json` is stale. Prefer pnpm and don't regenerate `package-lock.json`.
 - `next dev` auto-manages the `<!-- BEGIN:nextjs-agent-rules -->` block at the top of this file, plus `CLAUDE.md` (which is just `@AGENTS.md`). Leave it in place. Disable generation with `agentRules: false` in `next.config.ts`.
 - This Next.js (16.3.6) / React 19 are newer than many model cutoffs. Read `node_modules/next/dist/docs/` before using unfamiliar APIs.
