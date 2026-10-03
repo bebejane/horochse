@@ -10,6 +10,7 @@ import {
   ogImage,
   pageMediaFields,
   parseDt,
+  parseEnDate,
   parseEnMdy,
   pickImage,
   stripTags,
@@ -21,7 +22,7 @@ import type { ScrapedEvent } from "../types";
 
 function parseBernsDate(raw: string): DateTime | null {
   const text = unescape(raw || "").trim();
-  const parsed = parseDt(text) || parseEnMdy(text);
+  const parsed = parseDt(text) || parseEnMdy(text) || parseEnDate(text);
   if (parsed) return parsed;
   let match = /(\d{1,2})[./-](\d{1,2})[./-](20\d{2})/.exec(text);
   if (match) {
@@ -76,33 +77,45 @@ export async function fetch(start: DateTime, end: DateTime): Promise<ScrapedEven
     );
   });
 
-  const calendarCandidates: { title: string; url: string; when: DateTime }[] = [];
-  for (const match of htmlPage.matchAll(
-    /(https:\/\/berns\.se\/calendar\/[^"]+\/)"[\s\S]{0,800}?<(?:h[1-4]|div)[^>]*>\s*([^<]{3,80})/gi,
-  )) {
-    const url = match[1];
-    const title = unescape(match[2]).trim();
+  // Calendar items are self-contained blocks:
+  //   <div class="calender-item ...">
+  //     <a href="https://berns.se/calendar/<slug>/"><img src=…></a>
+  //     <div class="citem-bottom">
+  //       <div class="citem-meta"><div class="citem-date">18 October 2026</div>…</div>
+  //       <div class="citem-title"><h5>Name</h5></div>
+  //     </div>
+  //   </div>
+  // Split on the item wrapper so each chunk holds exactly one event; title and
+  // date live in named `citem-*` nodes, so no fragile distance regex is needed.
+  const calendarCandidates: { title: string; url: string; when: DateTime; image: string }[] = [];
+  for (const chunk of htmlPage.split('class="calender-item').slice(1)) {
+    const url = /href="(https:\/\/berns\.se\/calendar\/[^"]+?\/)"/.exec(chunk)?.[1];
+    if (!url) continue;
+    const title = unescape(
+      /citem-title[^>]*>\s*<h\d[^>]*>([^<]+)<\/h\d>/i.exec(chunk)?.[1] ?? "",
+    )
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!title) continue;
     if (/afterwork|what.?s on|book|\baw\b|out of office/i.test(title)) continue;
-    const start0 = Math.max(0, (match.index ?? 0) - 400);
-    const end0 = (match.index ?? 0) + match[0].length + 200;
-    const windowBlob = htmlPage.slice(start0, end0);
-    const dateText =
-      /(\d{1,2}[-/.]\d{1,2}[-/.]20\d{2}|[A-Za-z]+ \d{1,2},? 20\d{2}|\d{1,2} \w+ 20\d{2})/.exec(
-        windowBlob,
-      );
-    let when = parseBernsDate(dateText ? dateText[0] : "");
-    if (when === null) continue;
-    when = when.set({ hour: 19, minute: 0 });
+    const parsedDate = parseBernsDate(/citem-date[^>]*>([^<]*)</i.exec(chunk)?.[1] ?? "");
+    if (parsedDate === null) continue;
+    const when = parsedDate.set({ hour: 19, minute: 0 });
     if (!inRange(when, start, end)) continue;
     if (!isConcert(title, "musik")) continue;
     if (seen.has(url)) continue;
     seen.add(url);
-    calendarCandidates.push({ title, url, when });
+    const imgTag = /<img[^>]*>/i.exec(chunk)?.[0] ?? "";
+    calendarCandidates.push({
+      title,
+      url,
+      when,
+      image: pickImage(/src="([^"]+)"/i.exec(imgTag)?.[1], /srcset="([^"]+)"/i.exec(imgTag)?.[1]),
+    });
   }
-  const calendarImages = await mapPool(calendarCandidates, 6, (item) => fetchOg(item.url));
-  calendarCandidates.forEach((item, i) => {
-    events.push(makeEvent("berns", "Berns", item.title, item.when, item.url, { image: calendarImages[i] }));
-  });
+  for (const item of calendarCandidates) {
+    events.push(makeEvent("berns", "Berns", item.title, item.when, item.url, { image: item.image }));
+  }
 
   if (events.length) return events;
 
