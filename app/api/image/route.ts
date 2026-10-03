@@ -48,7 +48,6 @@ export async function GET(request: Request) {
       // Immutable because the URL encodes content (source url + width + format).
       "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
       "Content-Length": String(result.body.byteLength),
-      Vary: "Accept",
     },
   });
 }
