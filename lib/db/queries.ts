@@ -20,7 +20,6 @@ import {
 import type { ConcertEvent, EventsPayload, Track } from "@/lib/types";
 
 import { db } from "./client";
-import { signedImageUrl } from "@/lib/image-sign";
 import { bandcampArtists, events, scrapeErrors, scrapeRuns, sources, tracks, venues, youtubeVideos } from "./schema";
 
 type EventRow = typeof events.$inferSelect;
@@ -485,7 +484,9 @@ function toConcertEvent(row: EventRow, venueName: string, trackRows: TrackRow[])
     date: row.date,
     time: row.time,
     datetime: isoFromDate(row.startsAt),
-    image: signedImageUrl(row.image),
+    // Raw venue URL; `next/image` (Vercel Image Optimization) resizes it and
+    // `images.remotePatterns` restricts which hosts may be optimized.
+    image: row.image ?? "",
     text: row.text ?? "",
     url: row.url,
     place: row.place ?? "",

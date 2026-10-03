@@ -36,11 +36,11 @@ Stockholm concert aggregator. A Next.js 16 App Router client app (React 19, Turb
 
 ## Images
 
-- Venue pages link full-resolution originals (some 16 MB) rendered as small thumbnails, so `app/api/image` (`?url=&w=&sig=`, Node runtime) fetches once, resizes with `sharp`, and re-encodes. Payloads get their URLs server-side via `signedImageUrl()` (`lib/image-sign.ts`, called from `lib/db/queries.ts`), and components render `event.image` directly. Measured: 215 KB → 12 KB JPEG, 16 MB → 38 KB AVIF.
-- **Signed URLs (anti-SSRF/abuse)**: the route verifies an HMAC over `url|w` (`lib/image-sign.ts`, key = `IMAGE_SECRET` or `CRON_SECRET`, dev fallback) and returns **403** for missing/tampered signatures — an arbitrary `?url=` cannot be proxied even for an allowed host. The secret never reaches the client. Rotating the secret only invalidates image URLs (they are rebuilt per request from the payload).
-- **SSRF allowlist**: additionally only hosts in `IMAGE_ALLOWED_HOSTS` (`lib/image-url.ts`) are proxied. Add new hosts there when adding venues, or the image silently falls back to the original URL.
-- **Caching layers**: browser + Vercel CDN via `public, max-age=31536000, immutable` (+ `Vary: Accept`, `X-Content-Type-Options: nosniff`); a **disk cache** at `.cache/images` (gitignored) persists in dev so repeats are instant and is a harmless no-op on Vercel's ephemeral FS. AVIF/WebP/JPEG chosen from `Accept`; widths snap to `IMAGE_WIDTHS` (200/400/800/1200). A failed fetch redirects (307) to the original rather than breaking the page.
-- `sharp` needs its install script: `allowBuilds: sharp: true` in `pnpm-workspace.yaml`. Binary fetch uses `httpBuffer` (`http.ts`) — `httpRequest` decodes as UTF-8 and corrupts images.
+- Venue pages link full-resolution originals (some 16 MB) rendered as small thumbnails. Posters are rendered through `next/image` (`EventCard.tsx`, `CalendarView.tsx`, both `fill`) and optimized by **Vercel Image Optimization** (the default loader) — Vercel fetches the venue original, resizes, and serves AVIF/WebP from its persistent image cache. `lib/db/queries.ts` emits the **raw venue URL** on `event.image`; there is no app-side proxy.
+- **Host allowlist (SSRF)**: `next.config.ts` builds `images.remotePatterns` from `IMAGE_ALLOWED_HOSTS` (`lib/image-url.ts`). Add a host there when adding a venue, or that venue's posters will not be optimized (the `onError` handler falls back to the `MastSymbol` placeholder). Omitting `search` intentionally allows query strings on source URLs.
+- **History**: the previous custom `/api/image` proxy (HMAC-signed URLs + `sharp`, `lib/image-sign.ts`/`lib/image-proxy.ts`) was removed after it caused per-browser CDN cache fragmentation via `Vary: Accept`. Vercel's optimizer handles format negotiation and caching itself.
+- **Cost**: Vercel Image Optimization is metered (Pro includes ~5K transformations/month; then ~$0.05/1K + cache read/write). At ~317 events this stays within the included tier.
+- `sharp` is still a dependency for local `next/image` optimization in dev; on Vercel the platform does the transform. It needs its install script: `allowBuilds: sharp: true` in `pnpm-workspace.yaml`.
 
 ## Scraper (`lib/scrapers/`)
 

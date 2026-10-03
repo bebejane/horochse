@@ -10,6 +10,7 @@ import type { ConcertEvent } from "@/lib/types";
 import { WeekHead } from "./ListView";
 import { MastSymbol } from "./Mast";
 import { PlayButton } from "./PlayButton";
+import { RemoteImage } from "./RemoteImage";
 
 function CalendarEvent({
   event,
@@ -37,7 +38,8 @@ function CalendarEvent({
   const playable = !simple && isPlayable(event);
   const title = displayTitle(event);
   const [artFailed, setArtFailed] = useState(!event.image);
-  const showArt = !simple && !!event.image && !artFailed;
+  const art = !simple && !artFailed ? event.image : undefined;
+  const showArt = !!art;
   const showSymbol = !simple && !showArt;
   return (
     <article
@@ -60,14 +62,11 @@ function CalendarEvent({
           rel="noopener noreferrer"
           aria-label={title}
         />
-        {showArt ? (
-          <img
+        {art ? (
+          <RemoteImage
             className={s.calEventArt}
-            src={event.image}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            referrerPolicy="no-referrer"
+            src={art}
+            sizes="(max-width: 840px) 50vw, 240px"
             onError={() => setArtFailed(true)}
           />
         ) : showSymbol ? (

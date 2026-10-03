@@ -10,6 +10,7 @@ import { NowArrow } from "./Icons";
 import { ListenMore } from "./ListenMore";
 import { MastSymbol } from "./Mast";
 import { PlayButton } from "./PlayButton";
+import { RemoteImage } from "./RemoteImage";
 
 function EventPoster({ src }: { src?: string }) {
   const [failed, setFailed] = useState(!src);
@@ -22,13 +23,10 @@ function EventPoster({ src }: { src?: string }) {
   }
   return (
     <span className={s.posterWrap}>
-      <img
+      <RemoteImage
         className={s.poster}
         src={src}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        referrerPolicy="no-referrer"
+        sizes="(max-width: 840px) 25vw, 224px"
         onError={() => setFailed(true)}
       />
     </span>
