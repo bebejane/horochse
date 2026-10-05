@@ -18,7 +18,7 @@
 	grid-column: 1 / -1;
 }
 
-:global(body:not(.isCalendar)) #program {
+:global(body:not(.isCalendar)) :global(#program) {
 	grid-column: 1 / -1;
 }
 
@@ -128,7 +128,7 @@
 		grid-column: 1;
 	}
 
-	:global(body:not(.isCalendar)) #program,
+	:global(body:not(.isCalendar)) :global(#program),
 	.status {
 		margin-left: 0;
 	}
