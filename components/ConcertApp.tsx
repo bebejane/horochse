@@ -346,6 +346,12 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
         onToggleDensity={() => setDensity(density === "less" ? "more" : "less")}
         onLayout={syncLayout}
       />
+      <script
+        dangerouslySetInnerHTML={{
+          __html:
+            'try{var root=document.documentElement;if(root.hasAttribute("data-hide-intro")){var mast=document.querySelector("[data-mast]");if(mast)root.style.setProperty("--mast-height",mast.getBoundingClientRect().height+"px")}}catch(e){}',
+        }}
+      />
       <div className={s.shell}>
         <main id="program">
           <p className={cn(s.status, { isHidden: statusHidden })}>{statusText || status}</p>

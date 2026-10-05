@@ -31,17 +31,21 @@
 	min-width: 0;
 }
 
-.mastInner:not(:has(.mastIntroWrap)) .mastHeadline {
+.mastInner:not(:has(.mastIntroWrap)) .mastHeadline,
+:global(html[data-hide-intro]) .mastInner:not(:has(:global(.isAbout))) .mastHeadline {
 	grid-column: 1;
 	grid-template-columns: minmax(0, 1fr);
 }
 
 .mastInner:not(:has(.mastIntroWrap)) .mastHeadline,
-.mastInner:not(:has(.mastIntroWrap)) .mastTools {
+.mastInner:not(:has(.mastIntroWrap)) .mastTools,
+:global(html[data-hide-intro]) .mastInner:not(:has(:global(.isAbout))) .mastHeadline,
+:global(html[data-hide-intro]) .mastInner:not(:has(:global(.isAbout))) .mastTools {
 	align-self: end;
 }
 
-.mastInner:not(:has(.mastIntroWrap)) .mastTools {
+.mastInner:not(:has(.mastIntroWrap)) .mastTools,
+:global(html[data-hide-intro]) .mastInner:not(:has(:global(.isAbout))) .mastTools {
 	margin-bottom: 0.16rem;
 }
 
@@ -207,6 +211,10 @@
 	outline-offset: 0.28rem;
 }
 
+:global(html[data-hide-intro]) .mastIntroWrap:not(:global(.isAbout)) {
+	display: none;
+}
+
 .mastIntroWrap {
 	grid-column: 2;
 	margin: 0 0 1.5rem;
@@ -309,7 +317,8 @@
 	text-underline-offset: 0.18em;
 }
 
-.mastInner:not(:has(.mastIntroWrap)) .mastTools {
+.mastInner:not(:has(.mastIntroWrap)) .mastTools,
+:global(html[data-hide-intro]) .mastInner:not(:has(:global(.isAbout))) .mastTools {
 	grid-column: 2;
 	grid-row: 2;
 }
@@ -570,6 +579,10 @@
 	grid-row: 4;
 }
 
+:global(html[data-hide-intro]) .mastInner:not(:has(:global(.isAbout))) > .filterChips {
+	grid-row: 3;
+}
+
 .mastInner > .filterChips > .filter {
 	width: 100%;
 	max-width: 100%;
@@ -762,11 +775,14 @@ span.filter:global(.isSolo) {
 	}
 
 	.mastInner:not(:has(.mastIntroWrap)) .mastHeadline,
-	.mastInner:not(:has(.mastIntroWrap)) .mastTools {
+	.mastInner:not(:has(.mastIntroWrap)) .mastTools,
+	:global(html[data-hide-intro]) .mastInner:not(:has(:global(.isAbout))) .mastHeadline,
+	:global(html[data-hide-intro]) .mastInner:not(:has(:global(.isAbout))) .mastTools {
 		align-self: start;
 	}
 
-	.mastInner:not(:has(.mastIntroWrap)) .mastTools {
+	.mastInner:not(:has(.mastIntroWrap)) .mastTools,
+	:global(html[data-hide-intro]) .mastInner:not(:has(:global(.isAbout))) .mastTools {
 		grid-column: 1;
 		grid-row: 3;
 		margin-bottom: 0;

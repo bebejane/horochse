@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import localFont from "next/font/local";
-import Script from "next/script";
 import "@/styles/index.scss";
 
 const william = localFont({
@@ -32,10 +31,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="sv" className={`${william.variable} ${walter.variable}`} suppressHydrationWarning>
-      <body>
-        <Script id="theme-boot" strategy="beforeInteractive">
-          {`try{if(localStorage.getItem("konserter-theme")==="light")document.documentElement.setAttribute("data-theme","light")}catch(e){}`}
-        </Script>
+      <body suppressHydrationWarning>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'try{var r=document.documentElement;if(localStorage.getItem("konserter-theme")==="light")r.setAttribute("data-theme","light");if(localStorage.getItem("konserter-hide-intro")==="1")r.setAttribute("data-hide-intro","")}catch(e){}',
+          }}
+        />
         {children}
       </body>
     </html>

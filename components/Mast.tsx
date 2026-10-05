@@ -70,7 +70,7 @@ export function Mast({
 	const [introHidden, setIntroHidden] = useState(false);
 	const [aboutOpen, setAboutOpen] = useState(false);
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		try {
 			if (localStorage.getItem('konserter-hide-intro') === '1') setIntroHidden(true);
 		} catch {
