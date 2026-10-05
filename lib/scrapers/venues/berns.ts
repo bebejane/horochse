@@ -16,7 +16,7 @@ import {
   stripTags,
   unescape,
 } from "../core";
-import { makeEvent } from "../helpers";
+import { makeEvent, pageBlurb } from "../helpers";
 import { mapPool } from "../log";
 import type { ScrapedEvent } from "../types";
 
@@ -39,6 +39,31 @@ function parseBernsDate(raw: string): DateTime | null {
     return localDatetime(dateStr, "00:00");
   }
   return null;
+}
+
+async function fillBernsText(events: ScrapedEvent[]): Promise<void> {
+  // The calendar listing has a title and a poster, but the blurb lives on the
+  // event page (paragraphs, with og:description as a fallback).
+  await mapPool(events, 4, async (event) => {
+    if ((event.text || "").trim().length >= 40) return;
+    if (!/berns\.se\/calendar\/[^/]+/i.test(event.url || "")) return;
+    try {
+      event.text = bernsText(await httpRequest(event.url));
+    } catch {
+      /* the listing still stands without a blurb */
+    }
+  });
+}
+
+function bernsText(page: string): string {
+  const paras: string[] = [];
+  for (const para of page.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)) {
+    const text = stripTags(para[1]).replace(/\s+/g, " ").trim();
+    if (text.length < 40 || /cookie|newsletter|boka bord/i.test(text)) continue;
+    paras.push(text);
+    if (paras.join(" ").length >= 220) break;
+  }
+  return pageBlurb(paras, page);
 }
 
 async function fetchOg(url: string): Promise<string> {
@@ -117,7 +142,10 @@ export async function fetch(start: DateTime, end: DateTime): Promise<ScrapedEven
     events.push(makeEvent("berns", "Berns", item.title, item.when, item.url, { image: item.image }));
   }
 
-  if (events.length) return events;
+  if (events.length) {
+    await fillBernsText(events);
+    return events;
+  }
 
   const raw = await httpRequest("https://berns.se/wp-json/wp/v2/event?per_page=50");
   const posts = JSON.parse(raw) as any[];
@@ -153,5 +181,6 @@ export async function fetch(start: DateTime, end: DateTime): Promise<ScrapedEven
     return event;
   });
   for (const event of wpCandidates) if (event) events.push(event);
+  await fillBernsText(events);
   return events;
 }

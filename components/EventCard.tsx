@@ -139,6 +139,7 @@ export function EventCard({
       })}
       data-card
       data-id={event.id}
+      data-venue={event.venue_slug}
       onClick={(eventClick) => {
         if (!compact) return;
         const target = eventClick.target;

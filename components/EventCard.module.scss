@@ -373,6 +373,15 @@ button.venue:focus-visible {
 	display: inline-block;
 }
 
+$venues: debaser, nalen, fallan, slakthusen, kollektivetlivet, sodrateatern, berns, cirkus, fryshuset, kulturhuset, hartwig, annexet, hovet, aviciiarena, trearena, strawberryarena, konserthuset, berwaldhallen, fasching, stampen, glennmillercafe, kungcarls, engelen, petsoundsbar, reimersholme, riche, landet, encore, bioaspen, scalateatern, gotalejon, bagarmossen, kmh, ericericsonhallen, gronalund, fylkingen, ronnells, larryscorner;
+
+@each $slug in $venues {
+	.card[data-venue='#{$slug}']:global(.isLive) .title:not(:global(.hasCurrentArtist)),
+	.card[data-venue='#{$slug}']:global(.isLive) .titleArtist:global(.isCurrent) {
+		color: var(--#{$slug});
+	}
+}
+
 .text {
 	margin-top: 0.45rem;
 	color: var(--muted);

@@ -94,7 +94,7 @@ export async function collect(opts: CollectOptions = {}): Promise<CollectResult>
   if (opts.tracks !== false) {
     const trackConcurrency = opts.trackConcurrency ?? 16;
     log(
-      `Låtar: söker Bandcamp/SoundCloud för ${events.length} event ` +
+      `Låtar: Bandcamp, sedan SoundCloud, sist Deezer för ${events.length} event ` +
         `(artist-pool ${concurrency}, http-cap ${trackConcurrency})`,
     );
     await withHttpConcurrency(trackConcurrency, () =>

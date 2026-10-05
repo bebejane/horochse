@@ -681,6 +681,15 @@ button.calVenue:focus-visible {
 	color: var(--larryscorner);
 }
 
+$venues: debaser, nalen, fallan, slakthusen, kollektivetlivet, sodrateatern, berns, cirkus, fryshuset, kulturhuset, hartwig, annexet, hovet, aviciiarena, trearena, strawberryarena, konserthuset, berwaldhallen, fasching, stampen, glennmillercafe, kungcarls, engelen, petsoundsbar, reimersholme, riche, landet, encore, bioaspen, scalateatern, gotalejon, bagarmossen, kmh, ericericsonhallen, gronalund, fylkingen, ronnells, larryscorner;
+
+@each $slug in $venues {
+	.calEvent[data-venue='#{$slug}']:global(.isLive) .calTitle:not(:global(.hasCurrentArtist)),
+	.calEvent[data-venue='#{$slug}']:global(.isLive) .calArtist:global(.isCurrent) {
+		color: var(--#{$slug});
+	}
+}
+
 @include mq($until: tablet) {
 	.week {
 		overflow-x: auto;

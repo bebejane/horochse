@@ -65,7 +65,7 @@ function nodesFromNext(html: string): any[] {
 // Ticketmaster returns 403 to bot-looking requests (a bare `Accept: */*`) and
 // intermittently under load. Send browser-like navigation headers and retry
 // once on 403/429 before giving up.
-const BROWSER_HEADERS = {
+export const BROWSER_HEADERS = {
   Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   "Accept-Language": "sv-SE,sv;q=0.9,en;q=0.8",
   Referer: "https://www.ticketmaster.se/",
@@ -133,13 +133,19 @@ export async function fetchTicketmasterVenue(
     seen.add(key);
     const location = node.venue || node.location || {};
     const locName = location && typeof location === "object" ? location.name || "" : "";
-    events.push(
-      makeEvent(slug, venue, title, when, href, {
-        place: place || locName || venue,
-        image,
-        text: description,
-      }),
-    );
+    const event = makeEvent(slug, venue, title, when, href, {
+      place: place || locName || venue,
+      image,
+      text: description,
+    });
+    const venueFold = venue.toLowerCase();
+    for (const artist of node.artists || []) {
+      const name = String(artist?.name || "").trim().toLowerCase();
+      if (!name || name === venueFold || !artist.url) continue;
+      event._artist_url = String(artist.url);
+      break;
+    }
+    events.push(event);
   }
   return events;
 }

@@ -102,6 +102,48 @@ export function isGenericEvent(title: string): boolean {
   return /\bhyllnings/.test(t);
 }
 
+const INTERPRETED_RE = /\b(tolkar|klassikern)\b/i;
+
+/** Other musicians playing someone else's piece ("tolkar Keith Jarrett-klassikern"). */
+export function isInterpretedWork(title: string, text = ""): boolean {
+  return INTERPRETED_RE.test(`${title}\n${text}`);
+}
+
+/** People on stage, not the work they are playing.
+ *  "Belonging 50 år - Paulsberg/Hulbækmo/…" → the surnames after the dash.
+ *  "Max Lorentz" with "tolkar David Bowie" in the text → Max Lorentz. */
+export function interpretedPerformers(title: string, text = ""): string[] {
+  let heading = unescape(String(title || "")).replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+  heading = heading.replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
+  let source = heading;
+  if (/\s[-–—]\s/.test(heading)) source = heading.split(/\s[-–—]\s/).slice(1).join(" ").trim();
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const parts = /[/&,+]|\band\b|\boch\b/i.test(source) ? source.split(/\s*(?:\/|&|,|\+| and | och )\s*/i) : [source];
+  for (const raw of parts) {
+    const name = cleanPersonName(raw);
+    const key = foldName(name);
+    if (!key || seen.has(key) || !isPersonName(name)) continue;
+    seen.add(key);
+    out.push(name);
+  }
+  if (out.length) return out;
+  return eventArtistsFromTitle(title, text);
+}
+
+/** "Belonging 50 år" and a lone surname are not safe search keys. */
+export function isSearchableArtist(name: string): boolean {
+  const words = cleanPersonName(name).split(" ").filter(Boolean);
+  const real = words.filter((word) => !/^\d+$/.test(word) && !/^år$/i.test(word));
+  return real.length >= 2;
+}
+
+function eventArtistsFromTitle(title: string, text: string): string[] {
+  const people = splitTitlePeople(title);
+  if (people.length >= 2) return people;
+  return artistCandidates(title).filter((name) => !INTERPRETED_RE.test(name) && foldName(name) !== foldName(text));
+}
+
 // ---------------------------------------------------------------------------
 // Artist extraction
 // ---------------------------------------------------------------------------
@@ -459,9 +501,9 @@ export function eventLookupClues(text: string, person = ""): {
   };
 }
 
-export function cluesCacheKey(clues: { albums?: string[]; labels?: string[] }): string {
-  const parts = [...(clues.albums || []), ...(clues.labels || [])];
-  return parts.map((part) => foldName(part)).join("\t");
+export function cluesCacheKey(clues: { albums?: string[]; labels?: string[]; phrases?: string[] }): string {
+  const parts = [...(clues.albums || []), ...(clues.labels || []), ...(clues.phrases || [])];
+  return parts.map((part) => foldName(part)).filter(Boolean).sort().join("\t");
 }
 
 export function albumTitleScore(hint: string, name: string): number {

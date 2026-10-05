@@ -1,5 +1,7 @@
 import { httpRequest, HttpError, UA } from "./http";
-import { albumTitleScore, cluesCacheKey, eventLookupClues, namesMatch, sameArtist } from "./text";
+import { albumTitleScore, cluesCacheKey, eventLookupClues, nameWords, namesMatch, sameArtist } from "./text";
+import { scoreTextAgainstClues } from "./bandcamp";
+import { alignmentOf, eventStyles, placeScore, styleKey, stylesInText, type StyleHint } from "./style";
 
 let scClientId = "";
 
@@ -78,6 +80,7 @@ export function releaseFromScTrack(track: any, artistHint = ""): Record<string, 
     track_id: track.id,
     url: track.permalink_url || "",
     image: scArt(track.artwork_url || user.avatar_url || ""),
+    genre: String(track.genre || ""),
   };
 }
 
@@ -126,13 +129,15 @@ export async function lookupSoundcloudArtist(
   query: string,
   cache: Map<string, Record<string, any> | null>,
   context = "",
+  styles?: StyleHint,
 ): Promise<Record<string, any> | null> {
   const clues = eventLookupClues(context, query);
-  const key = "sc:" + clueKey(query) + "\t" + cluesCacheKey(clues);
+  const hint = styles ?? eventStyles("", context);
+  const key = "sc:" + clueKey(query) + "\t" + cluesCacheKey(clues) + styleKey(hint);
   if (cache.has(key)) return cache.get(key) ?? null;
   try {
-    for (const hint of (clues.albums || []).slice(0, 2)) {
-      const data = await soundcloudGet("/search/tracks", { q: query + " " + hint, limit: 8 });
+    for (const albumHint of (clues.albums || []).slice(0, 2)) {
+      const data = await soundcloudGet("/search/tracks", { q: query + " " + albumHint, limit: 8 });
       let best: Record<string, any> | null = null;
       let bestScore = 0;
       for (const track of data.collection || []) {
@@ -140,8 +145,8 @@ export async function lookupSoundcloudArtist(
         const names = [user.username || "", user.full_name || ""];
         if (!names.some((name) => name && (namesMatch(query, name) || sameArtist(query, name)))) continue;
         const score = Math.max(
-          albumTitleScore(hint, track.title || ""),
-          albumTitleScore(hint, track.description || ""),
+          albumTitleScore(albumHint, track.title || ""),
+          albumTitleScore(albumHint, track.description || ""),
         );
         if (score < 1) continue;
         const release = releaseFromScTrack(track, names[0] || names[1]);
@@ -156,7 +161,8 @@ export async function lookupSoundcloudArtist(
       }
     }
     const data = await soundcloudGet("/search/users", { q: query, limit: 8 });
-    const ranked: [number, any][] = [];
+    const ignore = nameWords(query);
+    const ranked: { score: number; user: any }[] = [];
     for (const user of data.collection || []) {
       const names = [user.username || "", user.full_name || ""];
       if (!names.some((name) => name && namesMatch(query, name))) continue;
@@ -167,15 +173,36 @@ export async function lookupSoundcloudArtist(
         user.city || "",
         user.country || "",
       ].join(" ");
-      ranked.push([scoreAgainstClues(blob, clues), user]);
+      const align = alignmentOf(stylesInText(blob), hint) + placeScore(blob, context);
+      ranked.push({ score: scoreTextAgainstClues(blob, clues, context, ignore) + align, user });
     }
-    ranked.sort((a, b) => b[0] - a[0]);
-    for (const [, user] of ranked.slice(0, 3)) {
+    ranked.sort((a, b) => b.score - a.score);
+    const bestScore = ranked[0]?.score ?? 0;
+    // Several accounts share the name and none of them is supported by the
+    // event text or the venue's style. Guessing picks the wrong band.
+    if (ranked.length > 1 && bestScore <= 0) {
+      cache.set(key, null);
+      return null;
+    }
+    const viable = ranked.filter((item) => item.score >= 0 || item.score === bestScore).slice(0, 4);
+    let best: Record<string, any> | null = null;
+    let bestRank = -Infinity;
+    for (const { user, score } of viable) {
       const release = await latestFromScUser(user);
-      if (release) {
-        cache.set(key, release);
-        return release;
+      if (!release) continue;
+      const trackAlign = alignmentOf(stylesInText(String(release.genre || "")), hint);
+      const rank = score + trackAlign;
+      if (rank > bestRank) {
+        best = release;
+        bestRank = rank;
       }
+    }
+    // A namesake whose tags clash with the venue (rap at a rock club, electronics
+    // at a jazz club) is worse than no SoundCloud hit — Bandcamp or Deezer can
+    // still find the matching act.
+    if (best && (bestRank >= 0 || !hint.wanted.length)) {
+      cache.set(key, best);
+      return best;
     }
     cache.set(key, null);
     return null;
@@ -188,20 +215,6 @@ export async function lookupSoundcloudArtist(
 
 function clueKey(query: string): string {
   return String(query || "").normalize("NFKD").replace(/\p{M}+/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function scoreAgainstClues(blob: string, clues: any): number {
-  const folded = clueKey(blob);
-  let score = 0;
-  for (const hint of clues.labels || []) {
-    const hf = clueKey(hint);
-    if (hf && folded.includes(hf)) score += 16;
-  }
-  for (const hint of clues.albums || []) {
-    const hf = clueKey(hint);
-    if (hf && folded.includes(hf)) score += 24;
-  }
-  return score;
 }
 
 export async function streamWorks(url: string): Promise<boolean> {
@@ -264,17 +277,9 @@ export async function soundcloudStreamFromTrack(
 
 export async function soundcloudStreamUrl(trackId: number): Promise<Record<string, any> | null> {
   const track = await soundcloudGet("/tracks/" + String(Number(trackId)));
-  let payload = await soundcloudStreamFromTrack(track);
-  if (payload) return payload;
-  const userId = track?.user?.id;
-  if (!userId) return null;
-  const data = await soundcloudGet("/users/" + String(userId) + "/tracks", { limit: 8 });
-  for (const other of data.collection || []) {
-    if (other.id === track.id) continue;
-    payload = await soundcloudStreamFromTrack(other);
-    if (payload) return payload;
-  }
-  return null;
+  // Only this track. Substituting another upload from the same user made Next
+  // keep playing the previous song under a new title.
+  return soundcloudStreamFromTrack(track);
 }
 
 export function scTrack(release: any): Record<string, any> {

@@ -1,4 +1,4 @@
-import { bcTrack, lookupBandcamp, lookupBandcampUrl } from "./bandcamp";
+import { bcTrack, isBandcampSearchBlocked, lookupBandcamp, lookupBandcampUrl } from "./bandcamp";
 import { lookupSoundcloudArtist, lookupSoundcloudUrl, scTrack } from "./soundcloud";
 import { lookupYoutubeArtist, youtubeDisabled, ytTrack } from "./youtube";
 import { lookupDeezerArtist, dzTrack } from "./deezer";
@@ -7,11 +7,17 @@ import { mapPool, memoInflight, log, warn, seconds, withTimeout } from "./log";
 import {
   artistCandidates,
   billArtists,
+  cluesCacheKey,
+  eventLookupClues,
   foldName,
+  interpretedPerformers,
   isGenericEvent,
+  isInterpretedWork,
+  isSearchableArtist,
   namesMatch,
   sameArtist,
 } from "./text";
+import { eventStyles, styleKey, type StyleHint } from "./style";
 import type { ScrapedEvent, ScrapedTrack } from "./types";
 
 type Release = Record<string, any>;
@@ -159,14 +165,32 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
   const started = Date.now();
   let done = 0;
 
-  const lookupBandcampFor = (person: string, context: string): Promise<Release | null> => {
-    const nameKey = foldName(person);
+  const lookupBandcampFor = (person: string, context: string, styles: StyleHint): Promise<Release | null> => {
+    // Style is part of the key so a jazz Mike Stern is not reused for another
+    // act, and a poisoned "not found" from an older run is not treated as final.
+    // Description phrases are part of it too: a bare-name miss must not skip
+    // Bandcamp when the event text can tell two namesakes apart.
+    const clues = eventLookupClues(context, person);
+    const clueKey = cluesCacheKey(clues);
+    const bareKey = foldName(person);
+    const baseKey = bareKey + styleKey(styles);
+    const nameKey = clueKey ? baseKey + "\t" + clueKey : baseKey;
     if (bcResolved.has(nameKey)) {
       stats.cached += 1;
       return Promise.resolve(bcResolved.get(nameKey) ?? null);
     }
     // Cross-run cache: a previously resolved (or ruled-out) artist is instant.
-    const persisted = persistent?.get(nameKey);
+    // A hit stored before the style suffix, or under the bare name, still wins
+    // over SoundCloud. An explicit style in the event text does not reuse that
+    // older hit — it may be a different namesake.
+    const exact = persistent?.get(nameKey);
+    const bare = bareKey === nameKey ? exact : persistent?.get(bareKey);
+    const bareHit = bare?.found && bare.release ? bare : undefined;
+    const persisted = (exact?.found && exact.release)
+      ? exact
+      : (!styles.explicit && bareHit)
+        ? bareHit
+        : exact;
     if (persisted !== undefined) {
       const release = (persisted.release as Release | null) ?? null;
       bcResolved.set(nameKey, release);
@@ -175,30 +199,37 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
     }
     const contextKey = nameKey + "\t" + context;
     if (bcInflight.has(contextKey)) return bcInflight.get(contextKey)!;
-    const promise = withTimeout(lookupBandcamp(person, bc, context), artistTimeoutMs, `bandcamp ${person}`)
+    const promise = withTimeout(lookupBandcamp(person, bc, context, styles), artistTimeoutMs, `bandcamp ${person}`)
       .catch((err) => {
         warn(String(err));
         return null;
       })
       .then((release) => {
         bcResolved.set(nameKey, release);
-        // Persist the outcome (found or a definitive miss) for future runs.
-        persistentUpdates?.set(nameKey, { artist: person, release: release ?? null });
+        // A 429 opens the search circuit and every later artist comes back empty.
+        // That is not a real miss — caching it would skip Bandcamp forever.
+        if (release || !isBandcampSearchBlocked()) {
+          persistentUpdates?.set(nameKey, { artist: person, release: release ?? null });
+          // Replace a bare-name miss once a described event actually finds the band.
+          if (release && nameKey !== baseKey) {
+            persistentUpdates?.set(baseKey, { artist: person, release });
+          }
+        }
         return release;
       })
       .finally(() => bcInflight.delete(contextKey));
     bcInflight.set(contextKey, promise);
     return promise;
   };
-  const lookupSoundcloudFor = (person: string, context: string): Promise<Release | null> => {
-    const nameKey = foldName(person);
+  const lookupSoundcloudFor = (person: string, context: string, styles: StyleHint): Promise<Release | null> => {
+    const nameKey = foldName(person) + styleKey(styles);
     if (scResolved.has(nameKey)) {
       stats.cached += 1;
       return Promise.resolve(scResolved.get(nameKey) ?? null);
     }
     const contextKey = "sc:" + nameKey + "\t" + context;
     if (scInflight.has(contextKey)) return scInflight.get(contextKey)!;
-    const promise = withTimeout(lookupSoundcloudArtist(person, sc, context), artistTimeoutMs, `soundcloud ${person}`)
+    const promise = withTimeout(lookupSoundcloudArtist(person, sc, context, styles), artistTimeoutMs, `soundcloud ${person}`)
       .catch((err) => {
         warn(String(err));
         return null;
@@ -251,17 +282,18 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
     usedPage: Set<number>,
     sources: string[],
     context: string,
+    styles: StyleHint,
   ): Promise<ScrapedTrack | null> => {
     for (const source of sources) {
       if (source === "bandcamp") {
         const item = firstMatchingPageTrack(pageTracks, usedPage, person, "bandcamp");
         if (item) return item;
-        const release = await lookupBandcampFor(person, context);
+        const release = await lookupBandcampFor(person, context, styles);
         if (release) return bcTrack(release) as ScrapedTrack;
       } else if (source === "soundcloud") {
         const item = firstMatchingPageTrack(pageTracks, usedPage, person, "soundcloud");
         if (item) return item;
-        const release = await lookupSoundcloudFor(person, context);
+        const release = await lookupSoundcloudFor(person, context, styles);
         if (release) return scTrack(release) as ScrapedTrack;
       }
     }
@@ -275,12 +307,19 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
 
     let artists = eventArtists(title, text);
     let people = artists.length && !isGenericEvent(title) ? artists : [];
+    const interpreted = isInterpretedWork(title, text);
+    if (interpreted) {
+      people = interpretedPerformers(title, text).filter(isSearchableArtist);
+    }
     const existing = (event.tracks || []) as ScrapedTrack[];
+    const matchesPeople = (item: { artist?: string }) =>
+      people.some((person) => sameArtist(person, item.artist || ""));
 
     if (
       existing.length &&
-      (!people.length ||
-        people.every((person) => existing.some((item) => sameArtist(person, item.artist || ""))))
+      (interpreted
+        ? people.length > 0 && existing.every(matchesPeople)
+        : !people.length || people.every((person) => existing.some((item) => sameArtist(person, item.artist || ""))))
     ) {
       applyPrimaryMedia(event, existing);
       stats.found += 1;
@@ -304,10 +343,14 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
       }
 
       artists = eventArtists(title, text);
-      const context = [title, text].filter(Boolean).join(" ");
+      const context = [event.venue, event.place, title, text].filter(Boolean).join(" ");
+      const styles = eventStyles(event.venue_slug || "", context);
       const tracks: ScrapedTrack[] = [];
       const usedPage = new Set<number>();
       people = artists.length && !isGenericEvent(title) ? artists : [];
+      if (interpreted) {
+        people = interpretedPerformers(title, text).filter(isSearchableArtist);
+      }
 
       const takeUnusedPage = (source: string): ScrapedTrack | null => {
         for (let i = 0; i < pageTracks.length; i++) {
@@ -324,33 +367,38 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
         tracks.push(item);
       };
 
-      for (const item of event.tracks || []) addTrack(item);
+      for (const item of event.tracks || []) {
+        if (interpreted && !matchesPeople(item)) continue;
+        addTrack(item);
+      }
 
       // Look up all artists in a phase concurrently, then add in original order
       // so first-wins dedupe and track order stay deterministic.
+      // Source order is fixed: Bandcamp, then SoundCloud, last Deezer.
+      // A later source is only used for an artist the earlier ones missed.
       const runPhase = async (sources: string[]): Promise<(ScrapedTrack | null)[]> =>
         mapPool(people, Math.max(2, people.length), (person) =>
           tracks.some((item) => sameArtist(person, item.artist || ""))
             ? Promise.resolve(null)
-            : lookupPerson(person, pageTracks, usedPage, sources, context),
+            : lookupPerson(person, pageTracks, usedPage, sources, context, styles),
         );
       for (const item of await runPhase(["bandcamp"])) addTrack(item);
-      if (!tracks.length) addTrack(takeUnusedPage("bandcamp"));
+      if (!interpreted && !tracks.length) addTrack(takeUnusedPage("bandcamp"));
       if (people.length) {
         const soundcloudItems = await mapPool(people, Math.max(2, people.length), (person) =>
           tracks.some((item) => sameArtist(person, item.artist || "")) || (tracks.length && people.length < 2)
             ? Promise.resolve(null)
-            : lookupPerson(person, pageTracks, usedPage, ["soundcloud"], context),
+            : lookupPerson(person, pageTracks, usedPage, ["soundcloud"], context, styles),
         );
         for (const item of soundcloudItems) addTrack(item);
       }
-      if (!tracks.length) addTrack(takeUnusedPage("soundcloud"));
+      if (!interpreted && !tracks.length) addTrack(takeUnusedPage("soundcloud"));
 
       // Spotify fallback: pages (Nalen, Fasching, Hartwig, …) often embed a
       // Spotify artist/album the normal lookup missed. The public oembed endpoint
       // gives the authoritative name without credentials; use it as a stronger
       // search key for Bandcamp/SoundCloud. The link itself is kept for the UI.
-      if (!tracks.length && spotifyLinks.length) {
+      if (!interpreted && !tracks.length && spotifyLinks.length) {
         const spArtist = spotifyLinks.find((l) => l.kind === "artist");
         const spAlbum = spotifyLinks.find((l) => l.kind === "album");
         if (spArtist || spAlbum) event.spotify = (spArtist || spAlbum)!.url;
@@ -363,8 +411,8 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
             for (const source of ["bandcamp", "soundcloud"] as const) {
               const release =
                 source === "bandcamp"
-                  ? await lookupBandcampFor(meta.title, context)
-                  : await lookupSoundcloudFor(meta.title, context);
+                  ? await lookupBandcampFor(meta.title, context, styles)
+                  : await lookupSoundcloudFor(meta.title, context, styles);
               if (release) {
                 addTrack((source === "bandcamp" ? bcTrack(release) : scTrack(release)) as ScrapedTrack);
                 stats.spotifyHits += 1;
@@ -408,10 +456,10 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
       // not fill it with sidemen.
       if (!tracks.length && people.length) {
         const person = people[0];
-        const nameKey = foldName(person);
+        const nameKey = foldName(person) + styleKey(styles);
         let release = dzResolved.get(nameKey) ?? null;
         if (!dzResolved.has(nameKey)) {
-          release = withTimeout(lookupDeezerArtist(person, dz, context), artistTimeoutMs, `deezer ${person}`)
+          release = withTimeout(lookupDeezerArtist(person, dz, context, styles), artistTimeoutMs, `deezer ${person}`)
             .catch((err) => {
               warn(String(err));
               return null;

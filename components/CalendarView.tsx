@@ -3,19 +3,45 @@
 import s from "./CalendarView.module.scss";
 import cn from "classnames";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { formatDay, parseDay, toIso, todayDate, weekTitle } from "@/lib/dates";
-import { calendarWeeks, displayTitle, eventTimes, isPlayable } from "@/lib/events";
+import { calendarWeeks, displayTitle, eventTimes, isPlayable, titleHits } from "@/lib/events";
 import type { ConcertEvent } from "@/lib/types";
 import { WeekHead } from "./ListView";
 import { MastSymbol } from "./Mast";
 import { PlayButton } from "./PlayButton";
 import { RemoteImage } from "./RemoteImage";
 
+function calendarTitleParts(
+  title: string,
+  hits: ReturnType<typeof titleHits>,
+  current: boolean,
+  trackIndex: number,
+): ReactNode[] {
+  if (!hits.length) return [title];
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  hits.forEach((hit) => {
+    if (hit.start > cursor) parts.push(title.slice(cursor, hit.start));
+    parts.push(
+      <span
+        key={hit.i + "-" + hit.start}
+        className={cn(s.calArtist, { isCurrent: current && hit.i === trackIndex })}
+      >
+        {hit.text}
+      </span>,
+    );
+    cursor = hit.end;
+  });
+  if (cursor < title.length) parts.push(title.slice(cursor));
+  return parts;
+}
+
 function CalendarEvent({
   event,
   playing,
   current,
+  trackIndex,
   loading,
   simple,
   onToggle,
@@ -27,6 +53,7 @@ function CalendarEvent({
   event: ConcertEvent;
   playing: boolean;
   current: boolean;
+  trackIndex: number;
   loading: boolean;
   simple?: boolean;
   onToggle: () => void;
@@ -37,6 +64,8 @@ function CalendarEvent({
 }) {
   const playable = !simple && isPlayable(event);
   const title = displayTitle(event);
+  const hits = titleHits(event);
+  const hasCurrentArtist = current && hits.some((hit) => hit.i === trackIndex);
   const [artFailed, setArtFailed] = useState(!event.image);
   const art = !simple && !artFailed ? event.image : undefined;
   const showArt = !!art;
@@ -90,7 +119,9 @@ function CalendarEvent({
             <span className={s.calPlace}>{event.place}</span>
           ) : null}
         </span>
-        <span className={s.calTitle}>{title}</span>
+        <span className={cn(s.calTitle, { hasCurrentArtist })}>
+          {calendarTitleParts(title, hits, current, trackIndex)}
+        </span>
       </div>
       {simple ? null : (
         <a className={cn("go", s.calIcs, { goDown: true })} href={"/kalender/" + encodeURIComponent(event.id) + ".ics"}>
@@ -118,6 +149,7 @@ export function CalendarView({
   rangeTo,
   playing,
   eventId,
+  trackIndex,
   loadingId,
   currentWeek,
   simple,
@@ -133,6 +165,7 @@ export function CalendarView({
   rangeTo?: string | null;
   playing: boolean;
   eventId: string;
+  trackIndex: number;
   loadingId: string;
   currentWeek: string;
   simple?: boolean;
@@ -159,6 +192,7 @@ export function CalendarView({
         event={event}
         playing={playing}
         current={eventId === event.id}
+        trackIndex={trackIndex}
         loading={loadingId === event.id}
         simple={simple}
         onToggle={() => onToggle(event)}

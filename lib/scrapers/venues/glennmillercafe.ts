@@ -12,6 +12,18 @@ const VENUE_IMAGE =
 const MONTH_NAME =
   /^(januari|februari|mars|april|maj|juni|juli|augusti|september|oktober|november|december)$/i;
 
+/** "Nuaia: Sofie Norling voc …" is a name plus the lineup. The lineup (and any
+ *  sentence after it) is the blurb; the name stays the title. */
+function glennCopy(line: string): { title: string; text: string } {
+  const colon = line.indexOf(":");
+  if (colon > 2 && colon <= 60) {
+    const title = line.slice(0, colon).trim();
+    const text = line.slice(colon + 1).trim();
+    if (title.length >= 3 && text.length >= 12) return { title, text };
+  }
+  return { title: line, text: "" };
+}
+
 export async function fetch(start: DateTime, end: DateTime): Promise<ScrapedEvent[]> {
   const page = await httpRequest(URL);
   const events: ScrapedEvent[] = [];
@@ -24,23 +36,27 @@ export async function fetch(start: DateTime, end: DateTime): Promise<ScrapedEven
     const texts = [...after.matchAll(/wixui-rich-text__text">([^<]{2,160})</g)].map((m) =>
       unescape(m[1]).trim(),
     );
-    let title = "";
+    const bits: string[] = [];
     for (const text of texts) {
-      if (/^20\d{2}-\d{2}-\d{2}$/.test(text)) continue;
+      if (/^20\d{2}-\d{2}-\d{2}$/.test(text)) break;
       if (/glenn miller|stockholm|meny|boka|kontakt|öppet/i.test(text)) continue;
       if (MONTH_NAME.test(text)) continue;
       if (text.length < 3) continue;
-      title = text;
-      break;
+      bits.push(text);
     }
-    if (!title) continue;
-    if (!isConcert(title, "jazz", "jazz")) continue;
-    const key = dateStr + title.toLowerCase();
+    const line = bits.join(" ").replace(/\s+/g, " ").trim();
+    if (!line) continue;
+    if (!isConcert(line, "jazz", "jazz")) continue;
+    const key = dateStr + line.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
+    const copy = glennCopy(line);
     events.push(
-      makeEvent("glennmillercafe", "Glenn Miller Café", title, when, URL, {
-        extraId: dateStr + title,
+      makeEvent("glennmillercafe", "Glenn Miller Café", copy.title, when, URL, {
+        // Keep the id tied to the full listing line so a title/blurb split
+        // does not mint a second event for the same night.
+        extraId: dateStr + line,
+        text: copy.text,
         image: VENUE_IMAGE,
       }),
     );

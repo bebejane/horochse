@@ -3,7 +3,7 @@ import type { DateTime } from "luxon";
 import { HttpError, httpRequest, shorten, sleep, stripTags } from "../core";
 import { mapPool } from "../log";
 import { pageBlurb } from "../helpers";
-import { fetchTicketmasterVenue } from "../sources/ticketmaster";
+import { BROWSER_HEADERS, fetchTicketmasterVenue } from "../sources/ticketmaster";
 import type { ScrapedEvent } from "../types";
 
 const URL = "https://www.ticketmaster.se/venue/cirkus-stockholm-biljetter/cir/580";
@@ -83,6 +83,24 @@ function listingUrls(html: string): Record<string, string> {
   return found;
 }
 
+function ticketmasterSynopsis(html: string): string {
+  const match = /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/.exec(html);
+  if (!match) return "";
+  try {
+    const data = JSON.parse(match[1]) as {
+      props?: { pageProps?: { initialReduxState?: { api?: { queries?: Record<string, { data?: { synopsis?: string } }> } } } };
+    };
+    const queries = data.props?.pageProps?.initialReduxState?.api?.queries || {};
+    for (const payload of Object.values(queries)) {
+      const synopsis = String(payload?.data?.synopsis || "").replace(/\s+/g, " ").trim();
+      if (synopsis.length >= 40) return synopsis;
+    }
+  } catch {
+    return "";
+  }
+  return "";
+}
+
 async function showPage(slug: string, pages: Record<string, string>): Promise<string> {
   const candidates = [
     pages[slug],
@@ -100,13 +118,32 @@ async function showPage(slug: string, pages: Record<string, string>): Promise<st
 export async function fetch(start: DateTime, end: DateTime): Promise<ScrapedEvent[]> {
   const events = await fetchTicketmasterVenue(start, end, URL, "Cirkus", "cirkus", "Cirkus");
   const pages = listingUrls(await fetchHtml(LIST_URL));
-  await mapPool(events, 6, async (event) => {
+  const bios = new Map<string, Promise<string>>();
+  await mapPool(events, 4, async (event) => {
     const slug = slugify(event.title || "");
-    if (!slug) return;
-    const page = await showPage(slug, pages);
-    if (!page) return;
-    const blurb = eventText(page);
-    if (blurb) event.text = blurb;
+    if (slug) {
+      const page = await showPage(slug, pages);
+      const blurb = page ? eventText(page) : "";
+      if (blurb) {
+        event.text = blurb;
+        delete event._artist_url;
+        return;
+      }
+    }
+    // cirkus.se sits behind a checkpoint that rejects the scraper, and the
+    // Ticketmaster listing has no event text. The artist page does.
+    const artistUrl = event._artist_url || "";
+    delete event._artist_url;
+    if (!artistUrl) return;
+    let pending = bios.get(artistUrl);
+    if (!pending) {
+      pending = httpRequest(artistUrl, { extraHeaders: BROWSER_HEADERS })
+        .then((html) => shorten(ticketmasterSynopsis(html)))
+        .catch(() => "");
+      bios.set(artistUrl, pending);
+    }
+    const synopsis = await pending;
+    if (synopsis) event.text = synopsis;
   });
   return events;
 }

@@ -6,6 +6,8 @@ import { artistExploreUrl, playlistFrom, streamRequest, trackExploreUrl } from "
 import type { ConcertEvent, PlaylistItem, StreamPayload } from "@/lib/types";
 
 const SOUNDCLOUD_VOLUME = 0.75;
+const PLAYBACK_LIMIT_S = 30;
+const FADE_S = 2;
 const STREAM_CACHE_MS = 4 * 60 * 1000;
 const STREAM_CACHE_MAX = 16;
 const SC_WIDGET_IDLE =
@@ -25,6 +27,7 @@ type ScWidget = {
   seekTo: (ms: number) => void;
   setVolume: (n: number) => void;
   getDuration: (cb: (ms: number) => void) => void;
+  getPosition: (cb: (ms: number) => void) => void;
 };
 
 type ScApi = {
@@ -102,6 +105,21 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   const scReadyRef = useRef<Promise<ScApi> | null>(null);
   const scrubbingRef = useRef(false);
   const pauseRequestedRef = useRef(false);
+  // The card's play button follows this, not the media element's paused flag.
+  // SoundCloud's widget often plays without ever emitting PLAY, so a button
+  // tied to that event stays unmarked while the song is audible.
+  const engagedRef = useRef(false);
+  // Set while a track change is in flight, so the track we just left cannot
+  // also fire "ended" and skip a second time.
+  const switchingRef = useRef(false);
+  const advancedFromRef = useRef(-1);
+  const lastGainRef = useRef(-1);
+  // Bumped for each HTML-audio start. A play() that resolves after the user
+  // has already moved on must not pause or rewind the new track.
+  const audioGenRef = useRef(0);
+  // Progress events from the track we just left are ignored until the new
+  // media actually starts, so the bar stays at 0 during the switch.
+  const progressLiveRef = useRef(false);
   // Bumped on every track switch. Async widget/YouTube callbacks capture the
   // value at load time and bail if it changed, so a superseded track can never
   // restart playback after the user has switched.
@@ -112,6 +130,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   const playlistRef = useRef<PlaylistItem[]>([]);
   const onNeedScrollRef = useRef(onNeedScroll);
   const playAtRef = useRef<(index: number, fromSkip: boolean) => void>(() => {});
+  const updateProgressRef = useRef<() => void>(() => {});
   const preloadIndexRef = useRef<(index: number) => void>(() => {});
   const barOnRef = useRef(false);
 
@@ -137,12 +156,17 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     preload.muted = true;
     preloadAudioRef.current = preload;
     const onEnded = () => {
-      if (indexRef.current < 0) return;
+      if (switchingRef.current || indexRef.current < 0) return;
+      if (advancedFromRef.current === indexRef.current) return;
+      advancedFromRef.current = indexRef.current;
       playAtRef.current(indexRef.current + 1, true);
     };
-    const onPlay = () => syncPlaying();
+    const onPlay = () => {
+      switchingRef.current = false;
+      syncPlaying();
+    };
     const onPause = () => syncPlaying();
-    const onTime = () => updateProgress();
+    const onTime = () => updateProgressRef.current();
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
@@ -190,32 +214,69 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   }, []);
 
   const syncPlaying = useCallback(() => {
-    setPlaying(isPlaying());
+    setPlaying(engagedRef.current);
     setEventId(eventIdRef.current);
     setItemKey(itemKeyRef.current);
     const item = indexRef.current >= 0 ? playlistRef.current[indexRef.current] : null;
     setTrackIndex(item ? item.i : -1);
-  }, [isPlaying]);
-
-  const applyPlaybackVolume = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = sourceRef.current === "soundcloud" && modeRef.current === "audio" ? SOUNDCLOUD_VOLUME : 1;
-    }
-    if (widgetRef.current && modeRef.current === "widget") {
-      try { widgetRef.current.setVolume(Math.round(SOUNDCLOUD_VOLUME * 100)); } catch { /* ignore */ }
-    }
-    if (ytPlayerRef.current && modeRef.current === "yt") {
-      try { ytPlayerRef.current.setVolume(100); } catch { /* ignore */ }
-    }
   }, []);
 
+  const applyPlaybackVolume = useCallback((gain = 1) => {
+    if (gain !== 0 && gain !== 1 && Math.abs(gain - lastGainRef.current) < 0.02) return;
+    lastGainRef.current = gain;
+    const quiet = sourceRef.current === "soundcloud";
+    const base = quiet ? SOUNDCLOUD_VOLUME : 1;
+    const level = Math.max(0, Math.min(1, base * gain));
+    if (modeRef.current === "widget") {
+      if (widgetRef.current) {
+        try { widgetRef.current.setVolume(Math.round(level * 100)); } catch { /* ignore */ }
+      }
+      return;
+    }
+    if (modeRef.current === "yt") {
+      if (ytPlayerRef.current) {
+        try { ytPlayerRef.current.setVolume(Math.round(level * 100)); } catch { /* ignore */ }
+      }
+      return;
+    }
+    if (audioRef.current) audioRef.current.volume = level;
+  }, []);
+
+  const playbackLimit = useCallback(() => {
+    const real = mediaDuration();
+    const source = sourceRef.current;
+    const capped = source === "bandcamp" || source === "soundcloud";
+    if (!capped) return real > 0 ? real : 0;
+    if (real > 0) return Math.min(PLAYBACK_LIMIT_S, real);
+    // A SoundCloud stream often never reports a duration. Without a stand-in
+    // the bar stays at 0:00 while the track is already playing.
+    return source === "soundcloud" && engagedRef.current ? PLAYBACK_LIMIT_S : 0;
+  }, [mediaDuration]);
+
   const updateProgress = useCallback(() => {
-    if (scrubbingRef.current) return;
-    const duration = mediaDuration();
+    const limit = playbackLimit();
     const t = mediaCurrent();
-    const ratio = duration > 0 ? t / duration : 0;
-    setProgress({ ratio, current: t, duration });
-  }, [mediaCurrent, mediaDuration]);
+    if (limit > 0 && engagedRef.current && !scrubbingRef.current) {
+      const fadeStart = Math.max(0, limit - FADE_S);
+      const span = Math.max(0.001, limit - fadeStart);
+      const gain = t <= fadeStart ? 1 : Math.max(0, (limit - t) / span);
+      applyPlaybackVolume(gain);
+      if (progressLiveRef.current && t >= limit - 0.05) {
+        if (!switchingRef.current && advancedFromRef.current !== indexRef.current && indexRef.current >= 0) {
+          advancedFromRef.current = indexRef.current;
+          playAtRef.current(indexRef.current + 1, true);
+        }
+        return;
+      }
+    }
+    if (scrubbingRef.current || !progressLiveRef.current) return;
+    const duration = limit || mediaDuration();
+    const shown = duration > 0 ? Math.min(t, duration) : t;
+    const ratio = duration > 0 ? shown / duration : 0;
+    setProgress({ ratio, current: shown, duration });
+  }, [applyPlaybackVolume, mediaCurrent, mediaDuration, playbackLimit]);
+
+  updateProgressRef.current = updateProgress;
 
   const applyProgress = useCallback((ratio: number, duration = mediaDuration()) => {
     ratio = Math.min(1, Math.max(0, ratio));
@@ -223,13 +284,34 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     setProgress({ ratio, current: t, duration });
   }, [mediaCurrent, mediaDuration]);
 
-  // The YouTube player emits no progress event; poll it while it is the
-  // active mode so the now-playing bar keeps up.
+  // YouTube emits no progress event, and the SoundCloud widget often skips
+  // PLAY_PROGRESS when the iframe is parked off-screen. Poll both.
   useEffect(() => {
     const id = window.setInterval(() => {
-      if (modeRef.current !== "yt") return;
+      if (!engagedRef.current) return;
+      if (modeRef.current === "widget" && widgetRef.current) {
+        const widget = widgetRef.current;
+        try {
+          widget.getPosition((ms) => {
+            if (modeRef.current !== "widget" || widgetRef.current !== widget) return;
+            if (typeof ms === "number" && ms >= 0) scPositionRef.current = ms;
+            if (ms > 0) progressLiveRef.current = true;
+            updateProgress();
+          });
+        } catch { /* ignore */ }
+        if (scDurationRef.current <= 0) {
+          try {
+            widget.getDuration((ms) => {
+              if (modeRef.current !== "widget" || widgetRef.current !== widget) return;
+              if (typeof ms === "number" && ms > 0) scDurationRef.current = ms;
+            });
+          } catch { /* ignore */ }
+        }
+        return;
+      }
+      if (!progressLiveRef.current) return;
       updateProgress();
-    }, 500);
+    }, 100);
     return () => window.clearInterval(id);
   }, [updateProgress]);
 
@@ -253,26 +335,23 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   }, []);
 
   const pauseHtmlAudio = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.pause();
-    audio.removeAttribute("src");
-    try { audio.load(); } catch { /* ignore */ }
+    // Pause only. Clearing src and calling load() races the next assignment:
+    // the queued load restarts the previous file, so Next plays the same song
+    // and the progress bar never leaves the old position.
+    audioRef.current?.pause();
   }, []);
 
   const pauseWidget = useCallback(() => {
-    // Invalidate any in-flight widget load so its READY handler can't auto-play.
+    // widget.pause() / widget.load() keep the previous iframe document playing.
+    // Navigating the iframe away is what actually stops the audio.
     widgetGenRef.current += 1;
+    scLoadGenRef.current = -1;
     pauseRequestedRef.current = true;
     scPlayingRef.current = false;
-    if (widgetRef.current) {
-      try { widgetRef.current.pause(); } catch { /* ignore */ }
-      return;
-    }
+    scPositionRef.current = 0;
+    widgetRef.current = null;
     const iframe = iframeRef.current;
-    if (iframe && iframe.src && iframe.src !== SC_WIDGET_IDLE) {
-      iframe.src = SC_WIDGET_IDLE;
-    }
+    if (iframe && iframe.src !== SC_WIDGET_IDLE) iframe.src = SC_WIDGET_IDLE;
   }, []);
 
   const loadScApi = useCallback(() => {
@@ -299,12 +378,6 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       "&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false";
   }, []);
 
-  const markWidgetPlaying = useCallback(() => {
-    pauseRequestedRef.current = false;
-    scPlayingRef.current = true;
-    syncPlaying();
-  }, [syncPlaying]);
-
   const bindScWidget = useCallback((Widget: ScApi) => {
     if (widgetRef.current) return widgetRef.current;
     const iframe = iframeRef.current;
@@ -312,41 +385,55 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     const widget = Widget(iframe);
     widgetApiRef.current = Widget;
     widgetRef.current = widget;
+    // Captured at bind time. A READY/progress event from the previous iframe
+    // document must not pass just because a newer load reused the same refs.
+    const boundGen = widgetGenRef.current;
+    const stillThis = () => boundGen === widgetGenRef.current;
     widget.bind(Widget.Events.READY, () => {
       applyPlaybackVolume();
-      // Only auto-play if this is still the load that was requested last; a
-      // stale READY from a superseded track must not restart audio after the
-      // user has switched to another track.
-      if (scLoadGenRef.current !== widgetGenRef.current || modeRef.current !== "widget" || !scUrlRef.current) return;
+      if (!stillThis() || modeRef.current !== "widget" || !scUrlRef.current) return;
+      // The iframe URL already has auto_play and starts at 0. seekTo() here
+      // interrupts that and the follow-up play() is outside the click, so the
+      // track stays paused at 0:00.
       try { widget.play(); } catch { /* ignore */ }
     });
     widget.bind(Widget.Events.PLAY, () => {
+      if (!stillThis() || modeRef.current !== "widget") return;
+      switchingRef.current = false;
       scPlayingRef.current = true;
+      pauseRequestedRef.current = false;
+      progressLiveRef.current = true;
       applyPlaybackVolume();
       widget.getDuration((ms) => {
+        if (!stillThis()) return;
         scDurationRef.current = ms || scDurationRef.current || 0;
+        updateProgress();
       });
-      if (modeRef.current === "widget") {
-        showNowPlaying();
-        syncPlaying();
-      }
+      showNowPlaying();
+      syncPlaying();
+      updateProgress();
     });
     widget.bind(Widget.Events.PAUSE, () => {
-      if (modeRef.current !== "widget") return;
+      if (!stillThis() || modeRef.current !== "widget") return;
       if (!pauseRequestedRef.current) return;
       scPlayingRef.current = false;
       syncPlaying();
     });
     widget.bind(Widget.Events.FINISH, () => {
       scPlayingRef.current = false;
-      if (modeRef.current !== "widget" || indexRef.current < 0) return;
+      if (switchingRef.current || !stillThis() || modeRef.current !== "widget" || indexRef.current < 0) return;
+      if (advancedFromRef.current === indexRef.current) return;
+      advancedFromRef.current = indexRef.current;
       playAtRef.current(indexRef.current + 1, true);
-    });    widget.bind(Widget.Events.PLAY_PROGRESS, (data) => {
+    });
+    widget.bind(Widget.Events.PLAY_PROGRESS, (data) => {
+      if (!stillThis() || modeRef.current !== "widget") return;
       scPositionRef.current = data?.currentPosition || 0;
+      if (scPositionRef.current > 0) progressLiveRef.current = true;
       if (data?.currentPosition && scDurationRef.current <= 0 && data.relativePosition) {
         scDurationRef.current = data.currentPosition / data.relativePosition;
       }
-      if (modeRef.current === "widget") updateProgress();
+      updateProgress();
     });
     return widget;
   }, [applyPlaybackVolume, showNowPlaying, syncPlaying, updateProgress]);
@@ -405,26 +492,30 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
               onStateChange: (event: { data: number }) => {
                 const S = YT.PlayerState;
                 if (event.data === S.PLAYING) {
+                  switchingRef.current = false;
                   ytPlayingRef.current = true;
                   if (modeRef.current === "yt") {
+                    progressLiveRef.current = true;
                     showNowPlaying();
                     syncPlaying();
+                    updateProgress();
                   }
                 } else if (event.data === S.PAUSED) {
                   ytPlayingRef.current = false;
                   if (modeRef.current === "yt") syncPlaying();
                 } else if (event.data === S.ENDED) {
                   ytPlayingRef.current = false;
-                  if (modeRef.current === "yt" && indexRef.current >= 0) {
-                    playAtRef.current(indexRef.current + 1, true);
-                  }
+                  if (switchingRef.current || modeRef.current !== "yt" || indexRef.current < 0) return;
+                  if (advancedFromRef.current === indexRef.current) return;
+                  advancedFromRef.current = indexRef.current;
+                  playAtRef.current(indexRef.current + 1, true);
                 }
               },
             },
           });
         }),
     );
-  }, [applyPlaybackVolume, loadYtApi, showNowPlaying, syncPlaying]);
+  }, [applyPlaybackVolume, loadYtApi, showNowPlaying, syncPlaying, updateProgress]);
 
   const pauseYt = useCallback(() => {
     pauseRequestedRef.current = true;
@@ -453,22 +544,40 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     const gen = widgetGenRef.current + 1;
     widgetGenRef.current = gen;
     scLoadGenRef.current = gen;
-    return loadScApi().then((Widget) => {
-      if (token !== tokenRef.current || gen !== widgetGenRef.current) return;
-      const widget = bindScWidget(Widget);
-      scUrlRef.current = url;
-      scPositionRef.current = 0;
-      scDurationRef.current = 0;
-      markWidgetPlaying();
-      const iframe = iframeRef.current;
-      const primed = iframe && iframe.src.indexOf(encodeURIComponent(url)) !== -1;
-      if (primed) {
-        try { widget.play(); } catch { /* ignore */ }
-        return;
-      }
-      widget.load(url, { auto_play: true });
+    const iframe = iframeRef.current;
+    if (!iframe) return Promise.reject(new Error("widget"));
+    // A new iframe document. The previous Widget binding talks to the old
+    // one, which is why Next kept playing the first SoundCloud track.
+    widgetRef.current = null;
+    scUrlRef.current = url;
+    scPositionRef.current = 0;
+    scDurationRef.current = 0;
+    const nextSrc = widgetSrc(url);
+    return new Promise<void>((resolve, reject) => {
+      const attach = () => {
+        iframe.removeEventListener("load", attach);
+        if (token !== tokenRef.current || gen !== widgetGenRef.current) {
+          resolve();
+          return;
+        }
+        loadScApi().then((Widget) => {
+          if (token !== tokenRef.current || gen !== widgetGenRef.current) {
+            resolve();
+            return;
+          }
+          try {
+            bindScWidget(Widget);
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        }, reject);
+      };
+      iframe.addEventListener("load", attach);
+      if (iframe.src === nextSrc) attach();
+      else iframe.src = nextSrc;
     });
-  }, [bindScWidget, loadScApi, markWidgetPlaying]);
+  }, [bindScWidget, loadScApi, widgetSrc]);
 
   const peekStream = useCallback((href: string) => {
     const entry = streamCacheRef.current.get(href);
@@ -563,8 +672,8 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       artistUrl: data.artistUrl || artistExploreUrl(media),
       trackUrl: data.trackUrl || trackExploreUrl(media),
     });
-    applyProgress(0);
-  }, [applyProgress]);
+    if (!progressLiveRef.current) setProgress({ ratio: 0, current: 0, duration: 0 });
+  }, []);
 
   const stopPlay = useCallback(() => {
     indexRef.current = -1;
@@ -574,6 +683,10 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     tokenRef.current += 1;
     sourceRef.current = "";
     modeRef.current = "audio";
+    engagedRef.current = false;
+    switchingRef.current = false;
+    progressLiveRef.current = false;
+    setProgress({ ratio: 0, current: 0, duration: 0 });
     pauseWidget();
     pauseHtmlAudio();
     pauseYt();
@@ -583,28 +696,37 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   }, [hideNowPlaying, pauseHtmlAudio, pauseWidget, pauseYt, syncPlaying]);
 
   const pausePlay = useCallback(() => {
-    if (modeRef.current === "widget") pauseWidget();
-    else if (modeRef.current === "yt") pauseYt();
+    engagedRef.current = false;
+    if (modeRef.current === "widget") {
+      pauseRequestedRef.current = true;
+      scPlayingRef.current = false;
+      if (widgetRef.current) {
+        try { widgetRef.current.pause(); } catch { /* ignore */ }
+      } else {
+        pauseWidget();
+      }
+    } else if (modeRef.current === "yt") pauseYt();
     else audioRef.current?.pause();
     syncPlaying();
   }, [pauseWidget, pauseYt, syncPlaying]);
 
   const seekToRatio = useCallback((ratio: number) => {
-    const duration = mediaDuration();
+    const duration = playbackLimit() || mediaDuration();
     ratio = Math.min(1, Math.max(0, ratio));
     applyProgress(ratio, duration);
     if (!duration) return;
+    const at = ratio * duration;
     if (modeRef.current === "widget" && widgetRef.current) {
-      scPositionRef.current = ratio * scDurationRef.current;
+      scPositionRef.current = at * 1000;
       widgetRef.current.seekTo(scPositionRef.current);
       return;
     }
     if (modeRef.current === "yt" && ytPlayerRef.current) {
-      try { ytPlayerRef.current.seekTo(ratio * duration, true); } catch { /* ignore */ }
+      try { ytPlayerRef.current.seekTo(at, true); } catch { /* ignore */ }
       return;
     }
-    if (audioRef.current) audioRef.current.currentTime = ratio * duration;
-  }, [applyProgress, mediaDuration]);
+    if (audioRef.current) audioRef.current.currentTime = at;
+  }, [applyProgress, mediaDuration, playbackLimit]);
 
   const playAt = useCallback((index: number, fromSkip: boolean) => {
     const list = playlistRef.current;
@@ -621,13 +743,33 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     indexRef.current = index;
     eventIdRef.current = event.id;
     itemKeyRef.current = item.key;
+    engagedRef.current = true;
+    switchingRef.current = true;
+    lastGainRef.current = -1;
+    syncPlaying();
     const token = ++tokenRef.current;
-    // Stop whatever is playing *now*, before any async stream resolution, so
-    // switching tracks never leaves the previous audio running under the new
-    // title/thumbnail while the next stream is fetched.
+    const cached = req ? peekStream(req.href) : null;
+    // A SoundCloud-only track has to start from the iframe URL set in this
+    // click. Parking the iframe on the idle page first consumes the gesture,
+    // and the real track then stays paused at 0:00.
+    const widgetInClick = !!(req && req.source === "soundcloud" && req.fallback && !cached?.stream);
+    // Drop the previous media before any fetch. Progress stays at 0 until the
+    // new file actually starts, so a late timeupdate cannot restore the old bar.
+    progressLiveRef.current = false;
+    scPositionRef.current = 0;
+    scDurationRef.current = 0;
+    setProgress({ ratio: 0, current: 0, duration: 0 });
     pauseHtmlAudio();
-    pauseWidget();
     pauseYt();
+    if (widgetInClick) {
+      widgetGenRef.current += 1;
+      scLoadGenRef.current = -1;
+      widgetRef.current = null;
+      scPlayingRef.current = false;
+      pauseRequestedRef.current = false;
+    } else {
+      pauseWidget();
+    }
     onNeedScrollRef.current?.(event);
     preloadIndexRef.current(index + 1);
     if (!req) {
@@ -657,8 +799,10 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
           if (token !== tokenRef.current) return;
           setLoadingId("");
           skipGuardRef.current = 0;
+          progressLiveRef.current = true;
           showNowPlaying();
           syncPlaying();
+          updateProgress();
         })
         .catch(() => {
           if (token !== tokenRef.current) return;
@@ -673,7 +817,6 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
         });
       return;
     }
-    const cached = peekStream(req.href);
     const startFromPayload = (data: StreamPayload) => {
       if (token !== tokenRef.current) return Promise.resolve();
       setLoadingId("");
@@ -690,33 +833,83 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       });
       const startWidget = () => {
         const url = data.url || req.fallback;
-        if (req.source !== "soundcloud" || (!data.widget && !url)) throw new Error("stream");
+        if (req.source !== "soundcloud" || !url) throw new Error("stream");
         modeRef.current = "widget";
         pauseHtmlAudio();
         pauseYt();
-        markWidgetPlaying();
-        if (widgetRef.current) {
-          try { widgetRef.current.play(); } catch { /* ignore */ }
+        const iframe = iframeRef.current;
+        const encoded = encodeURIComponent(url);
+        const live = !!(iframe && (iframe.src.indexOf(encoded) !== -1 || iframe.src.indexOf(url) !== -1));
+        if (live) {
+          // The iframe is already on this track (a preload, or the click that
+          // started the widget before the stream lookup returned). play() is
+          // what makes a paused preload actually start, and the bar follows.
+          if (widgetRef.current) {
+            try { widgetRef.current.play(); } catch { /* ignore */ }
+            progressLiveRef.current = true;
+            updateProgress();
+          }
           return Promise.resolve();
         }
         return playWidget(url, token);
       };
       if (data.stream && audioRef.current) {
-        modeRef.current = "audio";
-        pauseYt();
-        audioRef.current.src = data.stream;
+        const audio = audioRef.current;
+        const gen = ++audioGenRef.current;
+        // The click already pointed the SoundCloud iframe at this track. Pausing
+        // it before audio.play() resolves drops that gesture: the mp3 then
+        // starts outside the click and the widget comes back paused at 0:00,
+        // so the bar never leaves 00:00.
+        const widgetOwnsClick = modeRef.current === "widget" && req.source === "soundcloud";
+        if (!widgetOwnsClick) {
+          progressLiveRef.current = false;
+          setProgress({ ratio: 0, current: 0, duration: 0 });
+          pauseWidget();
+          pauseYt();
+          modeRef.current = "audio";
+        }
+        const same = audio.src === data.stream || audio.currentSrc === data.stream;
+        if (!same) audio.src = data.stream;
+        const seekZero = () => {
+          try { if (audio.currentTime > 0.25) audio.currentTime = 0; } catch { /* not ready */ }
+        };
+        if (same) {
+          try { audio.currentTime = 0; } catch { /* metadata pending */ }
+        } else {
+          audio.addEventListener("loadedmetadata", () => {
+            if (gen !== audioGenRef.current) return;
+            seekZero();
+          }, { once: true });
+        }
         applyPlaybackVolume();
-        return audioRef.current.play().then(() => {
-          if (token !== tokenRef.current) {
-            audioRef.current?.pause();
+        return audio.play().then(() => {
+          if (gen !== audioGenRef.current || token !== tokenRef.current) {
+            audio.pause();
             return;
           }
-          modeRef.current = "audio";
-          pauseWidget();
-        }).catch(() => {
-          if (token !== tokenRef.current) return;
-          if (req.source === "soundcloud") return startWidget();
-          throw new Error("stream");
+          if (widgetOwnsClick) {
+            pauseWidget();
+            pauseYt();
+            modeRef.current = "audio";
+          }
+          seekZero();
+          progressLiveRef.current = true;
+          updateProgress();
+        }).catch((err: unknown) => {
+          if (gen !== audioGenRef.current || token !== tokenRef.current) return;
+          const name = err && typeof err === "object" && "name" in err ? String((err as { name?: string }).name) : "";
+          if (name === "AbortError") return;
+          if (req.source === "soundcloud") {
+            if (widgetOwnsClick) {
+              modeRef.current = "widget";
+              try { widgetRef.current?.play(); } catch { /* ignore */ }
+              progressLiveRef.current = true;
+              updateProgress();
+              return;
+            }
+            return startWidget();
+          }
+          throw err;
         });
       }
       return startWidget();
@@ -756,11 +949,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       scPositionRef.current = 0;
       scDurationRef.current = 0;
       scUrlRef.current = req.fallback;
-      markWidgetPlaying();
-      void playWidget(req.fallback, token).catch(() => {
-        if (token !== tokenRef.current) return;
-        if (iframeRef.current) iframeRef.current.src = widgetSrc(req.fallback);
-      });
+      void playWidget(req.fallback, token);
     }
     setLoadingId(event.id);
     void resolveStream(req.href)
@@ -792,11 +981,13 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
         skipGuardRef.current = 0;
         stopPlay();
       });
-  }, [applyPlaybackVolume, fillNowPlaying, markWidgetPlaying, pauseHtmlAudio, pauseWidget, pauseYt, peekStream, playWidget, playYt, resolveStream, showNowPlaying, stopPlay, syncPlaying, widgetSrc]);
+  }, [applyPlaybackVolume, fillNowPlaying, pauseHtmlAudio, pauseWidget, pauseYt, peekStream, playWidget, playYt, resolveStream, showNowPlaying, stopPlay, syncPlaying, updateProgress]);
 
   playAtRef.current = playAt;
 
   const resumePlay = useCallback(() => {
+    engagedRef.current = true;
+    syncPlaying();
     if (modeRef.current === "yt") {
       markYtPlaying();
       showNowPlaying();
@@ -804,9 +995,10 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       return;
     }
     if (modeRef.current === "widget") {
-      markWidgetPlaying();
       showNowPlaying();
-      if (widgetRef.current) {
+      pauseRequestedRef.current = false;
+      const iframe = iframeRef.current;
+      if (widgetRef.current && iframe && iframe.src !== SC_WIDGET_IDLE) {
         try { widgetRef.current.play(); } catch { /* ignore */ }
         return;
       }
@@ -823,7 +1015,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       showNowPlaying();
       syncPlaying();
     }).catch(() => stopPlay());
-  }, [markWidgetPlaying, markYtPlaying, playAt, playWidget, showNowPlaying, stopPlay, syncPlaying]);
+  }, [markYtPlaying, playAt, playWidget, showNowPlaying, stopPlay, syncPlaying]);
 
   const playNext = useCallback(() => playAt((indexRef.current < 0 ? 0 : indexRef.current) + 1, true), [playAt]);
   const playPrev = useCallback(() => {
@@ -874,27 +1066,27 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     if (start < 0) return;
     const current = indexRef.current >= 0 ? playlistRef.current[indexRef.current] : null;
     const currentIsWeek = current && weekMondayIsoFn(current.event.date) === week;
-    if (isPlaying() && currentIsWeek) {
+    if (engagedRef.current && currentIsWeek) {
       pausePlay();
       return;
     }
-    if (!isPlaying() && currentIsWeek && (audioRef.current?.src || modeRef.current === "widget" || (modeRef.current === "yt" && ytVideoRef.current))) {
+    if (!engagedRef.current && currentIsWeek && (audioRef.current?.src || modeRef.current === "widget" || (modeRef.current === "yt" && ytVideoRef.current))) {
       resumePlay();
       return;
     }
     playAt(start, false);
-  }, [isPlaying, pausePlay, playAt, resumePlay]);
+  }, [pausePlay, playAt, resumePlay]);
 
   const togglePlay = useCallback((event: ConcertEvent) => {
     if (eventIdRef.current === event.id) {
-      if (isPlaying()) pausePlay();
+      if (engagedRef.current) pausePlay();
       else resumePlay();
       return;
     }
     const index = playlistRef.current.findIndex((item) => item.event.id === event.id);
     if (index < 0) return;
     playAt(index, false);
-  }, [isPlaying, pausePlay, playAt, resumePlay]);
+  }, [pausePlay, playAt, resumePlay]);
 
   const preloadEvent = useCallback((event: ConcertEvent) => {
     if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
@@ -921,9 +1113,9 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   }, []);
 
   const toggleBarPlay = useCallback(() => {
-    if (isPlaying()) pausePlay();
+    if (engagedRef.current) pausePlay();
     else resumePlay();
-  }, [isPlaying, pausePlay, resumePlay]);
+  }, [pausePlay, resumePlay]);
 
   const rebindAfterRender = useCallback(() => {
     const list = playlistRef.current;

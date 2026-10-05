@@ -12,6 +12,7 @@
 
 import { httpRequest } from "./http";
 import { cleanPersonName, isGenericEvent, namesMatch, sameArtist } from "./text";
+import { eventStyles, styleKey, type StyleHint } from "./style";
 
 export type DeezerMatch = {
   id: number;
@@ -109,19 +110,28 @@ export async function lookupDeezerArtist(
   query: string,
   cache: Map<string, Release | null>,
   context = "",
+  styles?: StyleHint,
 ): Promise<Release | null> {
   const artist = cleanPersonName(query) || query;
   if (!artist || isGenericEvent(artist)) return null;
-  const key = "dz:" + cleanPersonName(artist);
+  const hint = styles ?? eventStyles("", context);
+  const key = "dz:" + cleanPersonName(artist) + styleKey(hint);
   if (cache.has(key)) return cache.get(key) ?? null;
 
+  // A style word ("jazz", "rock") steers a shared name toward the artist the
+  // venue and description point at. Fall back to the bare name if that misses.
+  const queries = hint.wanted.length ? [artist + " " + hint.wanted[0], artist] : [artist];
   try {
-    const matches = await searchDeezer(artist);
-    const ranked = matches
-      .map((match) => ({ match, score: scoreDeezer(match, artist) }))
-      .filter((entry) => entry.score > 0)
-      .sort((a, b) => b.score - a.score);
-    const best = ranked[0]?.match;
+    let best: DeezerMatch | undefined;
+    for (const search of queries) {
+      const matches = await searchDeezer(search);
+      const ranked = matches
+        .map((match) => ({ match, score: scoreDeezer(match, artist) }))
+        .filter((entry) => entry.score > 0)
+        .sort((a, b) => b.score - a.score);
+      best = ranked[0]?.match;
+      if (best) break;
+    }
     if (!best) {
       cache.set(key, null);
       return null;

@@ -66,11 +66,6 @@ export function PlayButton({
       <PlayIcon />
       <PauseIcon />
       {n > 1 ? <span className={s.playCount} data-play-count>{n}</span> : null}
-      {preview ? (
-        <span className={s.playPreview} data-play-preview aria-hidden="true">
-          30 s
-        </span>
-      ) : null}
     </button>
   );
   if (n < 2) return playBtn;

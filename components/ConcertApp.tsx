@@ -369,6 +369,7 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
                 rangeTo={rangeTo}
                 playing={player.playing}
                 eventId={player.eventId}
+                trackIndex={player.trackIndex}
                 loadingId={player.loadingId}
                 currentWeek={currentWeek}
                 simple={calStyle === "simple"}

@@ -38,6 +38,8 @@ export type ScrapedEvent = {
   _bandcamp_links?: string[];
   _soundcloud_links?: string[];
   _spotify_links?: { kind: string; id: string; url: string }[];
+  /** Ticketmaster artist page. Used to fill a blurb, then dropped. */
+  _artist_url?: string;
 };
 
 export type VenueFetch = (start: DateTime, end: DateTime) => Promise<ScrapedEvent[]>;

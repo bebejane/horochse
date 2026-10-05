@@ -1,7 +1,8 @@
 import { httpJson, httpRequest, HttpError } from "./http";
 import { parseBcDate } from "./dates";
 import { parseBandcampIds } from "./links";
-import { albumTitleScore, cleanPersonName, cluesCacheKey, eventLookupClues, foldName, namesMatch, sameArtist } from "./text";
+import { albumTitleScore, cleanPersonName, cluesCacheKey, eventLookupClues, foldName, nameWords, namesMatch, sameArtist } from "./text";
+import { eventStyles, placeScore, styleAlignment, styleKey, type StyleHint } from "./style";
 
 type Release = Record<string, any>;
 
@@ -57,6 +58,8 @@ export async function searchBandcampArtists(query: string, allowFolded = false):
       band_id: row.id,
       url: row.item_url_root || "",
       location: row.location || "",
+      genre: String(row.genre_name || ""),
+      tags: Array.isArray(row.tag_names) ? row.tag_names.map(String) : [],
     });
   }
   return hits;
@@ -109,16 +112,22 @@ export async function releaseFromBandcampSearchRow(row: any, cache: Map<string, 
   return null;
 }
 
-export function locationContextScore(location: string, context: string): number {
-  const ctx = new Set(foldName(context).split(" "));
+export function locationContextScore(location: string, context: string, ignore: string[] = []): number {
+  const skip = new Set(ignore);
+  const ctx = new Set(
+    foldName(context).split(" ").filter((word) => word.length >= 5 && !skip.has(word)),
+  );
+  const seen = new Set<string>();
   let score = 0;
   for (const word of foldName(location).split(" ")) {
-    if (word.length >= 5 && ctx.has(word)) score += 12;
+    if (word.length < 5 || skip.has(word) || seen.has(word) || !ctx.has(word)) continue;
+    seen.add(word);
+    score += 12;
   }
   return score;
 }
 
-export function scoreTextAgainstClues(blob: string, clues: any, context = ""): number {
+export function scoreTextAgainstClues(blob: string, clues: any, context = "", ignore: string[] = []): number {
   const folded = foldName(blob);
   if (!folded) return 0;
   let score = 0;
@@ -136,7 +145,7 @@ export function scoreTextAgainstClues(blob: string, clues: any, context = ""): n
   if ((clues.albums || []).length || (clues.labels || []).length) {
     if (folded.includes("sweden") || folded.includes("sverige") || folded.includes("stockholm")) score += 3;
   }
-  score += locationContextScore(blob, context);
+  score += locationContextScore(blob, context, ignore);
   return score;
 }
 
@@ -195,6 +204,7 @@ export async function latestFromBand(band: any, details?: any): Promise<Release 
       released: item.release_date || "",
       track: picked.track,
       track_id: picked.track_id,
+      about: album.about || "",
     };
   }
   return null;
@@ -329,10 +339,12 @@ export async function lookupBandcamp(
   query: string,
   cache: Map<string, Release | null>,
   context = "",
+  styles?: StyleHint,
 ): Promise<Release | null> {
   query = cleanPersonName(query) || query;
   const clues = eventLookupClues(context, query);
-  const key = foldName(query) + "\t" + cluesCacheKey(clues);
+  const hint = styles ?? eventStyles("", context);
+  const key = foldName(query) + "\t" + cluesCacheKey(clues) + styleKey(hint);
   if (cache.has(key)) {
     const hit = cache.get(key) ?? null;
     if (hit) console.log(`bandcamp (${query}): cachad`);
@@ -340,6 +352,7 @@ export async function lookupBandcamp(
   }
   const started = Date.now();
   try {
+    const ignore = nameWords(query);
     const hints = [...(clues.albums || []), ...(clues.labels || [])];
     if (hints.length) {
       const release = await findBandcampAlbumForArtist(query, hints, cache);
@@ -351,25 +364,36 @@ export async function lookupBandcamp(
     }
     let hits = await searchBandcampArtists(query);
     if (!hits.length) hits = await searchBandcampArtists(query, true);
-    const limit = foldName(query).split(" ").length < 2 ? 4 : 3;
+    const scored = hits.map((band) => ({
+      band,
+      // Genre from the search row, so a clashing namesake is dropped before we
+      // fetch their discography. Place words in the description (London) count too.
+      align:
+        styleAlignment(band.genre, band.tags, hint) + placeScore(band.location || "", context),
+    }));
+    scored.sort((a, b) => b.align - a.align);
+    const bestAlign = scored[0]?.align ?? 0;
+    const viable = scored.filter((item) => item.align >= 0 || item.align === bestAlign).slice(0, 4);
     let best: Release | null = null;
     let bestTuple: [number, number] | null = null;
-    for (const band of hits.slice(0, limit)) {
+    for (const { band, align } of viable) {
       const details = await bandcampDetails(band.band_id);
       const release = await latestFromBand(band, details);
       if (!release) continue;
-      const clueScore = scoreTextAgainstClues(
-        [
-          details.name || band.name || "",
-          details.location || band.location || "",
-          details.bio || "",
-          (details.discography || []).slice(0, 8).map((item: any) => item.title || "").join(" "),
-        ].join(" "),
-        clues,
-        context,
-      );
+      const about = String(release.about || "");
+      delete release.about;
+      const blob = [
+        details.name || band.name || "",
+        details.location || band.location || "",
+        details.bio || "",
+        about,
+        band.genre || "",
+        (band.tags || []).join(" "),
+        (details.discography || []).slice(0, 8).map((item: any) => item.title || "").join(" "),
+      ].join(" ");
+      const clueScore = scoreTextAgainstClues(blob, clues, context, ignore) + placeScore(blob, context);
       const when = parseBcDate(release.released || "").toMillis();
-      const rank: [number, number] = [clueScore, when];
+      const rank: [number, number] = [align + clueScore, when];
       if (best === null || rank[0] > bestTuple![0] || (rank[0] === bestTuple![0] && rank[1] > bestTuple![1])) {
         best = release;
         bestTuple = rank;
@@ -380,7 +404,17 @@ export async function lookupBandcamp(
       cache.set(key, best);
       return best;
     }
-    for (const row of (await searchBandcampReleasesForArtist(query)).slice(0, 4)) {
+    const releaseRows = (await searchBandcampReleasesForArtist(query)).map((row) => ({
+      row,
+      align: styleAlignment(
+        String(row.genre_name || ""),
+        Array.isArray(row.tag_names) ? row.tag_names.map(String) : [],
+        hint,
+      ),
+    }));
+    releaseRows.sort((a, b) => b.align - a.align);
+    const bestRow = releaseRows[0]?.align ?? 0;
+    for (const { row } of releaseRows.filter((item) => item.align >= 0 || item.align === bestRow).slice(0, 4)) {
       const release = await releaseFromBandcampSearchRow(row, cache);
       const artist = release?.artist || "";
       if (release && (sameArtist(query, artist) || namesMatch(query, artist))) {
