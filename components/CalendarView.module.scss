@@ -259,7 +259,7 @@
 	z-index: 1;
 	pointer-events: none;
 	background: linear-gradient(
-		to right,
+		to bottom,
 		var(--cal-fill) 0%,
 		color-mix(in srgb, var(--cal-fill) 88%, transparent) 32%,
 		color-mix(in srgb, var(--cal-fill) 38%, transparent) 62%,
@@ -423,6 +423,24 @@
 	--cal-fill: #191612;
 }
 
+:global(html[data-theme='light']) .calEvent:global(.hasArt) {
+	--cal-fill: var(--bg);
+	color: var(--ink);
+}
+
+:global(html[data-theme='light']) .calEvent:global(.hasArt) .calTime {
+	color: var(--muted);
+}
+
+:global(html[data-theme='light']) .calEvent:global(.hasArt) .calTitle {
+	color: var(--ink);
+}
+
+:global(html[data-theme='light']) .calEvent:global(.hasArt):hover,
+:global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) {
+	--cal-fill: var(--cal-hover);
+}
+
 @media (hover: hover) {
 	.calEvent:global(.hasArt):hover .calEventArt {
 		filter: none;
@@ -436,10 +454,34 @@
 .calEvent:global(.hasArt):hover .calEventLink::after,
 .calEvent:global(.hasArt):global(.isLive) .calEventLink::after {
 	background: linear-gradient(
-		to right,
+		to bottom,
 		color-mix(in srgb, var(--cal-fill) 86%, transparent) 0%,
 		color-mix(in srgb, var(--cal-fill) 64%, transparent) 40%,
 		color-mix(in srgb, var(--cal-fill) 32%, transparent) 100%
+	);
+}
+
+:global(html[data-theme='light']) .calEvent:global(.hasArt) .calEventArt {
+	opacity: 0.7;
+}
+
+:global(html[data-theme='light']) .calEvent:global(.hasArt) .calEventLink::after {
+	background: linear-gradient(
+		to bottom,
+		var(--cal-fill) 0%,
+		color-mix(in srgb, var(--cal-fill) 96%, transparent) 42%,
+		color-mix(in srgb, var(--cal-fill) 78%, transparent) 70%,
+		color-mix(in srgb, var(--cal-fill) 42%, transparent) 100%
+	);
+}
+
+:global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calEventLink::after,
+:global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calEventLink::after {
+	background: linear-gradient(
+		to bottom,
+		color-mix(in srgb, var(--cal-fill) 94%, transparent) 0%,
+		color-mix(in srgb, var(--cal-fill) 78%, transparent) 48%,
+		color-mix(in srgb, var(--cal-fill) 46%, transparent) 100%
 	);
 }
 

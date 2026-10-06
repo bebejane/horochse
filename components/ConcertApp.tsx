@@ -3,7 +3,7 @@
 import s from './ConcertApp.module.scss';
 import cn from 'classnames';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { formatUpdated, toIso, todayDate, weekMondayIso } from '@/lib/dates';
 import {
 	clearStoredSettings,
@@ -17,6 +17,7 @@ import {
 	savePickerSeen,
 	upcomingEvents,
 } from '@/lib/events';
+import { applyVenueColors } from '@/lib/venue-colors';
 import type {
 	CalStyle,
 	ConcertEvent,
@@ -125,6 +126,24 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 		() => filteredEvents(events, mine, mode, peek),
 		[events, mine, mode, peek],
 	);
+
+	const colorSlugs = useMemo(() => {
+		if (peek) return [peek];
+		if (mode === 'mine') return mine;
+		const seen = new Set<string>();
+		const slugs: string[] = [];
+		for (const event of visible) {
+			const slug = event.venue_slug;
+			if (!slug || seen.has(slug)) continue;
+			seen.add(slug);
+			slugs.push(slug);
+		}
+		return slugs;
+	}, [peek, mode, mine, visible]);
+
+	useLayoutEffect(() => {
+		applyVenueColors(colorSlugs);
+	}, [colorSlugs]);
 
 	const scrollPlaying = useCallback((event: ConcertEvent) => {
 		scrollToCard(event);
@@ -266,9 +285,15 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 		setPickerOpen(false);
 	}, []);
 
+	function scrollPageTop() {
+		const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+		window.scrollTo({ top: 0, behavior });
+	}
+
 	const onFilterVenue = useCallback((slug: string) => {
 		setPickerOpen(false);
 		setPeek((current) => (current === slug ? null : slug));
+		scrollPageTop();
 	}, []);
 
 	function onSetView(next: ViewMode) {
@@ -305,8 +330,10 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 					saveFilterMode('all');
 					setPeek(null);
 					setPickerOpen(false);
+					scrollPageTop();
 				}}
 				onTogglePicker={() => {
+					const hadPeek = peek !== null;
 					setPeek(null);
 					if (pickerOpen) {
 						savePickerSeen();
@@ -315,6 +342,7 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 							setMode('mine');
 							saveFilterMode('mine');
 						}
+						if (hadPeek || (mine.length > 0 && mode !== 'mine')) scrollPageTop();
 						return;
 					}
 					if (!mine.length) {
@@ -324,8 +352,10 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 					if (mode !== 'mine') {
 						setMode('mine');
 						saveFilterMode('mine');
+						scrollPageTop();
 						return;
 					}
+					if (hadPeek) scrollPageTop();
 					setPickerOpen(true);
 				}}
 				onClosePicker={closePicker}
@@ -337,6 +367,7 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 					savePickerSeen();
 					setMode('mine');
 					saveFilterMode('mine');
+					scrollPageTop();
 				}}
 				onRemoveMine={(slug) => {
 					const next = mine.filter((item) => item !== slug);
@@ -347,10 +378,12 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 						setMode('all');
 						saveFilterMode('all');
 					}
+					scrollPageTop();
 				}}
 				onPeekVenue={(slug) => {
 					if (pickerOpen) return;
 					setPeek((current) => (current === slug ? null : slug));
+					scrollPageTop();
 				}}
 				onClearPeek={() => setPeek(null)}
 				onSetView={onSetView}

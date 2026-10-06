@@ -3,12 +3,18 @@ import type { ReactNode } from "react";
 import localFont from "next/font/local";
 import "@/styles/index.scss";
 
-const haltimezone = localFont({
+const william = localFont({
   src: [
-    { path: "../public/fonts/Timezone/HALTimezoneUnlicensed-Regular.otf", weight: "400", style: "normal" },
-    { path: "../public/fonts/Timezone/HALTimezoneUnlicensed-RegularItalic.otf", weight: "400", style: "italic" },
-    { path: "../public/fonts/Timezone/HALTimezoneUnlicensed-Bold.otf", weight: "700", style: "normal" },
-    { path: "../public/fonts/Timezone/HALTimezoneUnlicensed-BoldItalic.otf", weight: "700", style: "italic" },
+    {
+      path: "../public/fonts/William/WilliamTextVFRomanNormal.woff2",
+      weight: "400 700",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/William/WilliamTextVFItalicNormal.woff2",
+      weight: "400 700",
+      style: "italic",
+    },
   ],
   variable: "--font-anselm",
   display: "swap",
@@ -30,7 +36,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="sv" className={`${haltimezone.variable} ${walter.variable}`} suppressHydrationWarning>
+    <html lang="sv" className={`${william.variable} ${walter.variable}`} suppressHydrationWarning>
       <body suppressHydrationWarning>
         <script
           dangerouslySetInnerHTML={{
