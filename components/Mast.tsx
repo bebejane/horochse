@@ -112,6 +112,7 @@ export function Mast({
 	const collapsedChips = !pickerOpen && mode === 'mine' && chips.length > 0;
 	const peekVenue = peek ? venuesAlpha.find((item) => item.slug === peek) : undefined;
 	const [introHidden, setIntroHidden] = useState(false);
+	const [introAway, setIntroAway] = useState(false);
 	const [aboutOpen, setAboutOpen] = useState(false);
 
 	useEffect(() => {
@@ -263,13 +264,29 @@ export function Mast({
 		}
 	}, []);
 
+	useEffect(() => {
+		if (introHidden || mine.length === 0) {
+			setIntroAway(false);
+			return;
+		}
+		const hideAt = 96;
+		const showAt = 24;
+		const apply = () => {
+			const y = window.scrollY;
+			setIntroAway((away) => (away ? y > showAt : y >= hideAt));
+		};
+		apply();
+		window.addEventListener('scroll', apply, { passive: true });
+		return () => window.removeEventListener('scroll', apply);
+	}, [introHidden, mine.length]);
+
 	const chipKey = chips.map((item) => item.slug).join(',');
 
 	useLayoutEffect(() => {
 		onLayout?.();
 		const frame = window.requestAnimationFrame(() => onLayout?.());
 		return () => window.cancelAnimationFrame(frame);
-	}, [pickerOpen, aboutOpen, introHidden, onLayout]);
+	}, [pickerOpen, aboutOpen, introHidden, introAway, onLayout]);
 
 	useEffect(() => {
 		const node = scrollerRef.current;
@@ -678,7 +695,7 @@ export function Mast({
 								</span>
 							</div>
 						</div>
-					) : !introHidden ? (
+					) : !introHidden && !introAway ? (
 						<div className={s.mastIntroWrap} id='mast-copy'>
 							<p className={s.mastIntro}>
 								Välj vilka scener du är intresserad av och få en överblick av aktuella konserter i

@@ -585,6 +585,7 @@
 	grid-row: 4;
 }
 
+.mastInner:not(:has(.mastIntroWrap)) > .filterChips,
 :global(html[data-hide-intro]) .mastInner:not(:has(:global(.isAbout))) > .filterChips {
 	grid-row: 3;
 }
