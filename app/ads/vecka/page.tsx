@@ -260,7 +260,26 @@ export default function WeekAdsPage() {
 
       <div className={styles.work}>
         <div className={styles.stage}>
-          <canvas ref={canvasRef} width={POSTER_W} height={POSTER_H} className={styles.canvas} />
+          <canvas
+            ref={canvasRef}
+            width={POSTER_W}
+            height={POSTER_H}
+            className={styles.canvas}
+            data-hit={current && !exporting ? "true" : "false"}
+            role="button"
+            tabIndex={current && !exporting ? 0 : -1}
+            aria-label={current ? `Välj bort ${displayTitle(current)}` : "Ingen konsert"}
+            onClick={() => {
+              if (!current || exporting) return;
+              toggle(current.id);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              if (!current || exporting) return;
+              toggle(current.id);
+            }}
+          />
         </div>
         <ul className={styles.list}>
           {visible.map((event) => {

@@ -85,6 +85,10 @@
 	transition: none;
 }
 
+.canvas[data-hit="true"] {
+	cursor: pointer;
+}
+
 .controls {
 	display: flex;
 	flex-wrap: wrap;

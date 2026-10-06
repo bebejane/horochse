@@ -26,7 +26,7 @@
 
 .calHeads {
 	position: sticky;
-	top: calc(var(--mast-height) + 1px);
+	top: calc(var(--mast-height) + var(--week-head, 0px));
 	z-index: 16;
 	border-top: 1px solid var(--line);
 	background: var(--bg);
@@ -105,7 +105,7 @@
 
 .calEvent {
 	--cal-fill: var(--bg-2);
-	--cal-art-filter: saturate(0.74) brightness(0.9) contrast(1.05);
+	--cal-tint: var(--ink);
 	--cal-hover-scale: 1.38;
 	display: flex;
 	flex-direction: column;
@@ -211,8 +211,19 @@
 	object-position: center;
 	z-index: 0;
 	pointer-events: none;
-	opacity: 0.88;
-	filter: var(--cal-art-filter);
+	opacity: 0.92;
+	filter: grayscale(1);
+	transition: filter 0.22s ease;
+}
+
+.calTint {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	pointer-events: none;
+	background: var(--cal-tint);
+	mix-blend-mode: multiply;
+	transition: opacity 0.22s ease;
 }
 
 .calEventFallback {
@@ -239,7 +250,7 @@
 	color: #f3eee4;
 }
 
-.calEvent:global(.hasArt)::after {
+.calEvent:global(.hasArt) .calEventLink::after {
 	content: '';
 	position: absolute;
 	inset: 0;
@@ -259,7 +270,7 @@
 	z-index: 0;
 }
 
-.calEventLink > span {
+.calEventLink > span:not(.calTint) {
 	position: relative;
 	z-index: 3;
 	pointer-events: none;
@@ -408,11 +419,20 @@
 .calEvent:global(.hasArt):hover,
 .calEvent:global(.hasArt):global(.isLive) {
 	--cal-fill: #191612;
-	--cal-art-filter: saturate(0.62) brightness(0.38) contrast(1.05);
 }
 
-.calEvent:global(.hasArt):hover::after,
-.calEvent:global(.hasArt):global(.isLive)::after {
+@media (hover: hover) {
+	.calEvent:global(.hasArt):hover .calEventArt {
+		filter: none;
+	}
+
+	.calEvent:global(.hasArt):hover .calTint {
+		opacity: 0;
+	}
+}
+
+.calEvent:global(.hasArt):hover .calEventLink::after,
+.calEvent:global(.hasArt):global(.isLive) .calEventLink::after {
 	background: linear-gradient(
 		to right,
 		color-mix(in srgb, var(--cal-fill) 86%, transparent) 0%,
@@ -442,8 +462,8 @@
 
 .calTime {
 	flex: 0 0 auto;
-	font-variant-numeric: tabular-nums;
-	font-feature-settings: 'tnum';
+	font-variant-numeric: oldstyle-nums tabular-nums;
+	font-feature-settings: 'onum', 'tnum';
 }
 
 .calMeta .calVenue {
@@ -512,6 +532,13 @@
 :global(body.isCalSimple) .calDay:hover,
 :global(body.isCalSimple) .calDay:has(.calEvent:global(.isLive)) {
 	z-index: 1;
+}
+
+.calEvent .calIcs > span {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .calEvent .calIcs {
@@ -684,6 +711,12 @@ button.calVenue:focus-visible {
 $venues: debaser, nalen, fallan, slakthusen, kollektivetlivet, sodrateatern, berns, cirkus, fryshuset, kulturhuset, hartwig, annexet, hovet, aviciiarena, trearena, strawberryarena, konserthuset, berwaldhallen, fasching, stampen, glennmillercafe, kungcarls, engelen, petsoundsbar, reimersholme, riche, landet, encore, bioaspen, scalateatern, gotalejon, bagarmossen, kmh, ericericsonhallen, gronalund, fylkingen, ronnells, larryscorner;
 
 @each $slug in $venues {
+	.calEvent[data-venue='#{$slug}'] {
+		--cal-tint: var(--#{$slug});
+	}
+}
+
+@each $slug in $venues {
 	.calEvent[data-venue='#{$slug}']:global(.isLive) .calTitle:not(:global(.hasCurrentArtist)),
 	.calEvent[data-venue='#{$slug}']:global(.isLive) .calArtist:global(.isCurrent) {
 		color: var(--#{$slug});
@@ -702,7 +735,9 @@ $venues: debaser, nalen, fallan, slakthusen, kollektivetlivet, sodrateatern, ber
 
 @media (prefers-reduced-motion: reduce) {
 	.calEvent [data-play-cluster],
-	.calEvent {
+	.calEvent,
+	.calEventArt,
+	.calTint {
 		transition: none;
 	}
 

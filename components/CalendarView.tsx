@@ -92,12 +92,15 @@ function CalendarEvent({
           aria-label={title}
         />
         {art ? (
-          <RemoteImage
-            className={s.calEventArt}
-            src={art}
-            sizes="(max-width: 840px) 50vw, 240px"
-            onError={() => setArtFailed(true)}
-          />
+          <>
+            <RemoteImage
+              className={s.calEventArt}
+              src={art}
+              sizes="(max-width: 840px) 50vw, 240px"
+              onError={() => setArtFailed(true)}
+            />
+            <span className={s.calTint} aria-hidden="true" />
+          </>
         ) : showSymbol ? (
           <div className={s.calEventFallback} aria-hidden="true">
             <MastSymbol />
@@ -125,7 +128,7 @@ function CalendarEvent({
       </div>
       {simple ? null : (
         <a className={cn("go", s.calIcs, { goDown: true })} href={"/kalender/" + encodeURIComponent(event.id) + ".ics"}>
-          Lägg till<span className={s.calIcsRest}>&nbsp;i kalender</span>
+          <span>Lägg till<span className={s.calIcsRest}>&nbsp;i kalender</span></span>
         </a>
       )}
       {playable ? (

@@ -67,8 +67,8 @@
 	font-family: var(--font-walter), 'Segoe UI', sans-serif;
 	font-size: 0.7rem;
 	letter-spacing: 0.06em;
-	font-variant-numeric: tabular-nums;
-	font-feature-settings: 'tnum';
+	font-variant-numeric: oldstyle-nums tabular-nums;
+	font-feature-settings: 'onum', 'tnum';
 	color: var(--ink);
 	opacity: 0.55;
 	min-width: 2.6em;

@@ -3,14 +3,14 @@ import type { ReactNode } from "react";
 import localFont from "next/font/local";
 import "@/styles/index.scss";
 
-const william = localFont({
+const anselm = localFont({
   src: [
-    { path: "../public/fonts/WilliamText-Regular.woff2", weight: "400", style: "normal" },
-    { path: "../public/fonts/WilliamText-Italic.woff2", weight: "400", style: "italic" },
-    { path: "../public/fonts/WilliamText-Bold.woff2", weight: "700", style: "normal" },
-    { path: "../public/fonts/WilliamText-BoldItalic.woff2", weight: "700", style: "italic" },
+    { path: "../public/fonts/AnselmRegular/2F602A_2_0.woff2", weight: "400", style: "normal" },
+    { path: "../public/fonts/AnselmItalic/2F5FB4_9_0.woff2", weight: "400", style: "italic" },
+    { path: "../public/fonts/AnselmBold/2F5FB4_4_0.woff2", weight: "700", style: "normal" },
+    { path: "../public/fonts/AnselmBoldItalic/2F5FB4_2_0.woff2", weight: "700", style: "italic" },
   ],
-  variable: "--font-william",
+  variable: "--font-anselm",
   display: "swap",
 });
 
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="sv" className={`${william.variable} ${walter.variable}`} suppressHydrationWarning>
+    <html lang="sv" className={`${anselm.variable} ${walter.variable}`} suppressHydrationWarning>
       <body suppressHydrationWarning>
         <script
           dangerouslySetInnerHTML={{

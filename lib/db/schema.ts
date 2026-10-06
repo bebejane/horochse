@@ -104,6 +104,38 @@ export const tracks = sqliteTable(
   ],
 );
 
+/**
+ * Manual edits from /admin. A row blocks the automatic track with the same
+ * `artist_key` on later scrapes. `replace` also stores the track to play
+ * instead; `remove` leaves the event without that track.
+ */
+export const trackOverrides = sqliteTable(
+  "track_overrides",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    eventId: text("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    artistKey: text("artist_key").notNull(),
+    action: text("action").notNull(),
+    source: text("source"),
+    artist: text("artist"),
+    album: text("album"),
+    title: text("title"),
+    url: text("url"),
+    image: text("image"),
+    bandId: integer("band_id"),
+    albumId: integer("album_id"),
+    trackId: integer("track_id"),
+    videoId: text("video_id"),
+    type: text("type"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("track_overrides_event_artist_idx").on(table.eventId, table.artistKey),
+  ],
+);
+
 export const scrapeRuns = sqliteTable("scrape_runs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),

@@ -1,10 +1,19 @@
 @use '../styles/mediaqueries' as *;
 
+.week + .week {
+	padding-top: 2rem;
+}
+
 .weekHead {
 	display: grid;
 	grid-template-columns: var(--title-col) minmax(0, 1fr);
 	column-gap: var(--title-gap);
 	align-items: center;
+	position: sticky;
+	top: var(--mast-height);
+	z-index: 7;
+	background: var(--bg);
+	box-shadow: 0 -1px 0 var(--bg);
 }
 
 .weekHeadMain {
@@ -21,7 +30,6 @@
 	font-size: clamp(1.55rem, 2.8vw, 2.15rem);
 	font-style: italic;
 	font-weight: 400;
-	letter-spacing: -0.03em;
 	line-height: 1.1;
 	margin: 0;
 }
@@ -30,14 +38,6 @@
 	.weekHeadTitle {
 		font-size: 1.95rem;
 	}
-}
-
-.weekHead:global(.isNext) {
-	margin-top: 0.4rem;
-}
-
-.weekHead:global(.isNext) .weekHeadMain {
-	padding-top: 1.6rem;
 }
 
 .weekHeadListen {
@@ -72,7 +72,7 @@
 	padding: 0.85rem 0.4rem 0.7rem 0;
 	border-top: 1px solid var(--ink);
 	position: sticky;
-	top: calc(var(--mast-height) + 0.4rem);
+	top: calc(var(--mast-height) + var(--week-head, 4.5rem));
 	align-self: start;
 	background: var(--bg);
 	box-shadow: 0 -0.4rem 0 var(--bg);
@@ -106,7 +106,7 @@
 }
 
 :global(body:not(.isCalendar)) .day:global(.isWeekStart) {
-	scroll-margin-top: calc(var(--mast-height) + 0.4rem);
+	scroll-margin-top: calc(var(--mast-height) + var(--week-head, 4.5rem));
 }
 
 :global(body:not(.isCalendar)) .day:global(.isWeekStart) .list {
@@ -126,7 +126,7 @@
 	:global(body:not(.isCalendar)) .listRule {
 		display: block;
 		position: sticky;
-		top: calc(var(--mast-height) + 0.4rem);
+		top: calc(var(--mast-height) + var(--week-head, 4.5rem));
 		height: 0.85rem;
 		margin-bottom: -1rem;
 		border-top: 1px solid var(--ink);
@@ -148,6 +148,10 @@
 
 :global(body.isCalendar) .weekHead {
 	display: block;
+	position: sticky;
+	top: var(--mast-height);
+	z-index: 17;
+	background: var(--bg);
 }
 
 :global(body.isCalendar) .weekHeadMain {

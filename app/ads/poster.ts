@@ -2,7 +2,7 @@ export const POSTER_W = 1080;
 export const POSTER_H = 1350;
 
 export type PosterFonts = {
-  william: string;
+  anselm: string;
   walter: string;
 };
 
@@ -47,16 +47,16 @@ function firstFamily(list: string): string {
 
 export async function loadPosterFonts(): Promise<PosterFonts> {
   const root = getComputedStyle(document.documentElement);
-  const william = firstFamily(root.getPropertyValue("--font-william")) || "Palatino";
+  const anselm = firstFamily(root.getPropertyValue("--font-anselm")) || "Palatino";
   const walter = firstFamily(root.getPropertyValue("--font-walter")) || "sans-serif";
   await Promise.all([
-    document.fonts.load(`400 64px "${william}"`),
-    document.fonts.load(`400 42px "${william}"`),
-    document.fonts.load(`700 80px "${william}"`),
+    document.fonts.load(`400 64px "${anselm}"`),
+    document.fonts.load(`italic 400 42px "${anselm}"`),
+    document.fonts.load(`700 80px "${anselm}"`),
     document.fonts.load(`400 36px "${walter}"`),
   ]);
   await document.fonts.ready;
-  return { william, walter };
+  return { anselm, walter };
 }
 
 function font(weight: number, size: number, family: string): string {
@@ -182,7 +182,7 @@ export function drawPoster(ctx: CanvasRenderingContext2D, slide: PosterSlide | n
 
   const padX = 72;
   const maxWidth = width - padX * 2;
-  const title = layoutTitle(ctx, slide.title || "Konsert", fonts.william, maxWidth);
+  const title = layoutTitle(ctx, slide.title || "Konsert", fonts.anselm, maxWidth);
   const venueSize = 34;
   const dateSize = 42;
   const titleLineHeight = Math.round(title.size * 1.12);
@@ -199,7 +199,7 @@ export function drawPoster(ctx: CanvasRenderingContext2D, slide: PosterSlide | n
 
   y += venueSize + 26;
   ctx.fillStyle = CREAM;
-  ctx.font = font(700, title.size, fonts.william);
+  ctx.font = font(700, title.size, fonts.anselm);
   for (const line of title.lines) {
     ctx.fillText(line, padX, y);
     y += titleLineHeight;
@@ -207,7 +207,7 @@ export function drawPoster(ctx: CanvasRenderingContext2D, slide: PosterSlide | n
 
   y += 8;
   ctx.fillStyle = "rgba(243, 238, 228, 0.86)";
-  ctx.font = font(400, dateSize, fonts.william);
+  ctx.font = font(400, dateSize, fonts.anselm);
   ctx.fillText(slide.date, padX, y);
   ctx.restore();
 }

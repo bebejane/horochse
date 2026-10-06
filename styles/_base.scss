@@ -96,7 +96,9 @@ body {
 }
 
 body {
-	font-family: var(--font-william), Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+	font-family: var(--font-anselm), Palatino, 'Palatino Linotype', 'Times New Roman', serif;
+	font-variant-numeric: oldstyle-nums;
+	-webkit-font-smoothing: antialiased;
 	line-height: 1.45;
 	padding-bottom: var(--player-height);
 }
@@ -199,6 +201,18 @@ html[data-theme='light'] .mastSymbolLight {
 
 .go:hover,
 .go:focus-visible {
+	text-decoration: underline;
+	text-underline-offset: 0.18em;
+}
+
+/* The down-arrow sits in ::after. Underline only the words, not the arrow. */
+.goDown:hover,
+.goDown:focus-visible {
+	text-decoration: none;
+}
+
+.goDown:hover > span,
+.goDown:focus-visible > span {
 	text-decoration: underline;
 	text-underline-offset: 0.18em;
 }

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatClock } from "@/lib/dates";
 import { artistExploreUrl, playlistFrom, streamRequest, trackExploreUrl } from "@/lib/events";
+import { playbackUrl } from "@/lib/media-src";
+import { attachSpectrum, type SpectrumTap } from "@/lib/spectrum";
 import type { ConcertEvent, PlaylistItem, StreamPayload } from "@/lib/types";
 
 const SOUNDCLOUD_VOLUME = 0.75;
@@ -79,6 +81,7 @@ type PlayerOpts = {
 
 export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const spectrumRef = useRef<SpectrumTap | null>(null);
   const preloadAudioRef = useRef<HTMLAudioElement | null>(null);
   const streamCacheRef = useRef<Map<string, StreamCacheEntry>>(new Map());
   const hoverTimerRef = useRef<number | null>(null);
@@ -151,6 +154,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     const audio = new Audio();
     audio.preload = "auto";
     audioRef.current = audio;
+    spectrumRef.current = attachSpectrum(audio);
     const preload = new Audio();
     preload.preload = "auto";
     preload.muted = true;
@@ -185,6 +189,8 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       preload.pause();
       preload.removeAttribute("src");
       try { preload.load(); } catch { /* ignore */ }
+      spectrumRef.current?.close();
+      spectrumRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -748,6 +754,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     lastGainRef.current = -1;
     syncPlaying();
     const token = ++tokenRef.current;
+    spectrumRef.current?.resume();
     const cached = req ? peekStream(req.href) : null;
     // A SoundCloud-only track has to start from the iframe URL set in this
     // click. Parking the iframe on the idle page first consumes the gesture,
@@ -868,8 +875,11 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
           pauseYt();
           modeRef.current = "audio";
         }
-        const same = audio.src === data.stream || audio.currentSrc === data.stream;
-        if (!same) audio.src = data.stream;
+        const same = audio.dataset.origin === data.stream && !!audio.src;
+        if (!same) {
+          audio.dataset.origin = data.stream;
+          audio.src = playbackUrl(data.stream);
+        }
         const seekZero = () => {
           try { if (audio.currentTime > 0.25) audio.currentTime = 0; } catch { /* not ready */ }
         };
@@ -1128,6 +1138,15 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     syncPlaying();
   }, [syncPlaying]);
 
+  const sampleSpectrum = useCallback((out: Float32Array) => {
+    const tap = spectrumRef.current;
+    if (!tap) {
+      out.fill(0);
+      return;
+    }
+    tap.sample(out);
+  }, []);
+
   return {
     iframeRef,
     ytContainerRef,
@@ -1152,6 +1171,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     toggleBarPlay,
     seekToRatio,
     scrubbingRef,
+    sampleSpectrum,
     rebindAfterRender,
     currentEventId: eventId,
   };

@@ -3,6 +3,7 @@
 import s from "./ListView.module.scss";
 import cn from "classnames";
 
+import { useLayoutEffect, useRef } from "react";
 import { formatDay, toIso, todayDate, weekTitle } from "@/lib/dates";
 import { groupByDay, groupEventsByWeek, isPlayable } from "@/lib/events";
 import type { ConcertEvent } from "@/lib/types";
@@ -42,8 +43,24 @@ function WeekHead({
       ? "Spela nästa vecka"
       : "Spela " + title;
   const on = playing && currentWeek === weekKey;
+  const headRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const node = headRef.current;
+    const parent = node?.parentElement;
+    if (!node || !parent) return;
+    const apply = () => {
+      parent.style.setProperty("--week-head", Math.ceil(node.offsetHeight) + "px");
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      parent.style.removeProperty("--week-head");
+    };
+  }, []);
   return (
-    <div className={cn(s.weekHead, { isNext: !isFirst })}>
+    <div ref={headRef} className={cn(s.weekHead, { isNext: !isFirst })} data-week-head>
       <div className={s.weekHeadMain}>
         <p className={s.weekHeadTitle}>{title}</p>
         {playable && !hidePlay ? (
@@ -108,7 +125,7 @@ export function ListView({
   return (
     <>
       {groupEventsByWeek(events).map((group, index) => (
-        <div key={group.key}>
+        <div className={s.week} key={group.key}>
           <WeekHead
             title={weekTitle(group.key, group.days)}
             weekKey={group.key}

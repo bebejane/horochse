@@ -283,6 +283,8 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
         calStyle={calStyle}
         theme={theme}
         density={density}
+        playing={player.playing}
+        sampleSpectrum={player.sampleSpectrum}
         onSelectAll={() => {
           savePickerSeen();
           setMode("all");

@@ -8,6 +8,9 @@ import { VENUES } from '@/lib/types';
 import type { CalStyle, FilterMode, ListDensity, ThemeMode, ViewMode } from '@/lib/types';
 import { CloseIcon, GearIcon } from '@/components/Icons';
 
+const WORDMARK = ["H", "ö", "r", "&", "S", "e"] as const;
+const SPECTRUM_EM = 0.085;
+
 export function Mast({
 	mode,
 	mine,
@@ -17,6 +20,8 @@ export function Mast({
 	calStyle,
 	theme,
 	density,
+	playing,
+	sampleSpectrum,
 	onSelectAll,
 	onTogglePicker,
 	onClosePicker,
@@ -38,6 +43,8 @@ export function Mast({
 	calStyle: CalStyle;
 	theme: ThemeMode;
 	density: ListDensity;
+	playing: boolean;
+	sampleSpectrum: (bands: Float32Array) => void;
 	onSelectAll: () => void;
 	onTogglePicker: () => void;
 	onClosePicker: () => void;
@@ -51,6 +58,39 @@ export function Mast({
 	onToggleDensity: () => void;
 	onLayout?: () => void;
 }) {
+	const letterRefs = useRef<Array<HTMLSpanElement | null>>([]);
+
+	useEffect(() => {
+		const nodes = letterRefs.current;
+		const clear = () => {
+			for (const node of nodes) {
+				if (node) node.style.transform = '';
+			}
+		};
+		if (!playing || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			clear();
+			return;
+		}
+		const bands = new Float32Array(WORDMARK.length);
+		const shown = new Float32Array(WORDMARK.length);
+		let frame = 0;
+		const tick = () => {
+			sampleSpectrum(bands);
+			for (let i = 0; i < WORDMARK.length; i++) {
+				shown[i] += (bands[i] - shown[i]) * 0.35;
+				const node = nodes[i];
+				if (!node) continue;
+				const lift = shown[i] * SPECTRUM_EM;
+				node.style.transform = lift < 0.004 ? '' : 'translateY(' + (-lift).toFixed(3) + 'em)';
+			}
+			frame = window.requestAnimationFrame(tick);
+		};
+		frame = window.requestAnimationFrame(tick);
+		return () => {
+			window.cancelAnimationFrame(frame);
+			clear();
+		};
+	}, [playing, sampleSpectrum]);
 	const light = theme === 'light';
 	const navRef = useRef<HTMLElement>(null);
 	const scrollerRef = useRef<HTMLDivElement>(null);
@@ -444,6 +484,7 @@ export function Mast({
 				</div>
 				<div className={s.mastHeadline}>
 					<h1
+						aria-label='Hör & Se'
 						onClick={() => {
 							const motion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 								? 'auto'
@@ -451,8 +492,18 @@ export function Mast({
 							window.scrollTo({ top: 0, behavior: motion });
 						}}
 					>
-						<span className={s.mastWordmark}>
-							Hör<span className={s.mastAmp}>&</span>Se
+						<span className={s.mastWordmark} aria-hidden='true'>
+							{WORDMARK.map((letter, index) => (
+								<span
+									key={letter}
+									ref={(node) => {
+										letterRefs.current[index] = node;
+									}}
+									className={cn(s.mastLetter, { [s.mastAmp]: letter === '&' })}
+								>
+									{letter}
+								</span>
+							))}
 						</span>
 						<MastSymbol />
 					</h1>

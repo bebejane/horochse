@@ -15,6 +15,7 @@ import { collect } from "./collect";
 import { log, seconds } from "./log";
 import type { ScrapedEvent } from "./types";
 import { SOURCES } from "./registry";
+import { displayProse, typographicQuotes } from "@/lib/prose";
 import { VENUES } from "@/lib/types";
 import type { EventInput, SourceInput, VenueInput } from "@/lib/db/queries";
 import {
@@ -108,20 +109,20 @@ function toEventInput(event: ScrapedEvent, sourceKey: string): EventInput {
     id: event.id,
     sourceKey,
     venueSlug: event.venue_slug,
-    place: event.place ?? null,
-    title: event.title,
+    place: event.place ? typographicQuotes(event.place) : null,
+    title: typographicQuotes(event.title),
     startsAt: toStartsAt(event),
     date: event.date,
     time: event.time,
     image: event.image ?? null,
-    text: event.text ?? null,
+    text: event.text ? displayProse(event.text, event) : null,
     url: event.url,
     spotify: event.spotify ?? null,
     tracks: (event.tracks ?? []).map((track) => ({
       source: track.source,
-      artist: track.artist ?? null,
-      album: track.album ?? null,
-      title: track.track ?? null,
+      artist: track.artist ? typographicQuotes(track.artist) : null,
+      album: track.album ? typographicQuotes(track.album) : null,
+      title: track.track ? typographicQuotes(track.track) : null,
       url: track.url ?? null,
       image: track.image ?? null,
       bandId: track.band_id ?? null,

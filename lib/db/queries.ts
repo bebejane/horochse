@@ -17,10 +17,12 @@ import {
   sql,
 } from "drizzle-orm";
 
+import { displayProse, typographicQuotes } from "@/lib/prose";
 import type { ConcertEvent, EventsPayload, Track } from "@/lib/types";
 
 import { db } from "./client";
-import { bandcampArtists, events, scrapeErrors, scrapeRuns, sources, tracks, venues, youtubeVideos } from "./schema";
+import { mergeScrapedTracks } from "./merge-tracks";
+import { bandcampArtists, events, scrapeErrors, scrapeRuns, sources, trackOverrides, tracks, venues, youtubeVideos } from "./schema";
 
 type EventRow = typeof events.$inferSelect;
 type TrackRow = typeof tracks.$inferSelect;
@@ -252,16 +254,27 @@ export async function upsertEvents(runId: number, inputs: EventInput[]): Promise
   if (!inputs.length) return;
   const now = new Date();
   const statements: unknown[] = [];
+  const overrideRows = await db
+    .select()
+    .from(trackOverrides)
+    .where(inArray(trackOverrides.eventId, inputs.map((input) => input.id)));
+  const overridesByEvent = new Map<string, typeof overrideRows>();
+  for (const row of overrideRows) {
+    const list = overridesByEvent.get(row.eventId);
+    if (list) list.push(row);
+    else overridesByEvent.set(row.eventId, [row]);
+  }
 
   for (const input of inputs) {
     const row = eventRow(runId, input, now);
+    const merged = mergeScrapedTracks(input.tracks ?? [], overridesByEvent.get(input.id) ?? []);
     statements.push(eventUpsertStatement(runId, input, now));
     statements.push(db.delete(tracks).where(eq(tracks.eventId, row.id)));
-    if (input.tracks?.length) {
+    if (merged.length) {
       statements.push(
         db
           .insert(tracks)
-          .values(input.tracks.map((item, index) => trackRow(row.id, index, item))),
+          .values(merged.map((item, index) => trackRow(row.id, index, item))),
       );
     }
   }
@@ -456,11 +469,12 @@ function isoFromDate(value: Date | number): string {
 }
 
 function toTrack(row: TrackRow): Track {
+  const quote = (value: string | null) => (value == null ? undefined : typographicQuotes(value));
   return {
     source: row.source,
-    artist: row.artist ?? undefined,
-    album: row.album ?? undefined,
-    track: row.title ?? undefined,
+    artist: quote(row.artist),
+    album: quote(row.album),
+    track: quote(row.title),
     url: row.url ?? undefined,
     image: row.image ?? undefined,
     band_id: row.bandId ?? undefined,
@@ -478,18 +492,23 @@ function toConcertEvent(row: EventRow, venueName: string, trackRows: TrackRow[])
   const list = trackRows.map(toTrack);
   const event: ConcertEvent = {
     id: row.id,
-    venue: venueName,
+    venue: typographicQuotes(venueName),
     venue_slug: row.venueSlug,
-    title: row.title,
+    title: typographicQuotes(row.title),
     date: row.date,
     time: row.time,
     datetime: isoFromDate(row.startsAt),
     // Raw venue URL; `next/image` (Vercel Image Optimization) resizes it and
     // `images.remotePatterns` restricts which hosts may be optimized.
     image: row.image ?? "",
-    text: row.text ?? "",
+    text: displayProse(row.text ?? "", {
+      title: row.title,
+      venue: venueName,
+      place: row.place ?? "",
+      tracks: list.map((track) => ({ artist: track.artist })),
+    }),
     url: row.url,
-    place: row.place ?? "",
+    place: typographicQuotes(row.place ?? ""),
   };
   if (row.spotify) event.spotify = row.spotify;
   if (list.length) {

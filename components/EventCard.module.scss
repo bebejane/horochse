@@ -135,8 +135,8 @@
 	letter-spacing: 0.04em;
 	font-size: 0.75rem;
 	text-transform: uppercase;
-	font-variant-numeric: tabular-nums;
-	font-feature-settings: 'tnum';
+	font-variant-numeric: oldstyle-nums tabular-nums;
+	font-feature-settings: 'onum', 'tnum';
 	color: var(--muted);
 	margin-bottom: 0.2rem;
 	position: relative;

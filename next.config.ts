@@ -28,6 +28,13 @@ const nextConfig: NextConfig = {
 	typescript: {
 		ignoreBuildErrors: true,
 	},
+	async headers() {
+		const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
+		return ["/admin", "/admin/:path*", "/api/admin", "/api/admin/:path*"].map((source) => ({
+			source,
+			headers: noindex,
+		}));
+	},
 };
 
 export default nextConfig;

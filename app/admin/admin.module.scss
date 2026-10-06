@@ -1,0 +1,200 @@
+.page {
+	min-height: 100%;
+	padding: 1.6rem var(--margin) 4rem;
+	max-width: 52rem;
+}
+
+.top {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
+	gap: 1rem;
+}
+
+.mark {
+	color: var(--muted);
+	font-family: var(--font-walter), sans-serif;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	font-size: 0.78rem;
+	margin: 0;
+}
+
+.page h1 {
+	font-weight: 400;
+	font-size: clamp(2rem, 4vw, 3.2rem);
+	letter-spacing: -0.03em;
+	margin: 0.7rem 0 0.35rem;
+}
+
+.lead {
+	color: var(--muted);
+	max-width: 38rem;
+	margin: 0 0 1.4rem;
+}
+
+.login,
+.event,
+.track {
+	border: 1px solid var(--line);
+}
+
+.login {
+	display: grid;
+	gap: 0.7rem;
+	max-width: 22rem;
+	padding: 1rem;
+}
+
+.login label {
+	display: grid;
+	gap: 0.35rem;
+}
+
+.row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	align-items: center;
+}
+
+.page input[type="password"],
+.page input[type="url"],
+.page input[type="search"] {
+	font: inherit;
+	color: var(--ink);
+	background: transparent;
+	border: 1px solid var(--line);
+	padding: 0.45rem 0.6rem;
+	min-width: 0;
+}
+
+.page input[type="search"] {
+	width: min(100%, 22rem);
+	margin-bottom: 1.2rem;
+}
+
+.page input[type="url"] {
+	flex: 1 1 16rem;
+}
+
+.page button {
+	font: inherit;
+	color: var(--ink);
+	background: transparent;
+	border: 1px solid var(--line);
+	padding: 0.4rem 0.7rem;
+	cursor: pointer;
+}
+
+.page button:hover {
+	background: var(--hover);
+}
+
+.page button:disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+
+.page button.play {
+	width: 2.45rem;
+	height: 2.45rem;
+	padding: 0;
+	border-radius: 999px;
+	display: grid;
+	place-items: center;
+	flex: 0 0 auto;
+}
+
+.page button.play svg {
+	width: 0.95rem;
+	height: 0.95rem;
+	fill: currentColor;
+}
+
+.page button.play:global(.isOn) {
+	background: var(--ink);
+	color: var(--bg);
+	border-color: var(--ink);
+}
+
+.page button.play:global(.isOn):hover {
+	background: var(--ink);
+}
+
+.page button.play:global(.isLoading) {
+	opacity: 0.45;
+}
+
+.error {
+	color: var(--debaser);
+	margin: 0;
+}
+
+.list {
+	list-style: none;
+	display: grid;
+	gap: 0.9rem;
+	margin: 0;
+	padding: 0;
+}
+
+.event {
+	padding: 0.9rem 1rem 1rem;
+}
+
+.when {
+	margin: 0;
+	color: var(--muted);
+	font-family: var(--font-walter), sans-serif;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	font-size: 0.75rem;
+}
+
+.event h2 {
+	font-weight: 400;
+	font-size: 1.45rem;
+	letter-spacing: -0.02em;
+	margin: 0.25rem 0 0.7rem;
+}
+
+.tracks {
+	list-style: none;
+	display: grid;
+	gap: 0.8rem;
+	margin: 0;
+	padding: 0;
+}
+
+.track {
+	display: grid;
+	gap: 0.55rem;
+	padding: 0.7rem 0.75rem;
+}
+
+.media {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.link {
+	color: inherit;
+	font-size: 1.05rem;
+}
+
+.source {
+	color: var(--muted);
+	margin-left: 0.45rem;
+	font-size: 0.85rem;
+}
+
+.none {
+	color: var(--muted);
+	margin: 0 0 0.6rem;
+}
+
+.empty {
+	color: var(--muted);
+}

@@ -1,4 +1,5 @@
 import { calendarDays, toIso, todayDate, weekDaysFromMonday, weekMondayIso } from "./dates";
+import { typographicQuotes } from "./prose";
 import type { ConcertEvent, FilterMode, PlaylistItem, Track, TrackSource } from "./types";
 import { VENUES } from "./types";
 
@@ -94,7 +95,7 @@ export function displayTitle(event?: ConcertEvent | null): string {
   if (isAllUpperTitle(title)) title = toTitleCase(title);
   else if (isAllLowerTitle(title)) title = applyTitleNames(title, event || undefined, true);
   else title = applyTitleNames(title, event || undefined, false);
-  return capitalizeFirstLetter(title);
+  return typographicQuotes(capitalizeFirstLetter(title));
 }
 
 export function collapseSameDayEvents(events: ConcertEvent[]): ConcertEvent[] {

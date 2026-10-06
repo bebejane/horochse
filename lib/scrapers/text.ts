@@ -1,4 +1,5 @@
 import { stripTags, shorten, unescape } from "./html";
+import { typographicQuotes } from "@/lib/prose";
 
 // ---------------------------------------------------------------------------
 // Name folding / matching
@@ -25,6 +26,13 @@ export function foldNameLetters(value: unknown): string {
   let text = String(value ?? "").normalize("NFC").toLowerCase();
   text = text.replace(/[^\p{L}\p{N}_]+/gu, " ");
   return text.replace(/\s+/g, " ").trim();
+}
+
+/** Stabil nyckel för en låt: artist, annars titel, annars länk. */
+export function trackArtistKey(artist?: string | null, title?: string | null, url?: string | null): string {
+  const fromName = foldName(artist) || foldName(title);
+  if (fromName) return fromName;
+  return String(url || "").split("?")[0].replace(/\/+$/, "").toLowerCase();
 }
 
 export function nameWords(value: unknown, marks = false): string[] {
@@ -148,6 +156,18 @@ function eventArtistsFromTitle(title: string, text: string): string[] {
 // Artist extraction
 // ---------------------------------------------------------------------------
 
+/**
+ * "Ward Hayden & The Outliers" is one band. The part after "& the" is not a
+ * second act, so it must not be searched on its own.
+ */
+function isNameAndTheBand(value: string): boolean {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  const match = /^(.+?)\s+(?:&|&amp;|and)\s+(the\s+\S.*)$/i.exec(text);
+  if (!match) return false;
+  const rest = `${match[1]} ${match[2]}`;
+  return !/\s*(?:&|&amp;|\+|,|;|\/\/|\band\b|\boch\b|\bfeat\.?\b|\bft\.?\b|\bx\b)\s*/i.test(rest);
+}
+
 export function artistCandidates(title: string): string[] {
   let t = unescape(String(title || "")).replace(/\u00a0/g, " ");
   t = t.replace(/\s+/g, " ").replace(/[ !]+$/, "").replace(/^[ !]+/, "");
@@ -174,8 +194,13 @@ export function artistCandidates(title: string): string[] {
     if (!leftIsBill && /^[A-ZÅÄÖ]/.test(right) && right.split(" ").filter(Boolean).length >= 1 && right.split(" ").filter(Boolean).length <= 3 && !right.toLowerCase().includes("party")) {
       candidates.push(right);
     }
-    candidates.push(...left.split(/\s*(?:&|\+| and | och )\s*/));
-    if (!candidates.includes(left)) candidates.push(left);
+    if (isNameAndTheBand(left)) candidates.push(left);
+    else {
+      candidates.push(...left.split(/\s*(?:&|\+| and | och )\s*/));
+      if (!candidates.includes(left)) candidates.push(left);
+    }
+  } else if (isNameAndTheBand(t)) {
+    candidates.push(t);
   } else {
     candidates.push(...t.split(/\s*(?:&|\+| and | och )\s*/));
     if (!candidates.includes(t)) candidates.push(t);
@@ -297,6 +322,7 @@ export function splitTitlePeople(title: string): string[] {
     const left = (parts[0] || "").trim();
     if (BILL_SPLIT_RE.test(left) || /[&+]|\band\b|\boch\b/i.test(left)) t = left;
   }
+  if (isNameAndTheBand(t)) return [];
   if (!BILL_SPLIT_RE.test(t)) return [];
   const out: string[] = [];
   const seen = new Set<string>();
@@ -450,7 +476,7 @@ export function displayTitle(event: { title?: string; venue?: string; tracks?: {
   if (mode === "upper") title = toTitleCase(title);
   else if (mode === "lower") title = applyTitleNames(title, event, true);
   else title = applyTitleNames(title, event, false);
-  return capitalizeFirstLetter(title);
+  return typographicQuotes(capitalizeFirstLetter(title));
 }
 
 export function normalizeEventTitles(events: { title?: string; venue?: string; tracks?: { artist?: string }[] }[]): void {
@@ -549,18 +575,32 @@ export function extractSlaktTime(text: string): string {
   return "";
 }
 
+const SLAKT_SKIP =
+  /^(band|datum|insläpp|live från|lokal|åldersgräns|dörrar|doors|artist|venue|scen|tid på scen|biljettlänk|biljett|länk)\b/i;
+
+function cleanSlaktChunk(part: string): string {
+  let chunk = part.replace(/^text\s*:\s*/i, "");
+  chunk = chunk.replace(
+    /(Band|Datum|Insläpp|Live från|Lokal|Åldersgräns|Biljettlänk|Biljett|Artist|Venue|Scen|Tid på scen)\s*:\s*[^\n]+/gi,
+    " ",
+  );
+  return chunk.replace(/\s+/g, " ").replace(/^[ \-–—]+/, "").replace(/[ \-–—]+$/, "");
+}
+
 export function extractSlaktText(rawHtml: string): string {
   const text = stripTags(rawHtml);
-  const skip = /^(band|datum|insläpp|live från|lokal|åldersgräns|dörrar|doors)\b/i;
   const parts = text.split(/\n+/).map((p) => p.trim()).filter(Boolean);
   const kept: string[] = [];
   for (const part of parts) {
-    let chunk = part;
-    chunk = chunk.replace(/(Band|Datum|Insläpp|Live från|Lokal|Åldersgräns)\s*:\s*[^\n]+/gi, " ");
-    chunk = chunk.replace(/\s+/g, " ").replace(/^[ \-–—]+/, "").replace(/[ \-–—]+$/, "");
-    if (!chunk || skip.test(chunk) || chunk.length < 40) continue;
+    const chunk = cleanSlaktChunk(part);
+    if (!chunk || SLAKT_SKIP.test(chunk) || /^https?:\/\//i.test(chunk) || chunk.length < 40) continue;
     kept.push(chunk);
     if (kept.reduce((sum, value) => sum + value.length, 0) > 80) break;
   }
-  return shorten(kept.length ? kept.join(" ") : text);
+  if (kept.length) return shorten(kept.join(" "));
+  const fallback = parts
+    .map(cleanSlaktChunk)
+    .filter((chunk) => chunk && !SLAKT_SKIP.test(chunk) && !/^https?:\/\//i.test(chunk))
+    .join(" ");
+  return shorten(fallback);
 }

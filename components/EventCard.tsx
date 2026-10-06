@@ -197,7 +197,7 @@ export function EventCard({
           <div className={s.cardActions}>
             <a className={cn("go", s.cardRead)} href={href} target="_blank" rel="noopener noreferrer">Se mer</a>
             <ListenMore event={event} />
-            <a className={cn("go", { goDown: true })} href={ics}>Lägg till i kalender</a>
+            <a className={cn("go", { goDown: true })} href={ics}><span>Lägg till i kalender</span></a>
           </div>
         </div>
         </div>
