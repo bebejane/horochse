@@ -8,7 +8,7 @@ import { VENUES } from '@/lib/types';
 import type { CalStyle, FilterMode, ListDensity, ThemeMode, ViewMode } from '@/lib/types';
 import { CloseIcon, GearIcon } from '@/components/Icons';
 
-const WORDMARK = ["H", "ö", "r", "&", "S", "e"] as const;
+const WORDMARK = ['H', 'ö', 'r', '&', 'S', 'e'] as const;
 const SPECTRUM_EM = 0.085;
 
 export function Mast({
@@ -172,7 +172,10 @@ export function Mast({
 			if (!node) return false;
 			const rect = node.getBoundingClientRect();
 			if (rect.height < 2) return false;
-			const player = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--player-height')) || 0;
+			const player =
+				parseFloat(
+					getComputedStyle(document.documentElement).getPropertyValue('--player-height'),
+				) || 0;
 			const limit = window.innerHeight - player;
 			const visible = Math.min(rect.bottom, limit) - Math.max(rect.top, 0);
 			return visible > rect.height * 0.35;
@@ -273,6 +276,7 @@ export function Mast({
 
 	useEffect(() => {
 		const node = scrollerRef.current;
+		if (!node) return;
 		function setFade(next: { left: boolean; right: boolean; canScroll: boolean }) {
 			setChipFade((prev) =>
 				prev.left === next.left && prev.right === next.right && prev.canScroll === next.canScroll
@@ -285,6 +289,7 @@ export function Mast({
 			return;
 		}
 		function update() {
+			if (!node) return;
 			const canScroll = node.scrollWidth > node.clientWidth + 1;
 			setFade({
 				left: node.scrollLeft > 1,
@@ -300,6 +305,7 @@ export function Mast({
 
 		const drag = { id: -1, x: 0, scroll: 0, moved: false };
 		function onMove(event: PointerEvent) {
+			if (!node) return;
 			if (event.pointerId !== drag.id) return;
 			const dx = event.clientX - drag.x;
 			if (!drag.moved) {
@@ -316,6 +322,7 @@ export function Mast({
 			node.scrollLeft = drag.scroll - dx;
 		}
 		function onUp(event: PointerEvent) {
+			if (!node) return;
 			if (event.pointerId !== drag.id) return;
 			drag.id = -1;
 			node.classList.remove('isDragging');
@@ -343,6 +350,7 @@ export function Mast({
 			window.addEventListener('pointercancel', onUp);
 		}
 		function onWheel(event: WheelEvent) {
+			if (!node) return;
 			if (node.scrollWidth <= node.clientWidth + 1) return;
 			if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
 			node.scrollLeft += event.deltaY;
@@ -394,6 +402,7 @@ export function Mast({
 			return;
 		}
 		function update() {
+			if (!node) return;
 			const canScroll = node.scrollHeight > node.clientHeight + 1;
 			setFade({
 				top: node.scrollTop > 1,
@@ -402,6 +411,7 @@ export function Mast({
 			});
 		}
 		function prepareLabel(event: Event) {
+			if (!node) return;
 			const root = event.target instanceof Element ? event.target.closest('.' + s.filter) : null;
 			if (!root || !node.contains(root)) return;
 			if (event.type === 'pointerout' || event.type === 'focusout') {
@@ -531,19 +541,19 @@ export function Mast({
 						pickerOpen
 							? undefined
 							: (event) => {
-								onPeekVenue(item.slug);
-								event.currentTarget.blur();
-							}
+									onPeekVenue(item.slug);
+									event.currentTarget.blur();
+								}
 					}
 					onKeyDown={
 						pickerOpen
 							? undefined
 							: (event) => {
-								if (event.key === 'Enter' || event.key === ' ') {
-									event.preventDefault();
-									onPeekVenue(item.slug);
+									if (event.key === 'Enter' || event.key === ' ') {
+										event.preventDefault();
+										onPeekVenue(item.slug);
+									}
 								}
-							}
 					}
 				>
 					<span className={s.filterLabel}>
@@ -764,16 +774,16 @@ export function Mast({
 									>
 										{pickerOpen
 											? selectedVenues.map((item) => (
-												<span
-													key={item.slug}
-													className={cn(s.filter, { isSolo: true })}
-													data-venue={item.slug}
-												>
-													<span className={s.filterLabel}>
-														<span className={s.filterLabelInner}>{item.name}</span>
+													<span
+														key={item.slug}
+														className={cn(s.filter, { isSolo: true })}
+														data-venue={item.slug}
+													>
+														<span className={s.filterLabel}>
+															<span className={s.filterLabelInner}>{item.name}</span>
+														</span>
 													</span>
-												</span>
-											))
+												))
 											: chipNodes}
 									</div>
 								) : (
@@ -891,7 +901,10 @@ function bindEyeFollow() {
 			const next = prev + (aim - prev) * 0.22;
 			if (Math.abs(next - prev) > 0.04) moving = true;
 			angle.set(eye, next);
-			eye.setAttribute('transform', 'rotate(' + next.toFixed(2) + ' ' + EYE_CX + ' ' + EYE_CY + ')');
+			eye.setAttribute(
+				'transform',
+				'rotate(' + next.toFixed(2) + ' ' + EYE_CX + ' ' + EYE_CY + ')',
+			);
 		});
 		if (moving) frame = window.requestAnimationFrame(step);
 	};
