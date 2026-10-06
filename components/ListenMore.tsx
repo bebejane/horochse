@@ -7,7 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { listenMoreItems } from "@/lib/events";
 import type { ConcertEvent } from "@/lib/types";
 
-export function ListenMore({ event }: { event: ConcertEvent }) {
+export function ListenMore({ event, label = "Hör mer" }: { event: ConcertEvent; label?: string }) {
   const items = listenMoreItems(event);
   const wrapRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -54,7 +54,7 @@ export function ListenMore({ event }: { event: ConcertEvent }) {
   if (items.length === 1) {
     return (
       <a className="go" data-listen-more href={items[0].url} target="_blank" rel="noopener noreferrer">
-        Hör mer
+        {label}
       </a>
     );
   }
@@ -78,7 +78,7 @@ export function ListenMore({ event }: { event: ConcertEvent }) {
           setOpen((v) => !v);
         }}
       >
-        Hör mer
+        {label}
         <span className={s.listenMoreCaret} aria-hidden="true" />
       </button>
       {open ? (

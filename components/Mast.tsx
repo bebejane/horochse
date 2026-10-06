@@ -3,7 +3,7 @@
 import s from './Mast.module.scss';
 import cn from 'classnames';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import { VENUES } from '@/lib/types';
 import type { CalStyle, FilterMode, ListDensity, ThemeMode, ViewMode } from '@/lib/types';
 import { CloseIcon, GearIcon } from '@/components/Icons';
@@ -52,13 +52,17 @@ export function Mast({
 	onRemoveMine: (slug: string) => void;
 	onPeekVenue: (slug: string) => void;
 	onClearPeek: () => void;
-	onSetView: (view: ViewMode) => void;
+	onSetView: (view: ViewMode, opts?: { top?: boolean }) => void;
 	onSetCalStyle: (style: CalStyle) => void;
 	onToggleTheme: () => void;
 	onToggleDensity: () => void;
 	onLayout?: () => void;
 }) {
 	const letterRefs = useRef<Array<HTMLSpanElement | null>>([]);
+	const wordmarkRef = useRef<HTMLSpanElement | null>(null);
+	const symbolRef = useRef<HTMLSpanElement | null>(null);
+	const viewRef = useRef(view);
+	viewRef.current = view;
 
 	useEffect(() => {
 		const nodes = letterRefs.current;
@@ -109,6 +113,147 @@ export function Mast({
 	const peekVenue = peek ? venuesAlpha.find((item) => item.slug === peek) : undefined;
 	const [introHidden, setIntroHidden] = useState(false);
 	const [aboutOpen, setAboutOpen] = useState(false);
+
+	useEffect(() => {
+		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const distance = 168;
+		let frame = 0;
+		let shown = 0;
+		let footerOn = false;
+		let easing = false;
+
+		const scrollProgress = () => {
+			const y = window.scrollY;
+			return reduce ? (y > 8 ? 1 : 0) : Math.min(1, Math.max(0, y / distance));
+		};
+
+		const paint = (progress: number) => {
+			const letters = letterRefs.current;
+			const symbol = symbolRef.current;
+			if (aboutOpen) {
+				if (wordmarkRef.current) wordmarkRef.current.style.transform = '';
+				for (const node of letters) {
+					if (node) node.style.opacity = '';
+				}
+				if (symbol) {
+					symbol.style.opacity = '';
+					symbol.style.transform = '';
+				}
+				return;
+			}
+			const steps = WORDMARK.length;
+			for (let i = 0; i < steps; i++) {
+				const node = letters[i];
+				if (!node) continue;
+				const start = i / steps;
+				const end = (i + 1) / steps;
+				const t = progress <= start ? 0 : progress >= end ? 1 : (progress - start) / (end - start);
+				const out = t * t * (3 - 2 * t);
+				node.style.opacity = out <= 0.001 ? '' : String(1 - out);
+			}
+			if (wordmarkRef.current) wordmarkRef.current.style.transform = '';
+			if (!symbol) return;
+			const enter = Math.min(1, Math.max(0, (progress - 0.08) / 0.78));
+			const inn = enter * enter * (3 - 2 * enter);
+			if (inn <= 0.001) {
+				symbol.style.opacity = '';
+				symbol.style.transform = '';
+				return;
+			}
+			const list = viewRef.current !== 'calendar';
+			const shift = ((1 - inn) * 0.45).toFixed(3);
+			symbol.style.opacity = String(inn);
+			symbol.style.transform =
+				'translateY(calc(-50% - 1rem + ' + shift + 'rem))' + (list ? ' scale(1.1)' : '');
+		};
+
+		const footerVisible = () => {
+			const node = document.querySelector('footer .mastSymbolLockup');
+			if (!node) return false;
+			const rect = node.getBoundingClientRect();
+			if (rect.height < 2) return false;
+			const player = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--player-height')) || 0;
+			const limit = window.innerHeight - player;
+			const visible = Math.min(rect.bottom, limit) - Math.max(rect.top, 0);
+			return visible > rect.height * 0.35;
+		};
+
+		let footerTimer = 0;
+
+		const run = () => {
+			const goal = footerOn || aboutOpen ? 0 : scrollProgress();
+			if (!easing) {
+				shown = goal;
+				paint(shown);
+				frame = 0;
+				return;
+			}
+			const step = reduce ? 1 : 0.16;
+			shown += (goal - shown) * step;
+			if (Math.abs(goal - shown) < 0.008) {
+				shown = goal;
+				easing = false;
+			}
+			paint(shown);
+			frame = easing ? window.requestAnimationFrame(run) : 0;
+		};
+
+		const start = () => {
+			if (frame) return;
+			frame = window.requestAnimationFrame(run);
+		};
+
+		const onScroll = () => {
+			const seen = footerVisible();
+			if (seen && !footerOn) {
+				if (!footerTimer) {
+					footerTimer = window.setTimeout(() => {
+						footerTimer = 0;
+						if (!footerVisible()) return;
+						footerOn = true;
+						easing = true;
+						start();
+					}, 220);
+				}
+				return;
+			}
+			if (footerTimer) {
+				window.clearTimeout(footerTimer);
+				footerTimer = 0;
+			}
+			if (!seen && footerOn) {
+				footerOn = false;
+				easing = true;
+				start();
+				return;
+			}
+			if (footerOn || easing) {
+				easing = true;
+				start();
+				return;
+			}
+			shown = scrollProgress();
+			paint(shown);
+		};
+
+		footerOn = footerVisible();
+		shown = footerOn || aboutOpen ? 0 : scrollProgress();
+		paint(shown);
+		window.addEventListener('scroll', onScroll, { passive: true });
+		return () => {
+			window.removeEventListener('scroll', onScroll);
+			if (frame) window.cancelAnimationFrame(frame);
+			window.clearTimeout(footerTimer);
+		};
+	}, [aboutOpen]);
+
+	useLayoutEffect(() => {
+		const symbol = symbolRef.current;
+		if (!symbol?.style.transform) return;
+		const list = view !== 'calendar';
+		const base = symbol.style.transform.replace(/ scale\(1\.1\)$/, '');
+		symbol.style.transform = base + (list ? ' scale(1.1)' : '');
+	}, [view]);
 
 	useLayoutEffect(() => {
 		try {
@@ -386,19 +531,19 @@ export function Mast({
 						pickerOpen
 							? undefined
 							: (event) => {
-									onPeekVenue(item.slug);
-									event.currentTarget.blur();
-								}
+								onPeekVenue(item.slug);
+								event.currentTarget.blur();
+							}
 					}
 					onKeyDown={
 						pickerOpen
 							? undefined
 							: (event) => {
-									if (event.key === 'Enter' || event.key === ' ') {
-										event.preventDefault();
-										onPeekVenue(item.slug);
-									}
+								if (event.key === 'Enter' || event.key === ' ') {
+									event.preventDefault();
+									onPeekVenue(item.slug);
 								}
+							}
 					}
 				>
 					<span className={s.filterLabel}>
@@ -438,7 +583,7 @@ export function Mast({
 		<header className={s.mast} data-mast>
 			<div className={s.mastInner} data-mast-inner>
 				<div className={s.mastTop}>
-					<p className={s.eyebrow}>UPPTÄCK LIVEMUSIK I STOCKHOLM DEN KOMMANDE MÅNADEN</p>
+					<p className={s.eyebrow}>LIVEMUSIK I STOCKHOLM DEN KOMMANDE MÅNADEN</p>
 					<div className={s.mastTopActions}>
 						<button
 							type='button'
@@ -486,13 +631,14 @@ export function Mast({
 					<h1
 						aria-label='Hör & Se'
 						onClick={() => {
+							onSetView('list', { top: true });
 							const motion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 								? 'auto'
 								: 'smooth';
 							window.scrollTo({ top: 0, behavior: motion });
 						}}
 					>
-						<span className={s.mastWordmark} aria-hidden='true'>
+						<span ref={wordmarkRef} className={s.mastWordmark} aria-hidden='true'>
 							{WORDMARK.map((letter, index) => (
 								<span
 									key={letter}
@@ -505,7 +651,7 @@ export function Mast({
 								</span>
 							))}
 						</span>
-						<MastSymbol />
+						<MastSymbol lockupRef={symbolRef} />
 					</h1>
 					{aboutOpen ? (
 						<div className={cn(s.mastIntroWrap, { isDown: true, isAbout: true })} id='mast-copy'>
@@ -618,16 +764,16 @@ export function Mast({
 									>
 										{pickerOpen
 											? selectedVenues.map((item) => (
-													<span
-														key={item.slug}
-														className={cn(s.filter, { isSolo: true })}
-														data-venue={item.slug}
-													>
-														<span className={s.filterLabel}>
-															<span className={s.filterLabelInner}>{item.name}</span>
-														</span>
+												<span
+													key={item.slug}
+													className={cn(s.filter, { isSolo: true })}
+													data-venue={item.slug}
+												>
+													<span className={s.filterLabel}>
+														<span className={s.filterLabelInner}>{item.name}</span>
 													</span>
-												))
+												</span>
+											))
 											: chipNodes}
 									</div>
 								) : (
@@ -707,11 +853,127 @@ export function Mast({
 	);
 }
 
-export function MastSymbol() {
+const SYMBOL_OUTLINE =
+	'M45.3,248.6c-32-50.1-25.9-114.9.9-161.5S124.7,12.8,175.7,13.7c91.5-2.6,153.7,75.1,169.3,160.6,14.7,78.6-10.4,168.4-54.4,225.4-44.9,57-88.1,104.7-132.1,156.3-31.8,36.2-68.2,40.6-101,23.3-30.2-15.5-44-43.2-44-70.8M267.5,133.7c-19.9-44-59.9-63.9-98.7-56.1-44.9,6.9-76,41.4-82.9,77.7-5,28.1,4.4,59.4,20.3,81.7M177.8,375.1c-37.1-3.5-56.5,21.1-80.7,53.1-14.7,19.9-31.4,25.6-43.5,20.6-22.3-9.5-20.4-34.4-9.2-67.2';
+const EYE_CX = 191.2;
+const EYE_CY = 280.4;
+const EYE_MIN = -16;
+const EYE_MAX = 58;
+
+let eyeUsers = 0;
+let unbindEyes: (() => void) | null = null;
+
+function bindEyeFollow() {
+	if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return () => {};
+	let frame = 0;
+	let tracking = false;
+	let targetX = 0;
+	let targetY = 0;
+	const angle = new WeakMap<Element, number>();
+
+	const step = () => {
+		frame = 0;
+		let moving = false;
+		document.querySelectorAll<SVGGElement>('[data-mast-eye]').forEach((eye) => {
+			const circle = eye.querySelector('circle');
+			if (!circle) return;
+			const rect = circle.getBoundingClientRect();
+			if (rect.width < 2 || rect.height < 2) return;
+			let aim = 0;
+			if (tracking) {
+				const dx = targetX - (rect.left + rect.width / 2);
+				const dy = targetY - (rect.top + rect.height / 2);
+				aim = Math.atan2(dy, dx) * (180 / Math.PI);
+				if (aim > 90) aim -= 360;
+				aim = Math.max(EYE_MIN, Math.min(EYE_MAX, aim));
+			}
+			const prev = angle.get(eye) ?? 0;
+			const next = prev + (aim - prev) * 0.22;
+			if (Math.abs(next - prev) > 0.04) moving = true;
+			angle.set(eye, next);
+			eye.setAttribute('transform', 'rotate(' + next.toFixed(2) + ' ' + EYE_CX + ' ' + EYE_CY + ')');
+		});
+		if (moving) frame = window.requestAnimationFrame(step);
+	};
+
+	const queue = () => {
+		if (!frame) frame = window.requestAnimationFrame(step);
+	};
+	const onMove = (event: PointerEvent) => {
+		tracking = true;
+		targetX = event.clientX;
+		targetY = event.clientY;
+		queue();
+	};
+	const onLeave = (event: PointerEvent) => {
+		if (event.relatedTarget) return;
+		tracking = false;
+		queue();
+	};
+	window.addEventListener('pointermove', onMove, { passive: true });
+	window.addEventListener('pointerout', onLeave);
+	return () => {
+		window.removeEventListener('pointermove', onMove);
+		window.removeEventListener('pointerout', onLeave);
+		if (frame) window.cancelAnimationFrame(frame);
+	};
+}
+
+function useEyeFollow() {
+	useEffect(() => {
+		eyeUsers += 1;
+		if (eyeUsers === 1) unbindEyes = bindEyeFollow();
+		return () => {
+			eyeUsers -= 1;
+			if (eyeUsers === 0) {
+				unbindEyes?.();
+				unbindEyes = null;
+			}
+		};
+	}, []);
+}
+
+export function MastSymbol({ lockupRef }: { lockupRef?: Ref<HTMLSpanElement> }) {
+	useEyeFollow();
 	return (
-		<span className='mastSymbolLockup'>
-			<img className='mastSymbol mastSymbolDark' src='/symbol-black.svg' alt='' />
-			<img className='mastSymbol mastSymbolLight' src='/symbol.svg' alt='' />
+		<span ref={lockupRef} className='mastSymbolLockup'>
+			<svg className='mastSymbol mastSymbolDark' viewBox='0 0 364.1 601.6' aria-hidden='true'>
+				<path
+					d={SYMBOL_OUTLINE}
+					fill='none'
+					stroke='#eee'
+					strokeLinecap='round'
+					strokeLinejoin='round'
+					strokeWidth='18'
+				/>
+				<g data-mast-eye>
+					<circle cx={EYE_CX} cy={EYE_CY} r='95.6' fill='#eee' stroke='#eee' strokeWidth='18' />
+					<ellipse cx='232.8' cy={EYE_CY} rx='45.3' ry='64.7' fill='#111' />
+				</g>
+			</svg>
+			<svg className='mastSymbol mastSymbolLight' viewBox='0 0 364.1 601.6' aria-hidden='true'>
+				<path
+					d={SYMBOL_OUTLINE}
+					fill='none'
+					stroke='#111'
+					strokeLinecap='round'
+					strokeLinejoin='round'
+					strokeWidth='21.6'
+				/>
+				<g data-mast-eye>
+					<ellipse cx='236.8' cy={EYE_CY} rx='41.3' ry='58.9' fill='#111' />
+					<circle
+						cx={EYE_CX}
+						cy={EYE_CY}
+						r='95.6'
+						fill='none'
+						stroke='#111'
+						strokeLinecap='round'
+						strokeLinejoin='round'
+						strokeWidth='21.6'
+					/>
+				</g>
+			</svg>
 		</span>
 	);
 }

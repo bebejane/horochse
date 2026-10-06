@@ -45,7 +45,7 @@
 
 .calDay:hover,
 .calDay:has(.calEvent:global(.isLive)) {
-	z-index: 18;
+	z-index: 1;
 }
 
 .calDay:global(.isToday) {
@@ -117,6 +117,7 @@
 	background: var(--cal-fill);
 	border-left: 3px solid var(--ink);
 	scroll-margin-top: calc(var(--mast-height) + var(--cal-heads-height) + 10px);
+	border-radius: 4px;
 }
 
 .calEventLink {
@@ -217,6 +218,7 @@
 }
 
 .calTint {
+	display: none; /* tillfälligt gömd */
 	position: absolute;
 	inset: 0;
 	z-index: 1;
@@ -284,7 +286,7 @@
 .calEvent:global(.hasArt) .calTitle,
 .calEvent:global(.hasArt) .calVenue,
 .calEvent:global(.hasArt) .calPlace,
-.calEvent:global(.hasArt) .calIcs {
+.calEvent:global(.hasArt) .calActions {
 	text-shadow: 0 1px 10px var(--cal-fill);
 }
 
@@ -462,6 +464,7 @@
 
 .calTime {
 	flex: 0 0 auto;
+	letter-spacing: 0;
 	font-variant-numeric: oldstyle-nums tabular-nums;
 	font-feature-settings: 'onum', 'tnum';
 }
@@ -493,11 +496,18 @@
 }
 
 .calEvent:hover,
-.calEvent:global(.isLive) {
+.calEvent:global(.isLive),
+.calEvent:has(:global([data-open])) {
 	z-index: 18;
 	transform: scale(var(--cal-hover-scale));
 	transform-origin: center center;
 	box-shadow: 0 1rem 2.2rem rgba(0, 0, 0, 0.38);
+}
+
+.calBody > .calEvent:first-child:hover,
+.calBody > .calEvent:first-child:global(.isLive),
+.calBody > .calEvent:first-child:has(:global([data-open])) {
+	transform-origin: top center;
 }
 
 :global(body.isCalSimple) .weeks {
@@ -534,14 +544,7 @@
 	z-index: 1;
 }
 
-.calEvent .calIcs > span {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.calEvent .calIcs {
+.calActions {
 	display: none;
 	position: absolute;
 	left: 0.65rem;
@@ -549,29 +552,30 @@
 	bottom: 0.35rem;
 	height: 1.85rem;
 	align-items: center;
+	gap: 0.75rem;
 	z-index: 4;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
+}
+
+.calActions :global(.go) {
 	font-size: calc(0.75rem / var(--cal-hover-scale));
 }
 
-.calEvent:hover .calIcs,
-.calEvent:global(.isLive) .calIcs {
+.calEvent:hover .calActions,
+.calEvent:global(.isLive) .calActions,
+.calEvent:has(:global([data-open])) .calActions {
 	display: flex;
 }
 
-.calEvent .calIcs:hover,
-.calEvent .calIcs:focus-visible {
-	overflow: visible;
-}
-
-.calEvent:has([data-play-cluster]:global(.isOpen)) .calIcs {
+.calEvent:has([data-play-cluster]:global(.isOpen)) .calActions {
 	right: 4.6rem;
 }
 
-.calEvent:has([data-play-cluster]:global(.isOpen)) .calIcsRest {
-	display: none;
+.calEvent:has(:global([data-open])) {
+	overflow: visible;
+}
+
+.calEvent :global([data-listen-more]) a:not(:global(.go)) {
+	color: var(--ink);
 }
 
 .calVenue {

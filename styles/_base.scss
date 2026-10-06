@@ -33,18 +33,18 @@
 	--aviciiarena: #6aa89a;
 	--trearena: #d4a07a;
 	--strawberryarena: #8c7ab8;
-	--konserthuset: #d4573c;
-	--berwaldhallen: #e0b25a;
+	--konserthuset: #a9784e;
+	--berwaldhallen: #b08960;
 	--fasching: #d4573c;
 	--stampen: #6bb3a0;
 	--glennmillercafe: #c47a8a;
-	--kungcarls: #9a7bb8;
+	--kungcarls: #8a9660;
 	--engelen: #d98b4a;
 	--petsoundsbar: #c46b6b;
 	--reimersholme: #8ab07a;
 	--riche: #c45c48;
 	--landet: #c9a05a;
-	--encore: #d4573c;
+	--encore: #c49a72;
 	--bioaspen: #6aa89a;
 	--scalateatern: #d4a07a;
 	--gotalejon: #8c7ab8;
@@ -54,7 +54,7 @@
 	--gronalund: #d98b4a;
 	--fylkingen: #6bb3a0;
 	--ronnells: #c47a8a;
-	--larryscorner: #9a7bb8;
+	--larryscorner: #7388a0;
 	--margin: clamp(1.1rem, 4vw, 3rem);
 	--mast-height: 14rem;
 	--cal-heads-height: 2.6rem;
@@ -81,6 +81,10 @@ html[data-theme='light'] {
 	box-sizing: border-box;
 	margin: 0;
 	padding: 0;
+}
+
+button {
+	border-radius: 4px;
 }
 
 html {

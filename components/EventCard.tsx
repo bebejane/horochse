@@ -165,7 +165,7 @@ export function EventCard({
         </div>
         <div className={s.cardText}>
           <p className={s.meta}>
-          {times.length ? times.map((item) => <span key={item}>{formatMetaTime(item)}</span>) : <span>Tid saknas</span>}
+          {times.length ? times.map((item) => <span className={s.metaTime} key={item}>{formatMetaTime(item)}</span>) : <span className={s.metaTime}>Tid saknas</span>}
           <button
             type="button"
             className={s.venue}

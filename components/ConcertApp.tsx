@@ -77,7 +77,6 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
   const events: ConcertEvent[] = payload.events || [];
   const updated = payload.updated || "";
   const rangeTo = payload.range?.to || null;
-  const errors = payload.errors || {};
   const status = "";
   const loaded = true;
   const [mode, setMode] = useState<FilterMode>("all");
@@ -221,7 +220,6 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveView, visible, player.rebindAfterRender]);
 
-  const sourceErrors = Object.keys(errors || {});
   const statusText = !loaded
     ? "Hämtar veckans konserter…"
     : !visible.length
@@ -234,11 +232,9 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
               : ". Välj scener under Dina scener."
             : "."
       )
-      : sourceErrors.length
-        ? "Kunde inte hämta: " + sourceErrors.join(", ") + "."
-        : "";
+      : "";
   const emptyList = loaded && !visible.length;
-  const statusHidden = emptyList || (loaded && visible.length > 0 && !sourceErrors.length);
+  const statusHidden = emptyList || (loaded && visible.length > 0);
 
   const currentWeek = player.eventId
     ? (() => {
@@ -257,10 +253,11 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
     setPeek((current) => (current === slug ? null : slug));
   }, []);
 
-  function onSetView(next: ViewMode) {
+  function onSetView(next: ViewMode, opts?: { top?: boolean }) {
     const changed = next !== view;
     setView(next);
     if (next === "calendar") setCalStyle("full");
+    if (opts?.top) return;
     if (changed && player.eventId) {
       const ev = playlistEvents.find((e) => e.id === player.eventId);
       if (ev) {

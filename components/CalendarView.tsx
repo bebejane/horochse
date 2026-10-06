@@ -9,6 +9,7 @@ import { calendarWeeks, displayTitle, eventTimes, isPlayable, titleHits } from "
 import type { ConcertEvent } from "@/lib/types";
 import { WeekHead } from "./ListView";
 import { MastSymbol } from "./Mast";
+import { ListenMore } from "./ListenMore";
 import { PlayButton } from "./PlayButton";
 import { RemoteImage } from "./RemoteImage";
 
@@ -127,9 +128,17 @@ function CalendarEvent({
         </span>
       </div>
       {simple ? null : (
-        <a className={cn("go", s.calIcs, { goDown: true })} href={"/kalender/" + encodeURIComponent(event.id) + ".ics"}>
-          <span>Lägg till<span className={s.calIcsRest}>&nbsp;i kalender</span></span>
-        </a>
+        <div className={s.calActions}>
+          <ListenMore event={event} label="Hör" />
+          {event.url ? (
+            <a className="go" href={event.url} target="_blank" rel="noopener noreferrer">
+              Se
+            </a>
+          ) : null}
+          <a className={cn("go", { goDown: true })} href={"/kalender/" + encodeURIComponent(event.id) + ".ics"}>
+            <span>Spara</span>
+          </a>
+        </div>
       )}
       {playable ? (
         <PlayButton

@@ -1,4 +1,4 @@
-@use '../styles/mediaqueries' as *;
+@use "../styles/mediaqueries" as *;
 
 .mast {
 	position: fixed;
@@ -58,6 +58,7 @@
 	gap: 1rem;
 	min-width: 0;
 	padding-bottom: 1rem;
+	padding-left: calc(var(--title-col) + var(--title-gap));
 }
 
 .themeSwitch {
@@ -70,7 +71,7 @@
 	background: transparent;
 	color: var(--muted);
 	padding: 0;
-	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	font-family: var(--font-walter), "Segoe UI", sans-serif;
 	font-size: 0.72rem;
 	letter-spacing: 0.04em;
 	line-height: 1;
@@ -99,12 +100,12 @@
 	transition: transform 0.22s ease;
 }
 
-.themeSwitch[aria-checked='true'] .themeSwitchKnob {
+.themeSwitch[aria-checked="true"] .themeSwitchKnob {
 	transform: translateX(0.78rem);
 }
 
-.themeSwitch[aria-checked='false'] .themeSwitchLabelDark,
-.themeSwitch[aria-checked='true'] .themeSwitchLabelLight {
+.themeSwitch[aria-checked="false"] .themeSwitchLabelDark,
+.themeSwitch[aria-checked="true"] .themeSwitchLabelLight {
 	color: var(--ink);
 }
 
@@ -117,8 +118,8 @@
 	display: none;
 }
 
-.densitySwitch[aria-checked='false'] .densitySwitchLabelMore,
-.densitySwitch[aria-checked='true'] .densitySwitchLabelLess {
+.densitySwitch[aria-checked="false"] .densitySwitchLabelMore,
+.densitySwitch[aria-checked="true"] .densitySwitchLabelLess {
 	color: var(--ink);
 }
 
@@ -136,6 +137,7 @@
 .mastWordmark {
 	display: inline-block;
 	transform: translateY(-1px);
+	transform-origin: left center;
 }
 
 .mastLetter {
@@ -147,7 +149,8 @@
 	left: 0;
 	top: 50%;
 	height: 3.5rem;
-	transform: translateY(calc(-50% + 1rem));
+	transform: translateY(calc(-50% - 1rem));
+	transform-origin: left top;
 	opacity: 0;
 	pointer-events: none;
 }
@@ -155,6 +158,10 @@
 .mast h1 :global(.mastSymbol) {
 	height: 3.5rem;
 	width: auto;
+}
+
+:global(body:not(.isCalendar)) .mast h1 :global(.mastSymbolLockup) {
+	transform: translateY(calc(-50% - 1rem)) scale(1.1);
 }
 
 .mastHeadline:has(:global(.isAbout)) h1 .mastWordmark {
@@ -167,8 +174,8 @@
 
 .mastAmp {
 	font-style: normal;
-	margin-left: 0.2em;
-	margin-right: 0.2em;
+	margin-left: 0.1em;
+	margin-right: 0.1em;
 }
 
 .mastTopActions {
@@ -194,7 +201,7 @@
 	background: transparent;
 	color: var(--muted);
 	padding: 0;
-	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	font-family: var(--font-walter), "Segoe UI", sans-serif;
 	font-size: 0.72rem;
 	letter-spacing: 0.04em;
 	line-height: 1;
@@ -303,7 +310,7 @@
 	color: var(--muted);
 	padding: 0;
 	margin-left: 0.35em;
-	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	font-family: var(--font-walter), "Segoe UI", sans-serif;
 	font-size: 0.72rem;
 	font-style: normal;
 	font-weight: 400;
@@ -347,6 +354,7 @@
 	display: inline-flex;
 	align-items: stretch;
 	border: 1px solid var(--line);
+	border-radius: 4px;
 	min-height: 1.85rem;
 }
 
@@ -358,12 +366,17 @@
 	background: transparent;
 	color: var(--ink);
 	padding: 0 0.9rem;
-	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	font-family: var(--font-walter), "Segoe UI", sans-serif;
 	font-size: 0.78rem;
 	line-height: 1;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 	cursor: pointer;
+	border-radius: 4px 0 0 4px;
+}
+
+.viewCal > .view {
+	border-radius: 0 4px 4px 0;
 }
 
 .view + .view {
@@ -377,7 +390,7 @@
 	border-left: 1px solid var(--line);
 }
 
-.viewEnkel {
+.view.viewEnkel {
 	position: absolute;
 	top: 100%;
 	left: 0;
@@ -387,6 +400,7 @@
 	min-height: 1.85rem;
 	border: 1px solid var(--line);
 	border-top: 0;
+	border-radius: 0 0 4px 4px;
 	background: var(--bg);
 	z-index: 21;
 }
@@ -418,7 +432,7 @@
 }
 
 .eyebrow {
-	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	font-family: var(--font-walter), "Segoe UI", sans-serif;
 	letter-spacing: 0.04em;
 	font-size: 0.72rem;
 	color: var(--muted);
@@ -483,20 +497,8 @@
 }
 
 .filterScroller:global(.isOverflowLeft):global(.isOverflowRight) {
-	-webkit-mask-image: linear-gradient(
-		90deg,
-		transparent,
-		#000 1.8rem,
-		#000 calc(100% - 1.8rem),
-		transparent
-	);
-	mask-image: linear-gradient(
-		90deg,
-		transparent,
-		#000 1.8rem,
-		#000 calc(100% - 1.8rem),
-		transparent
-	);
+	-webkit-mask-image: linear-gradient(90deg, transparent, #000 1.8rem, #000 calc(100% - 1.8rem), transparent);
+	mask-image: linear-gradient(90deg, transparent, #000 1.8rem, #000 calc(100% - 1.8rem), transparent);
 }
 
 .filterChips {
@@ -531,12 +533,12 @@
 	row-gap: 0.35rem;
 }
 
-.filters:global(.isOpen) > [data-venue='all'] {
+.filters:global(.isOpen) > [data-venue="all"] {
 	grid-column: 1;
 	grid-row: 1;
 }
 
-.filters:global(.isOpen) > [data-venue='mine'] {
+.filters:global(.isOpen) > [data-venue="mine"] {
 	grid-column: 2;
 	grid-row: 1;
 }
@@ -661,12 +663,13 @@
 	color: var(--ink);
 	padding: 0 0.9rem;
 	min-height: 1.85rem;
-	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	font-family: var(--font-walter), "Segoe UI", sans-serif;
 	font-size: 0.78rem;
 	line-height: 1;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
 	cursor: pointer;
+	border-radius: 4px;
 }
 
 span.filter {
@@ -797,6 +800,7 @@ span.filter:global(.isSolo) {
 	}
 
 	.mastTop {
+		padding-left: 0;
 		justify-content: flex-start;
 	}
 
@@ -827,8 +831,8 @@ span.filter:global(.isSolo) {
 		flex-wrap: unset;
 	}
 
-	.filters > [data-venue='all'],
-	.filters > [data-venue='mine'] {
+	.filters > [data-venue="all"],
+	.filters > [data-venue="mine"] {
 		flex: none;
 		width: 100%;
 		min-width: 0;
@@ -836,12 +840,12 @@ span.filter:global(.isSolo) {
 		box-sizing: border-box;
 	}
 
-	.filters > [data-venue='all'] {
+	.filters > [data-venue="all"] {
 		grid-column: 1;
 		grid-row: 1;
 	}
 
-	.filters > [data-venue='mine'] {
+	.filters > [data-venue="mine"] {
 		grid-column: 2;
 		grid-row: 1;
 	}
@@ -994,13 +998,7 @@ span.filter:global(.isSolo) {
 	}
 
 	.filterScroller:global(.isOverflowLeft):global(.isOverflowRight) {
-		-webkit-mask-image: linear-gradient(
-			90deg,
-			transparent,
-			#000 1em,
-			#000 calc(100% - 1em),
-			transparent
-		);
+		-webkit-mask-image: linear-gradient(90deg, transparent, #000 1em, #000 calc(100% - 1em), transparent);
 		mask-image: linear-gradient(90deg, transparent, #000 1em, #000 calc(100% - 1em), transparent);
 	}
 
