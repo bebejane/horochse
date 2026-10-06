@@ -59,7 +59,11 @@
 	--mast-height: 14rem;
 	--cal-heads-height: 2.6rem;
 	--player-height: 0px;
-	--title-col: 14rem;
+	/* Left gutter / title column: 1/7 of the mast content width (minus the gap),
+	   so the list's day headings line up with the calendar's Monday column.
+	   Computed in CSS, not JS, so the value is correct on the server-rendered
+	   first paint and there is no width jump after hydration. */
+	--title-col: calc((min(100vw, 110rem) - 2 * var(--margin) + 6px) / 7 - var(--title-gap));
 	--title-gap: 1.2rem;
 	color-scheme: dark;
 }

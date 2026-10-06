@@ -5,6 +5,7 @@
     "node_modules": true,
     ".vscode": true,
     ".cache": true,
-    ".vercel": true
+    ".vercel": true,
+    ".openchamber": true
   }
 }
