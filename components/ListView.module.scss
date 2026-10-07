@@ -1,4 +1,4 @@
-@use '../styles/mediaqueries' as *;
+@use "../styles/mediaqueries" as *;
 
 .week + .week {
 	padding-top: 2rem;
@@ -48,7 +48,7 @@
 }
 
 .weekHeadListenLabel {
-	font-family: var(--font-walter), 'Segoe UI', sans-serif;
+	font-family: var(--font-walter), "Segoe UI", sans-serif;
 	font-size: 0.75rem;
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
@@ -78,6 +78,9 @@
 	background: var(--bg);
 	box-shadow: 0 -0.4rem 0 var(--bg);
 	z-index: 5;
+	@include mq($from: tablet) {
+		padding-left: 1px;
+	}
 }
 
 :global(body:not(.isCalendar)) .dayTitle {

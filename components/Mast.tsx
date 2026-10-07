@@ -290,20 +290,17 @@ export function Mast({
 
 	useLayoutEffect(() => {
 		try {
-			if (mine.length > 0) {
-				localStorage.setItem('konserter-hide-intro', '1');
+			if (localStorage.getItem('konserter-hide-intro') === '1') {
 				document.documentElement.setAttribute('data-hide-intro', '');
 				setIntroHidden(true);
-				return;
 			}
-			if (localStorage.getItem('konserter-hide-intro') === '1') setIntroHidden(true);
 		} catch {
 			/* ignore */
 		}
-	}, [mine.length]);
+	}, []);
 
 	useEffect(() => {
-		if (introHidden || mine.length === 0) {
+		if (introHidden) {
 			setIntroAway(false);
 			return;
 		}
@@ -316,7 +313,7 @@ export function Mast({
 		apply();
 		window.addEventListener('scroll', apply, { passive: true });
 		return () => window.removeEventListener('scroll', apply);
-	}, [introHidden, mine.length]);
+	}, [introHidden]);
 
 	const chipKey = chips.map((item) => item.slug).join(',');
 
@@ -757,6 +754,7 @@ export function Mast({
 									className={s.mastIntroHide}
 									onClick={() => {
 										setIntroHidden(true);
+										document.documentElement.setAttribute('data-hide-intro', '');
 										try {
 											localStorage.setItem('konserter-hide-intro', '1');
 										} catch {

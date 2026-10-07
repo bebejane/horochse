@@ -52,7 +52,7 @@ gtag('config', 'G-3RKD8M02HP');`}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              'try{var r=document.documentElement;if(localStorage.getItem("konserter-theme")==="light")r.setAttribute("data-theme","light");var hide=localStorage.getItem("konserter-hide-intro")==="1";if(!hide){var raw=localStorage.getItem("konserter-mine");if(raw){var list=JSON.parse(raw);hide=Array.isArray(list)&&list.length>0}}if(hide)r.setAttribute("data-hide-intro","")}catch(e){}',
+              'try{var r=document.documentElement;if(localStorage.getItem("konserter-theme")==="light")r.setAttribute("data-theme","light");if(localStorage.getItem("konserter-hide-intro")==="1")r.setAttribute("data-hide-intro","")}catch(e){}',
           }}
         />
         {children}
