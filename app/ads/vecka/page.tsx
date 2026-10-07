@@ -12,11 +12,11 @@ import {
   drawPoster,
   loadPosterFonts,
   loadPosterImage,
-  POSTER_H,
-  POSTER_W,
+  POSTER_FORMATS,
   posterImageUrl,
   venueColor,
   type PosterFonts,
+  type PosterFormat,
 } from "../poster";
 import { formatWeekSpan } from "@/lib/dates";
 
@@ -33,6 +33,7 @@ export default function WeekAdsPage() {
   const [events, setEvents] = useState<ConcertEvent[] | null>(null);
   const [error, setError] = useState("");
   const [venue, setVenue] = useState("");
+  const [formatId, setFormatId] = useState<PosterFormat["id"]>("4:5");
   const [seconds, setSeconds] = useState(2);
   const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
   const [images, setImages] = useState<Record<string, ImageState>>({});
@@ -71,6 +72,7 @@ export default function WeekAdsPage() {
     };
   }, []);
 
+  const format = POSTER_FORMATS.find((item) => item.id === formatId) ?? POSTER_FORMATS[0];
   const week = useMemo(() => eventsThisWeek(events ?? []), [events]);
   const venues = useMemo(() => venuesIn(week), [week]);
   const days = thisWeekIsos();
@@ -129,6 +131,8 @@ export default function WeekAdsPage() {
     if (!canvas || !loaded) return;
     const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) return;
+    canvas.width = format.width;
+    canvas.height = format.height;
     if (!current) {
       drawPoster(ctx, null, loaded);
       return;
@@ -145,7 +149,7 @@ export default function WeekAdsPage() {
       },
       loaded,
     );
-  }, [current, currentImage, fonts]);
+  }, [current, currentImage, fonts, format]);
 
   function toggle(id: string) {
     setExcluded((prev) => {
@@ -180,11 +184,12 @@ export default function WeekAdsPage() {
         frames,
         seconds,
         loaded,
+        format,
         (done, total) => setProgress(`Kodar ${done} av ${total}`),
         () => cancelExport.current,
       );
       const who = venue || "vecka";
-      downloadBlob(blob, `hor-och-se-${who}-${days[0] || "vecka"}.mp4`);
+      downloadBlob(blob, `hor-och-se-${who}-${days[0] || "vecka"}-${format.id.replace(":", "x")}.mp4`);
       setProgress("Filmen är sparad.");
     } catch (err) {
       if (!cancelExport.current) {
@@ -203,7 +208,7 @@ export default function WeekAdsPage() {
       </Link>
       <h1>Veckans konserter</h1>
       <p className={styles.lead}>
-        1080×1350. {weekLabel ? `Denna vecka, ${weekLabel}. ` : ""}
+        {format.label}, {format.width}×{format.height}. {weekLabel ? `Denna vecka, ${weekLabel}. ` : ""}
         Bilden, titeln, scenen och datumet byts direkt, utan övergång.
       </p>
 
@@ -218,6 +223,16 @@ export default function WeekAdsPage() {
             {venues.map((item) => (
               <option key={item.slug} value={item.slug}>
                 {item.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.field}>
+          Format
+          <select value={format.id} onChange={(event) => setFormatId(event.target.value as PosterFormat["id"])}>
+            {POSTER_FORMATS.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
               </option>
             ))}
           </select>
@@ -262,9 +277,13 @@ export default function WeekAdsPage() {
         <div className={styles.stage}>
           <canvas
             ref={canvasRef}
-            width={POSTER_W}
-            height={POSTER_H}
+            width={format.width}
+            height={format.height}
             className={styles.canvas}
+            style={{
+              width: `min(100%, calc((100vh - 7rem) * ${format.width} / ${format.height}))`,
+              aspectRatio: `${format.width} / ${format.height}`,
+            }}
             data-hit={current && !exporting ? "true" : "false"}
             role="button"
             tabIndex={current && !exporting ? 0 : -1}

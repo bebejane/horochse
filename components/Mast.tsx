@@ -290,11 +290,17 @@ export function Mast({
 
 	useLayoutEffect(() => {
 		try {
+			if (mine.length > 0) {
+				localStorage.setItem('konserter-hide-intro', '1');
+				document.documentElement.setAttribute('data-hide-intro', '');
+				setIntroHidden(true);
+				return;
+			}
 			if (localStorage.getItem('konserter-hide-intro') === '1') setIntroHidden(true);
 		} catch {
 			/* ignore */
 		}
-	}, []);
+	}, [mine.length]);
 
 	useEffect(() => {
 		if (introHidden || mine.length === 0) {

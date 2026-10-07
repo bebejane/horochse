@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import localFont from "next/font/local";
+import Script from "next/script";
 import "@/styles/index.scss";
 
 const william = localFont({
@@ -38,10 +39,20 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="sv" className={`${william.variable} ${walter.variable}`} suppressHydrationWarning>
       <body suppressHydrationWarning>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-3RKD8M02HP"
+          strategy="beforeInteractive"
+        />
+        <Script id="google-tag" strategy="beforeInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+function gtag(){window.dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-3RKD8M02HP');`}
+        </Script>
         <script
           dangerouslySetInnerHTML={{
             __html:
-              'try{var r=document.documentElement;if(localStorage.getItem("konserter-theme")==="light")r.setAttribute("data-theme","light");if(localStorage.getItem("konserter-hide-intro")==="1")r.setAttribute("data-hide-intro","")}catch(e){}',
+              'try{var r=document.documentElement;if(localStorage.getItem("konserter-theme")==="light")r.setAttribute("data-theme","light");var hide=localStorage.getItem("konserter-hide-intro")==="1";if(!hide){var raw=localStorage.getItem("konserter-mine");if(raw){var list=JSON.parse(raw);hide=Array.isArray(list)&&list.length>0}}if(hide)r.setAttribute("data-hide-intro","")}catch(e){}',
           }}
         />
         {children}

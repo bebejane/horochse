@@ -1,5 +1,15 @@
-export const POSTER_W = 1080;
-export const POSTER_H = 1350;
+export type PosterFormat = {
+  id: "4:5" | "1:1" | "9:16";
+  label: string;
+  width: number;
+  height: number;
+};
+
+export const POSTER_FORMATS: PosterFormat[] = [
+  { id: "4:5", label: "4:5", width: 1080, height: 1350 },
+  { id: "1:1", label: "1:1", width: 1080, height: 1080 },
+  { id: "9:16", label: "9:16", width: 1080, height: 1920 },
+];
 
 export type PosterFonts = {
   anselm: string;

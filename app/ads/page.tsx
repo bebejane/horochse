@@ -19,7 +19,7 @@ export default function AdsPage() {
         <li>
           <Link className={styles.tool} href="/ads/vecka">
             <strong>Veckans konserter</strong>
-            <span>1080×1350. Bild, titel, scen och datum. Bilderna byts utan övergång.</span>
+            <span>4:5, 1:1 eller 9:16. Bild, titel, scen och datum. Bilderna byts utan övergång.</span>
           </Link>
         </li>
       </ul>

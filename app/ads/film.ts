@@ -1,6 +1,6 @@
 import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 
-import { drawPoster, POSTER_H, POSTER_W, type PosterFonts, type PosterSlide } from "./poster";
+import { drawPoster, type PosterFonts, type PosterFormat, type PosterSlide } from "./poster";
 
 const CODECS = ["avc1.640028", "avc1.4d0028", "avc1.420028"];
 
@@ -13,6 +13,7 @@ export async function exportFilm(
   slides: PosterSlide[],
   seconds: number,
   fonts: PosterFonts,
+  format: PosterFormat,
   onProgress: (done: number, total: number) => void,
   isCancelled: () => boolean,
 ): Promise<Blob> {
@@ -23,15 +24,15 @@ export async function exportFilm(
 
   const holdUs = Math.round(seconds * 1_000_000);
   const canvas = document.createElement("canvas");
-  canvas.width = POSTER_W;
-  canvas.height = POSTER_H;
+  canvas.width = format.width;
+  canvas.height = format.height;
   const ctx = canvas.getContext("2d", { alpha: false });
   if (!ctx) throw new Error("Kunde inte rita bilden.");
 
   const target = new ArrayBufferTarget();
   const muxer = new Muxer({
     target,
-    video: { codec: "avc", width: POSTER_W, height: POSTER_H },
+    video: { codec: "avc", width: format.width, height: format.height },
     fastStart: "in-memory",
   });
 
@@ -48,7 +49,7 @@ export async function exportFilm(
   });
 
   try {
-    await configureVideo(encoder);
+    await configureVideo(encoder, format);
 
     for (let i = 0; i < slides.length; i++) {
       if (isCancelled()) throw new Error("Exporten avbröts.");
@@ -76,12 +77,12 @@ export async function exportFilm(
   return new Blob([target.buffer], { type: "video/mp4" });
 }
 
-async function configureVideo(encoder: VideoEncoder) {
+async function configureVideo(encoder: VideoEncoder, format: PosterFormat) {
   for (const codec of CODECS) {
     const config: VideoEncoderConfig = {
       codec,
-      width: POSTER_W,
-      height: POSTER_H,
+      width: format.width,
+      height: format.height,
       bitrate: 3_000_000,
       bitrateMode: "variable",
       hardwareAcceleration: "prefer-software",
@@ -96,7 +97,7 @@ async function configureVideo(encoder: VideoEncoder) {
       continue;
     }
   }
-  throw new Error("Den här webbläsaren kan inte koda 1080×1350 till mp4.");
+  throw new Error(`Den här webbläsaren kan inte koda ${format.width}×${format.height} till mp4.`);
 }
 
 async function drain(encoder: VideoEncoder, failed: () => Error | null) {
