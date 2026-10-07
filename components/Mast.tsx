@@ -315,6 +315,18 @@ export function Mast({
 		return () => window.removeEventListener('scroll', apply);
 	}, [introHidden]);
 
+	useEffect(() => {
+		if (!pickerOpen) return;
+		let previousY = window.scrollY;
+		const closeOnScrollDown = () => {
+			const y = window.scrollY;
+			if (y > previousY) onClosePicker();
+			previousY = y;
+		};
+		window.addEventListener('scroll', closeOnScrollDown, { passive: true });
+		return () => window.removeEventListener('scroll', closeOnScrollDown);
+	}, [pickerOpen, onClosePicker]);
+
 	const chipKey = chips.map((item) => item.slug).join(',');
 
 	useLayoutEffect(() => {
