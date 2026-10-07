@@ -6,29 +6,41 @@ import cn from "classnames";
 import { formatClock } from "@/lib/dates";
 import { NextIcon, PauseIcon, PlayIcon, PrevIcon } from "./Icons";
 import type { NowPlayingData } from "@/hooks/usePlayer";
-import type { MutableRefObject, PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, type MutableRefObject, type PointerEvent as ReactPointerEvent } from "react";
 
-function TrackTitle({ data, playing }: { data: NowPlayingData | null; playing: boolean }) {
-  const ticker = [data?.artist, data?.track].filter(Boolean).join(" — ");
-  const roll = playing && ticker.length > 0;
-  const duration = Math.min(28, Math.max(10, ticker.length * 0.32));
-  const body = roll ? (
-    <span className={s.nowplayingMarquee} style={{ animationDuration: duration + "s" }}>
-      <span>{ticker}</span>
-      <span aria-hidden="true">{ticker}</span>
-    </span>
-  ) : (
-    data?.track || ""
-  );
-  const className = cn(s.nowplayingTrack, { isRolling: roll });
-  if (data?.trackUrl) {
-    return (
-      <a className={className} href={data.trackUrl} target="_blank" rel="noopener noreferrer">
-        {body}
-      </a>
-    );
-  }
-  return <a className={className}>{body}</a>;
+const SITE_TITLE = "Hör & Se";
+
+function useScrollingTitle(data: NowPlayingData | null, playing: boolean) {
+  const artist = data?.artist || "";
+  const track = data?.track || "";
+  useEffect(() => {
+    const label = [artist, track].filter(Boolean).join(" — ");
+    if (!playing || !label) {
+      document.title = SITE_TITLE;
+      return;
+    }
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      document.title = label + " · " + SITE_TITLE;
+      return () => {
+        document.title = SITE_TITLE;
+      };
+    }
+    const text = label + " · " + SITE_TITLE + "   ";
+    let index = 0;
+    const paint = () => {
+      document.title = text.slice(index) + text.slice(0, index);
+    };
+    paint();
+    const timer = window.setInterval(() => {
+      index = (index + 1) % text.length;
+      paint();
+    }, 200);
+    return () => {
+      window.clearInterval(timer);
+      document.title = SITE_TITLE;
+    };
+  }, [playing, artist, track]);
 }
 
 export function NowPlayingBar({
@@ -54,6 +66,8 @@ export function NowPlayingBar({
   onToggle: () => void;
   onNext: () => void;
 }) {
+  useScrollingTitle(data, playing);
+
   function seekFromPoint(clientX: number) {
     const track = document.querySelector("." + s.nowplayingTrackbar);
     if (!track) return 0;
@@ -101,7 +115,13 @@ export function NowPlayingBar({
             />
           ) : null}
           <div className={s.nowplayingCopy}>
-            <TrackTitle data={data} playing={playing} />
+            {data?.trackUrl ? (
+              <a className={s.nowplayingTrack} href={data.trackUrl} target="_blank" rel="noopener noreferrer">
+                {data.track}
+              </a>
+            ) : (
+              <a className={s.nowplayingTrack}>{data?.track || ""}</a>
+            )}
             {data?.artistUrl ? (
               <a className={s.nowplayingArtist} href={data.artistUrl} target="_blank" rel="noopener noreferrer">
                 {data.artist}
