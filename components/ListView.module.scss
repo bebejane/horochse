@@ -35,6 +35,16 @@
 	margin: 0;
 }
 
+.weekHeadCount {
+	margin-left: 0.6em;
+	font-size: 0.38em;
+	font-style: normal;
+	font-feature-settings: "lnum" 1;
+	vertical-align: baseline;
+	position: relative;
+	top: -1em;
+}
+
 @include mq($from: tablet) {
 	.weekHeadTitle {
 		font-size: 1.95rem;

@@ -45,7 +45,12 @@ function WeekHead({
 	return (
 		<div className={cn(s.weekHead, { isNext: !isFirst })} data-week-head>
 			<div className={s.weekHeadMain}>
-				<p className={s.weekHeadTitle}>{title}</p>
+				<p className={s.weekHeadTitle}>
+					{title}
+					<sup className={s.weekHeadCount} aria-label={`${events.length} konserter`}>
+						{events.length}
+					</sup>
+				</p>
 				{playable && !hidePlay ? (
 					<div className={s.weekHeadListen}>
 						<span className={s.weekHeadListenLabel}>Hör exempel på veckans musik</span>
