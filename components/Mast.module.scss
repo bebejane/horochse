@@ -49,6 +49,15 @@
 	margin-bottom: 0.16rem;
 }
 
+/* Stängd intro-rad är bottenställd mot filterknapparna. När Om öppnas
+   lämnar rubriken den raden och skulle annars hoppa upp. */
+@include mq($from: tablet) {
+	:global(html[data-hide-intro]) .mastHeadline:has(:global(.isAbout)) h1,
+	.mast:global(.isIntroCollapsed) .mastHeadline:has(:global(.isAbout)) h1 {
+		margin-top: calc(1.85rem + 0.16rem - 0.78 * clamp(1.55rem, 2.8vw, 2.15rem) * 1.03);
+	}
+}
+
 .mastTop {
 	grid-column: 1 / -1;
 	grid-row: 1;
@@ -164,14 +173,6 @@
 	transform: translateY(calc(-50% - 1rem)) scale(1.1);
 }
 
-.mastHeadline:has(:global(.isAbout)) h1 .mastWordmark {
-	opacity: 0;
-}
-
-.mastHeadline:has(:global(.isAbout)) h1 :global(.mastSymbolLockup) {
-	opacity: 1;
-}
-
 .mastAmp {
 	font-style: normal;
 	margin-left: 0.1em;
@@ -276,7 +277,7 @@
 	justify-self: start;
 	font-size: clamp(1.35rem, 2.4vw, 1.85rem);
 	font-style: normal;
-	font-weight: 400;
+	font-weight: var(--william-regular);
 	letter-spacing: -0.02em;
 	line-height: 1.15;
 }
@@ -613,6 +614,7 @@
 .mastInner > .filterChips > .filter .filterLabelInner {
 	display: block;
 	overflow: hidden;
+	line-height: 1.85;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	transform: translateX(0);
@@ -754,6 +756,19 @@ span.filter:global(.isSolo) {
 }
 
 @include mq($until: tablet) {
+	/* Logotypen är vanlig text i flödet. Toppraden och filtren är sticky,
+	   med ett fast läge så de inte hoppar när man scrollar. */
+	.mast {
+		display: contents;
+		position: static;
+		--mast-bar: calc(var(--margin) / 2 + 1.85rem);
+	}
+
+	.mastInner,
+	.mastHeadline {
+		display: contents;
+	}
+
 	.mastInner {
 		grid-template-columns: 1fr;
 	}
@@ -778,8 +793,15 @@ span.filter:global(.isSolo) {
 	}
 
 	.mastTools {
+		position: sticky;
+		top: var(--mast-bar);
+		z-index: 20;
 		grid-row: 3;
 		width: 100%;
+		box-sizing: border-box;
+		background: var(--bg);
+		box-shadow: 0 1px 0 var(--bg);
+		padding: 0.35rem var(--margin) 0.85rem;
 	}
 
 	.mastInner:not(:has(.mastIntroWrap)) .mastHeadline,
@@ -801,8 +823,15 @@ span.filter:global(.isSolo) {
 	}
 
 	.mastTop {
-		padding-left: 0;
+		position: sticky;
+		top: 0;
+		z-index: 21;
+		align-items: center;
 		justify-content: flex-start;
+		box-sizing: border-box;
+		height: var(--mast-bar);
+		background: var(--bg);
+		padding: 0 var(--margin);
 	}
 
 	.mastTopActions {
@@ -817,10 +846,26 @@ span.filter:global(.isSolo) {
 
 	.mast h1 {
 		font-size: 1.95rem;
-		padding-bottom: 0.5em;
+		margin: 0;
+		padding: 0.55rem var(--margin) 0.7rem;
+		min-height: 0;
+	}
+
+	.mast h1 :global(.mastSymbolLockup) {
+		display: none;
+	}
+
+	.mastIntro,
+	.mastIntroWrap:global(.isAbout) {
+		padding-left: var(--margin);
+		padding-right: var(--margin);
 	}
 
 	.viewsWrap {
+		display: none;
+	}
+
+	.filters[data-mode='all']:not(:global(.isOpen)) .filterMineRow {
 		display: none;
 	}
 
@@ -878,6 +923,10 @@ span.filter:global(.isSolo) {
 	}
 
 	.mast:has(.filters:global(.isOpen)) {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
 		max-height: calc(100svh - var(--player-height));
 		display: flex;
 		flex-direction: column;
@@ -891,6 +940,12 @@ span.filter:global(.isSolo) {
 		min-height: 0;
 		overflow: hidden;
 		width: 100%;
+	}
+
+	.mast:has(.filters:global(.isOpen)) .mastTop,
+	.mast:has(.filters:global(.isOpen)) .mastHeadline,
+	.mast:has(.filters:global(.isOpen)) .mastTools {
+		position: static;
 	}
 
 	.mast:has(.filters:global(.isOpen)) .mastTop,

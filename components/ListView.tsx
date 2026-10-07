@@ -43,7 +43,7 @@ function WeekHead({
 			: 'Spela ' + title;
 	const on = playing && currentWeek === weekKey;
 	return (
-		<div className={cn(s.weekHead, { isNext: !isFirst })}>
+		<div className={cn(s.weekHead, { isNext: !isFirst })} data-week-head>
 			<div className={s.weekHeadMain}>
 				<p className={s.weekHeadTitle}>{title}</p>
 				{playable && !hidePlay ? (

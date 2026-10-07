@@ -7,9 +7,12 @@ import { VENUES } from "@/lib/types";
  */
 let homes: Record<string, string> | null = null;
 let palette: string[] | null = null;
+let homesKey: string | null = null;
 
 function loadHomes() {
-	if (homes && palette) return;
+	const key = document.documentElement.getAttribute("data-theme") || "dark";
+	if (homes && palette && homesKey === key) return;
+	homesKey = key;
 	const root = document.documentElement;
 	for (const venue of VENUES) root.style.removeProperty("--" + venue.slug);
 	homes = {};

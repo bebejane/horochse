@@ -1,8 +1,8 @@
-// Deezer — last-resort track source (after YouTube is skipped).
+// Deezer — preview source, preferred over SoundCloud.
 //
 // Deezer's public API needs no credentials and every track row carries a
-// streamable ~30 s MP3 `preview`. We use it only when Bandcamp, SoundCloud and
-// the Spotify fallback all miss, and the track is marked `preview: true` so the
+// streamable ~30 s MP3 `preview`. Bandcamp is tried first. Deezer is next,
+// and SoundCloud only if both miss. The track is marked `preview: true` so the
 // UI can present it as a förhandslyssning rather than a full track.
 //
 // Matching is strict, same as YouTube: Deezer returns something for almost any

@@ -38,6 +38,18 @@ function prefersReducedMotion() {
 	return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+function mastCoverBottom() {
+	const mast = document.querySelector<HTMLElement>('[data-mast]');
+	if (!mast) return 0;
+	if (mast.getBoundingClientRect().height >= 1) return mast.getBoundingClientRect().bottom;
+	const pieces = mast.querySelectorAll<HTMLElement>('[data-mast-bar], [data-mast-tools]');
+	let bottom = 0;
+	pieces.forEach((piece) => {
+		bottom = Math.max(bottom, piece.getBoundingClientRect().bottom);
+	});
+	return bottom;
+}
+
 function scrollToCard(
 	event: ConcertEvent,
 	opts: { force?: boolean; behavior?: ScrollBehavior } = {},
@@ -48,12 +60,14 @@ function scrollToCard(
 	if (!card) return;
 	const mast = document.querySelector<HTMLElement>('[data-mast]');
 	const bar = document.getElementById('nowplaying');
-	let topBound = mast ? mast.getBoundingClientRect().bottom : 0;
+	let topBound = mastCoverBottom();
 	const bottomBound =
 		bar && bar.classList.contains('isOn') ? bar.getBoundingClientRect().top : window.innerHeight;
 	const motion = opts.behavior || (prefersReducedMotion() ? 'auto' : 'smooth');
 	if (card.matches('[data-cal-event]')) {
 		const week = card.closest<HTMLElement>('[data-week]');
+		const weekHead = week?.parentElement?.querySelector<HTMLElement>('[data-week-head]');
+		if (weekHead) topBound += weekHead.getBoundingClientRect().height;
 		const calHeads = week && week.querySelector<HTMLElement>('[data-cal-heads]');
 		if (calHeads) topBound += calHeads.getBoundingClientRect().height;
 		const dayCol = card.closest<HTMLElement>('[data-cal-day]');
@@ -61,13 +75,20 @@ function scrollToCard(
 			const dayRect = dayCol.getBoundingClientRect();
 			const weekRect = week.getBoundingClientRect();
 			if (dayRect.left < weekRect.left + 4 || dayRect.right > weekRect.right - 4) {
-				week.scrollLeft += dayRect.left - weekRect.left;
+				const snap = dayCol.offsetLeft - week.clientLeft;
+				week.scrollTo({ left: Math.max(0, snap), behavior: opts.behavior || 'auto' });
 			}
 		}
 		const calRect = card.getBoundingClientRect();
-		if (!opts.force && Math.abs(calRect.top - (topBound + 10)) < 12) return;
+		const cs = getComputedStyle(card);
+		const scale = parseFloat(cs.getPropertyValue('--cal-hover-scale')) || 1;
+		const growsUp = scale > 1 && !/top/.test(cs.transformOrigin || '');
+		const transformed = cs.transform && cs.transform !== 'none';
+		const lift = growsUp && !transformed ? (card.offsetHeight * (scale - 1)) / 2 : 0;
+		const target = calRect.top - lift;
+		if (!opts.force && Math.abs(target - (topBound + 18)) < 12) return;
 		window.scrollTo({
-			top: Math.max(0, window.scrollY + calRect.top - topBound - 10),
+			top: Math.max(0, window.scrollY + target - topBound - 18),
 			behavior: opts.behavior || 'auto',
 		});
 		return;
@@ -143,7 +164,7 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 
 	useLayoutEffect(() => {
 		applyVenueColors(colorSlugs);
-	}, [colorSlugs]);
+	}, [colorSlugs, theme]);
 
 	const scrollPlaying = useCallback((event: ConcertEvent) => {
 		scrollToCard(event);
@@ -227,12 +248,18 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 	}, [density]);
 
 	const syncLayout = useCallback(() => {
+		const root = document.documentElement;
 		const mast = document.querySelector<HTMLElement>('[data-mast]');
-		if (mast) {
-			document.documentElement.style.setProperty(
+		const mastBar = mast?.querySelector<HTMLElement>('[data-mast-bar]');
+		const mastTools = mast?.querySelector<HTMLElement>('[data-mast-tools]');
+		const narrow = window.matchMedia('(max-width: 840px)').matches;
+		if (narrow && mast && mast.getBoundingClientRect().height < 1 && mastBar && mastTools) {
+			root.style.setProperty(
 				'--mast-height',
-				mast.getBoundingClientRect().height + 'px',
+				mastBar.getBoundingClientRect().height + mastTools.getBoundingClientRect().height + 'px',
 			);
+		} else if (mast) {
+			root.style.setProperty('--mast-height', mast.getBoundingClientRect().height + 'px');
 		}
 		const heads = document.querySelector<HTMLElement>('[data-week] [data-cal-heads]');
 		if (heads) {
@@ -240,6 +267,15 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 				'--cal-heads-height',
 				Math.ceil(heads.getBoundingClientRect().height) + 'px',
 			);
+		}
+		const weekHead = document.querySelector<HTMLElement>('[data-week-head]');
+		if (weekHead) {
+			document.documentElement.style.setProperty(
+				'--week-head',
+				Math.ceil(weekHead.getBoundingClientRect().height) + 'px',
+			);
+		} else {
+			document.documentElement.style.removeProperty('--week-head');
 		}
 		const bar = document.getElementById('nowplaying');
 		let height = 0;
@@ -254,16 +290,22 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 		const mast = document.querySelector<HTMLElement>('[data-mast]');
 		const bar = document.getElementById('nowplaying');
 		const heads = document.querySelector<HTMLElement>('[data-cal-heads]');
+		const weekHead = document.querySelector<HTMLElement>('[data-week-head]');
 		const ro = window.ResizeObserver ? new ResizeObserver(syncLayout) : null;
 		if (ro && mast) ro.observe(mast);
+		const mastBar = mast?.querySelector<HTMLElement>('[data-mast-bar]');
+		const mastTools = mast?.querySelector<HTMLElement>('[data-mast-tools]');
+		if (ro && mastBar) ro.observe(mastBar);
+		if (ro && mastTools) ro.observe(mastTools);
 		if (ro && bar) ro.observe(bar);
 		if (ro && heads) ro.observe(heads);
+		if (ro && weekHead) ro.observe(weekHead);
 		window.addEventListener('resize', syncLayout);
 		return () => {
 			window.removeEventListener('resize', syncLayout);
 			ro?.disconnect();
 		};
-	}, [syncLayout, effectiveView, player.barOn, visible.length, pickerOpen]);
+	}, [syncLayout, effectiveView, calStyle, player.barOn, visible.length, pickerOpen]);
 
 	useEffect(() => {
 		player.rebindAfterRender();
@@ -398,7 +440,7 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 			<script
 				dangerouslySetInnerHTML={{
 					__html:
-						'try{var root=document.documentElement;if(root.hasAttribute("data-hide-intro")){var mast=document.querySelector("[data-mast]");if(mast)root.style.setProperty("--mast-height",mast.getBoundingClientRect().height+"px")}}catch(e){}',
+						'try{var root=document.documentElement;var mast=document.querySelector("[data-mast]");if(!mast)throw 0;var narrow=window.matchMedia("(max-width: 840px)").matches;if(narrow&&mast.getBoundingClientRect().height<1){var bar=mast.querySelector("[data-mast-bar]");var tools=mast.querySelector("[data-mast-tools]");var h=(bar?bar.getBoundingClientRect().height:0)+(tools?tools.getBoundingClientRect().height:0);if(h)root.style.setProperty("--mast-height",h+"px")}else if(root.hasAttribute("data-hide-intro")){root.style.setProperty("--mast-height",mast.getBoundingClientRect().height+"px")}}catch(e){}',
 				}}
 			/>
 			<div className={s.shell}>
@@ -470,7 +512,7 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 				)}
 				<p className={s.colophonCopy}>
 					Hör & Se hämtar informationen veckovis från alla scenerna. Fel kan ibland uppstå,{' '}
-					<a href='mailto:hos@konst-teknik.se'>maila oss</a> gärna i så fall.
+					<a href='mailto:horochse@konst-teknik.se'>maila oss</a> gärna i så fall.
 				</p>
 				<p className={s.updated}>{formatUpdated(updated)}</p>
 			</footer>
@@ -491,7 +533,7 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 				id='sc-widget'
 				title='SoundCloud'
 				allow='autoplay; encrypted-media'
-				src='https://w.soundcloud.com/player/?auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false'
+				src='https://w.soundcloud.com/player/?auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_artwork=false&visual=false'
 			/>
 			<div id='yt-host' aria-hidden='true'>
 				<div ref={player.ytContainerRef} />

@@ -65,10 +65,12 @@
 	   first paint and there is no width jump after hydration. */
 	--title-col: calc((min(100vw, 110rem) - 2 * var(--margin) + 6px) / 7 - var(--title-gap));
 	--title-gap: 1.2rem;
+	--william-regular: 400;
 	color-scheme: dark;
 }
 
 html[data-theme='light'] {
+	--william-regular: 470;
 	--bg: #fafafa;
 	--bg-2: #f1f1f1;
 	--ink: #161616;
@@ -78,6 +80,44 @@ html[data-theme='light'] {
 	--player: #f4f4f4;
 	--today: #f3f3f3;
 	--cal-hover: #ebebeb;
+	--debaser: #b94b34;
+	--nalen: #d1a145;
+	--fallan: #6a92b9;
+	--slakthusen: #d1a145;
+	--kollektivetlivet: #8868a7;
+	--sodrateatern: #c97936;
+	--berns: #478eb7;
+	--cirkus: #b45858;
+	--fryshuset: #789f67;
+	--kulturhuset: #6a92b9;
+	--hartwig: #8868a7;
+	--annexet: #687bb4;
+	--hovet: #a46788;
+	--aviciiarena: #5c9386;
+	--trearena: #c58e66;
+	--strawberryarena: #7a67a7;
+	--konserthuset: #8c6747;
+	--berwaldhallen: #997753;
+	--fasching: #b94b34;
+	--stampen: #5aa18e;
+	--glennmillercafe: #b46777;
+	--kungcarls: #747d55;
+	--engelen: #c97936;
+	--petsoundsbar: #b45858;
+	--reimersholme: #789f67;
+	--riche: #a95140;
+	--landet: #b88e47;
+	--encore: #b4885f;
+	--bioaspen: #5c9386;
+	--scalateatern: #c58e66;
+	--gotalejon: #7a67a7;
+	--bagarmossen: #5aa18e;
+	--kmh: #b46777;
+	--ericericsonhallen: #8868a7;
+	--gronalund: #c97936;
+	--fylkingen: #5aa18e;
+	--ronnells: #b46777;
+	--larryscorner: #63768c;
 	color-scheme: light;
 }
 
@@ -109,6 +149,11 @@ body {
 	-webkit-font-smoothing: antialiased;
 	line-height: 1.45;
 	padding-bottom: var(--player-height);
+}
+
+html[data-theme='light'] body {
+	font-weight: var(--william-regular);
+	font-synthesis: none;
 }
 
 .skip {
@@ -249,6 +294,23 @@ html[data-theme='light'] .mastSymbolLight {
 	overflow: hidden;
 	pointer-events: none;
 	z-index: -1;
+}
+
+/* Låtar utan mp3 spelas bara i SoundClouds spelare. Den startar inte av
+   sig själv i en dold ruta på mobil, så den visas ovanför spelraden. */
+@media (max-width: 840px), (pointer: coarse) {
+	body.isScWidget #sc-widget {
+		left: 0;
+		right: 0;
+		bottom: var(--player-height, 0px);
+		width: 100%;
+		height: 5.25rem;
+		opacity: 1;
+		overflow: hidden;
+		pointer-events: auto;
+		z-index: 24;
+		background: #fff;
+	}
 }
 
 #yt-host {

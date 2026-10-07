@@ -13,7 +13,7 @@ const FADE_S = 2;
 const STREAM_CACHE_MS = 4 * 60 * 1000;
 const STREAM_CACHE_MAX = 16;
 const SC_WIDGET_IDLE =
-  "https://w.soundcloud.com/player/?auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false";
+  "https://w.soundcloud.com/player/?auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_artwork=false&visual=false";
 
 type StreamCacheEntry = {
   at: number;
@@ -220,7 +220,11 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   }, []);
 
   const syncPlaying = useCallback(() => {
-    setPlaying(engagedRef.current);
+    // På mobil har den synliga SoundCloud-spelaren inte startat förrän
+    // positionen rör sig. På desktop ska knappen ändå markeras direkt.
+    const phone = window.matchMedia("(max-width: 840px), (pointer: coarse)").matches;
+    const widgetIdle = phone && document.body.classList.contains("isScWidget") && scPositionRef.current <= 0;
+    setPlaying(engagedRef.current && !widgetIdle);
     setEventId(eventIdRef.current);
     setItemKey(itemKeyRef.current);
     const item = indexRef.current >= 0 ? playlistRef.current[indexRef.current] : null;
@@ -347,9 +351,15 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     audioRef.current?.pause();
   }, []);
 
+  const widgetChrome = useCallback((on: boolean) => {
+    const phone = window.matchMedia("(max-width: 840px), (pointer: coarse)").matches;
+    document.body.classList.toggle("isScWidget", on && phone);
+  }, []);
+
   const pauseWidget = useCallback(() => {
     // widget.pause() / widget.load() keep the previous iframe document playing.
     // Navigating the iframe away is what actually stops the audio.
+    widgetChrome(false);
     widgetGenRef.current += 1;
     scLoadGenRef.current = -1;
     pauseRequestedRef.current = true;
@@ -358,7 +368,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     widgetRef.current = null;
     const iframe = iframeRef.current;
     if (iframe && iframe.src !== SC_WIDGET_IDLE) iframe.src = SC_WIDGET_IDLE;
-  }, []);
+  }, [widgetChrome]);
 
   const loadScApi = useCallback(() => {
     if (window.SC && window.SC.Widget) return Promise.resolve(window.SC.Widget);
@@ -381,7 +391,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
 
   const widgetSrc = useCallback((url: string) => {
     return "https://w.soundcloud.com/player/?url=" + encodeURIComponent(url) +
-      "&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&visual=false";
+      "&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_artwork=false&visual=false";
   }, []);
 
   const bindScWidget = useCallback((Widget: ScApi) => {
@@ -435,7 +445,13 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     widget.bind(Widget.Events.PLAY_PROGRESS, (data) => {
       if (!stillThis() || modeRef.current !== "widget") return;
       scPositionRef.current = data?.currentPosition || 0;
-      if (scPositionRef.current > 0) progressLiveRef.current = true;
+      if (scPositionRef.current > 0) {
+        progressLiveRef.current = true;
+        if (!scPlayingRef.current) {
+          scPlayingRef.current = true;
+          syncPlaying();
+        }
+      }
       if (data?.currentPosition && scDurationRef.current <= 0 && data.relativePosition) {
         scDurationRef.current = data.currentPosition / data.relativePosition;
       }
@@ -841,6 +857,9 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       const startWidget = () => {
         const url = data.url || req.fallback;
         if (req.source !== "soundcloud" || !url) throw new Error("stream");
+        // Ingen mp3: telefonen startar inte en dold widget. Spelaren visas
+        // så att trycket hamnar på den.
+        widgetChrome(true);
         modeRef.current = "widget";
         pauseHtmlAudio();
         pauseYt();
@@ -978,6 +997,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
         if (token !== tokenRef.current) return;
         setLoadingId("");
         if (modeRef.current === "widget" && scUrlRef.current) {
+          widgetChrome(true);
           showNowPlaying();
           syncPlaying();
           onNeedScrollRef.current?.(event);
@@ -991,7 +1011,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
         skipGuardRef.current = 0;
         stopPlay();
       });
-  }, [applyPlaybackVolume, fillNowPlaying, pauseHtmlAudio, pauseWidget, pauseYt, peekStream, playWidget, playYt, resolveStream, showNowPlaying, stopPlay, syncPlaying, updateProgress]);
+  }, [applyPlaybackVolume, fillNowPlaying, pauseHtmlAudio, pauseWidget, pauseYt, peekStream, playWidget, playYt, resolveStream, showNowPlaying, stopPlay, syncPlaying, updateProgress, widgetChrome]);
 
   playAtRef.current = playAt;
 
@@ -1087,9 +1107,14 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     playAt(start, false);
   }, [pausePlay, playAt, resumePlay]);
 
+  const widgetNeedsTap = () =>
+    window.matchMedia("(max-width: 840px), (pointer: coarse)").matches &&
+    document.body.classList.contains("isScWidget") &&
+    scPositionRef.current <= 0;
+
   const togglePlay = useCallback((event: ConcertEvent) => {
     if (eventIdRef.current === event.id) {
-      if (engagedRef.current) pausePlay();
+      if (engagedRef.current && !widgetNeedsTap()) pausePlay();
       else resumePlay();
       return;
     }
@@ -1123,7 +1148,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   }, []);
 
   const toggleBarPlay = useCallback(() => {
-    if (engagedRef.current) pausePlay();
+    if (engagedRef.current && !widgetNeedsTap()) pausePlay();
     else resumePlay();
   }, [pausePlay, resumePlay]);
 

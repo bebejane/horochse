@@ -44,7 +44,6 @@ function CalendarEvent({
   current,
   trackIndex,
   loading,
-  simple,
   onToggle,
   onPrev,
   onNext,
@@ -56,21 +55,20 @@ function CalendarEvent({
   current: boolean;
   trackIndex: number;
   loading: boolean;
-  simple?: boolean;
   onToggle: () => void;
   onPrev: () => void;
   onNext: () => void;
   onFilterVenue: (slug: string) => void;
   onPreload?: () => void;
 }) {
-  const playable = !simple && isPlayable(event);
+  const playable = isPlayable(event);
   const title = displayTitle(event);
   const hits = titleHits(event);
   const hasCurrentArtist = current && hits.some((hit) => hit.i === trackIndex);
   const [artFailed, setArtFailed] = useState(!event.image);
-  const art = !simple && !artFailed ? event.image : undefined;
+  const art = !artFailed ? event.image : undefined;
   const showArt = !!art;
-  const showSymbol = !simple && !showArt;
+  const showSymbol = !showArt;
   return (
     <article
       className={cn(s.calEvent, {
@@ -127,19 +125,17 @@ function CalendarEvent({
           {calendarTitleParts(title, hits, current, trackIndex)}
         </span>
       </div>
-      {simple ? null : (
-        <div className={s.calActions}>
-          <ListenMore event={event} label="Hör" />
-          {event.url ? (
-            <a className="go" href={event.url} target="_blank" rel="noopener noreferrer">
-              Se
-            </a>
-          ) : null}
-          <a className={cn("go", { goDown: true })} href={"/kalender/" + encodeURIComponent(event.id) + ".ics"}>
-            <span>Spara</span>
+      <div className={s.calActions}>
+        <ListenMore event={event} label="Hör" />
+        {event.url ? (
+          <a className="go" href={event.url} target="_blank" rel="noopener noreferrer">
+            Se
           </a>
-        </div>
-      )}
+        ) : null}
+        <a className={cn("go", { goDown: true })} href={"/kalender/" + encodeURIComponent(event.id) + ".ics"}>
+          <span>Spara</span>
+        </a>
+      </div>
       {playable ? (
         <PlayButton
           event={event}
@@ -206,7 +202,6 @@ export function CalendarView({
         current={eventId === event.id}
         trackIndex={trackIndex}
         loading={loadingId === event.id}
-        simple={simple}
         onToggle={() => onToggle(event)}
         onPrev={onPrev}
         onNext={onNext}

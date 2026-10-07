@@ -348,7 +348,7 @@ button.venue:focus-visible {
 
 .title {
 	font-size: clamp(1.35rem, 2.4vw, 1.85rem);
-	font-weight: 400;
+	font-weight: var(--william-regular);
 	line-height: 1.15;
 	letter-spacing: -0.02em;
 }

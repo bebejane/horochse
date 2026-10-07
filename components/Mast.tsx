@@ -106,10 +106,8 @@ export function Mast({
 	const selectedVenues = venuesAlpha.filter((item) => selected.has(item.slug));
 	const chips = pickerOpen
 		? venuesAlpha
-		: mode === 'mine'
-			? venuesAlpha.filter((item) => selected.has(item.slug))
-			: [];
-	const collapsedChips = !pickerOpen && mode === 'mine' && chips.length > 0;
+		: venuesAlpha.filter((item) => selected.has(item.slug));
+	const collapsedChips = !pickerOpen && chips.length > 0;
 	const peekVenue = peek ? venuesAlpha.find((item) => item.slug === peek) : undefined;
 	const [introHidden, setIntroHidden] = useState(false);
 	const [introAway, setIntroAway] = useState(false);
@@ -128,20 +126,39 @@ export function Mast({
 			return reduce ? (y > 8 ? 1 : 0) : Math.min(1, Math.max(0, y / distance));
 		};
 
-		const paint = (progress: number) => {
-			const letters = letterRefs.current;
+		const narrow = window.matchMedia('(max-width: 840px)');
+
+		// På mobil scrollar logotypen bort i dokumentflödet. Ingen symbol, ingen inklippning.
+		const clearScrollStyles = () => {
 			const symbol = symbolRef.current;
-			if (aboutOpen) {
-				if (wordmarkRef.current) wordmarkRef.current.style.transform = '';
-				for (const node of letters) {
-					if (node) node.style.opacity = '';
-				}
-				if (symbol) {
-					symbol.style.opacity = '';
-					symbol.style.transform = '';
-				}
+			if (symbol) {
+				symbol.style.opacity = '';
+				symbol.style.transform = '';
+			}
+			const word = wordmarkRef.current;
+			if (word) word.style.transform = '';
+			const heading = word?.parentElement;
+			if (heading) {
+				heading.style.height = '';
+				heading.style.minHeight = '';
+				heading.style.overflow = '';
+				heading.style.paddingBottom = '';
+			}
+			const letters = letterRefs.current;
+			for (let i = 0; i < letters.length; i++) {
+				const letter = letters[i];
+				if (letter) letter.style.opacity = '';
+			}
+			document.documentElement.style.removeProperty('--mast-collapse');
+		};
+
+		const paint = (progress: number) => {
+			if (narrow.matches) {
+				clearScrollStyles();
 				return;
 			}
+			const letters = letterRefs.current;
+			const symbol = symbolRef.current;
 			const steps = WORDMARK.length;
 			for (let i = 0; i < steps; i++) {
 				const node = letters[i];
@@ -185,7 +202,7 @@ export function Mast({
 		let footerTimer = 0;
 
 		const run = () => {
-			const goal = footerOn || aboutOpen ? 0 : scrollProgress();
+			const goal = footerOn ? 0 : scrollProgress();
 			if (!easing) {
 				shown = goal;
 				paint(shown);
@@ -208,6 +225,7 @@ export function Mast({
 		};
 
 		const onScroll = () => {
+			if (narrow.matches) return;
 			const seen = footerVisible();
 			if (seen && !footerOn) {
 				if (!footerTimer) {
@@ -240,16 +258,27 @@ export function Mast({
 			paint(shown);
 		};
 
+		const onResize = () => {
+			if (narrow.matches) clearScrollStyles();
+			shown = footerOn ? 0 : scrollProgress();
+			paint(shown);
+		};
+
 		footerOn = footerVisible();
-		shown = footerOn || aboutOpen ? 0 : scrollProgress();
+		shown = footerOn ? 0 : scrollProgress();
 		paint(shown);
 		window.addEventListener('scroll', onScroll, { passive: true });
+		window.addEventListener('resize', onResize);
+		narrow.addEventListener('change', onResize);
 		return () => {
 			window.removeEventListener('scroll', onScroll);
+			window.removeEventListener('resize', onResize);
+			narrow.removeEventListener('change', onResize);
 			if (frame) window.cancelAnimationFrame(frame);
 			window.clearTimeout(footerTimer);
+			document.documentElement.style.removeProperty('--mast-collapse');
 		};
-	}, [aboutOpen]);
+	}, []);
 
 	useLayoutEffect(() => {
 		const symbol = symbolRef.current;
@@ -607,9 +636,9 @@ export function Mast({
 	});
 
 	return (
-		<header className={s.mast} data-mast>
+		<header className={cn(s.mast, { isIntroCollapsed: introHidden || introAway })} data-mast>
 			<div className={s.mastInner} data-mast-inner>
-				<div className={s.mastTop}>
+				<div className={s.mastTop} data-mast-bar>
 					<p className={s.eyebrow}>LIVEMUSIK I STOCKHOLM DEN KOMMANDE MÅNADEN</p>
 					<div className={s.mastTopActions}>
 						<button
@@ -693,7 +722,7 @@ export function Mast({
 									<a href='https://konst-teknik.se' target='_blank' rel='noopener noreferrer'>
 										Konst & Teknik
 									</a>
-									. <a href='mailto:hos@konst-teknik.se'>Hör gärna av dig</a> du har frågor eller
+									. <a href='mailto:horochse@konst-teknik.se'>Hör gärna av dig</a> du har frågor eller
 									ser något konstigt.{' '}
 									<button
 										type='button'
@@ -728,10 +757,11 @@ export function Mast({
 						</div>
 					) : null}
 				</div>
-				<div className={s.mastTools}>
+				<div className={s.mastTools} data-mast-tools>
 					<nav
 						ref={navRef}
 						className={cn(s.filters, { isOpen: pickerOpen })}
+						data-mode={mode}
 						aria-label='Filtrera scener'
 					>
 						<button
@@ -743,7 +773,7 @@ export function Mast({
 						>
 							Alla scener
 						</button>
-						{!pickerOpen && mode === 'all' && peekVenue ? (
+						{!pickerOpen && mode === 'all' && peekVenue && !selected.has(peekVenue.slug) ? (
 							<span
 								className={cn(s.filter, { hasX: true, isSolo: true, isPeek: true })}
 								data-venue={peekVenue.slug}
@@ -815,7 +845,7 @@ export function Mast({
 									>
 										<CloseIcon />
 									</button>
-								) : mode === 'mine' && mine.length ? (
+								) : collapsedChips ? (
 									<button
 										type='button'
 										className={cn(s.filter, s.filterGear)}

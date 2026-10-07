@@ -45,20 +45,26 @@ function properName(name: string): string {
 }
 
 export function eventTracks(event?: ConcertEvent | null): Track[] {
-  if (event && Array.isArray(event.tracks) && event.tracks.length) return event.tracks;
-  if (event && event.bandcamp && event.bandcamp.band_id && event.bandcamp.album_id) {
-    return [{ source: "bandcamp", ...event.bandcamp }];
+  let tracks: Track[] = [];
+  if (event && Array.isArray(event.tracks) && event.tracks.length) tracks = event.tracks.slice();
+  else if (event && event.bandcamp && event.bandcamp.band_id && event.bandcamp.album_id) {
+    tracks = [{ source: "bandcamp", ...event.bandcamp }];
+  } else if (event && event.deezer && event.deezer.track_id) {
+    tracks = [{ source: "deezer", ...event.deezer }];
+  } else if (event && event.soundcloud && event.soundcloud.track_id) {
+    tracks = [{ source: "soundcloud", ...event.soundcloud }];
+  } else if (event && event.youtube && event.youtube.video_id) {
+    tracks = [{ source: "youtube", ...event.youtube }];
   }
-  if (event && event.soundcloud && event.soundcloud.track_id) {
-    return [{ source: "soundcloud", ...event.soundcloud }];
+  if (tracks.length < 2) return tracks;
+  // SoundCloud spelas bara när varken Bandcamp eller Deezer finns.
+  const rest: Track[] = [];
+  const soundcloud: Track[] = [];
+  for (const track of tracks) {
+    if (trackSource(track) === "soundcloud") soundcloud.push(track);
+    else rest.push(track);
   }
-  if (event && event.youtube && event.youtube.video_id) {
-    return [{ source: "youtube", ...event.youtube }];
-  }
-  if (event && event.deezer && event.deezer.track_id) {
-    return [{ source: "deezer", ...event.deezer }];
-  }
-  return [];
+  return rest.length ? rest.concat(soundcloud) : tracks;
 }
 
 function applyTitleNames(title: string, event: ConcertEvent | undefined, withWords: boolean): string {

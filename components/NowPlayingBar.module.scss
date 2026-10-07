@@ -190,6 +190,31 @@
 	text-overflow: ellipsis;
 }
 
+.nowplayingTrack:global(.isRolling) {
+	text-overflow: clip;
+}
+
+.nowplayingMarquee {
+	display: inline-flex;
+	width: max-content;
+	animation-name: nowplaying-roll;
+	animation-timing-function: linear;
+	animation-iteration-count: infinite;
+}
+
+.nowplayingMarquee span {
+	padding-right: 2.75rem;
+}
+
+@keyframes nowplaying-roll {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(-50%);
+	}
+}
+
 .nowplayingArtist {
 	margin-top: 0.12rem;
 	font-size: 0.72rem;
@@ -210,6 +235,7 @@
 
 .nowplayingSource {
 	display: grid;
+	width: max-content;
 	justify-items: end;
 	align-items: center;
 	font-family: var(--font-walter), 'Segoe UI', sans-serif;
@@ -228,6 +254,8 @@
 
 .nowplayingLink {
 	grid-area: 1 / 1;
+	justify-self: stretch;
+	text-align: end;
 	color: inherit;
 	font: inherit;
 	letter-spacing: inherit;
@@ -297,14 +325,15 @@
 
 	.nowplayingSource {
 		grid-area: source;
+		justify-self: start;
 		justify-items: start;
 		font-size: 0.58rem;
 		letter-spacing: 0.06em;
 		min-width: 0;
 	}
 
-	.nowplayingSource::before {
-		display: none;
+	.nowplayingLink {
+		text-align: start;
 	}
 
 	.nowplayingProgress {
@@ -343,5 +372,21 @@
 @media (prefers-reduced-motion: reduce) {
 	.nowplaying {
 		transition: none;
+	}
+
+	.nowplayingMarquee {
+		display: block;
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		animation: none;
+	}
+
+	.nowplayingMarquee span {
+		padding-right: 0;
+	}
+
+	.nowplayingMarquee span + span {
+		display: none;
 	}
 }

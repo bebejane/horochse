@@ -64,7 +64,7 @@
 	border-bottom: 1px solid var(--line);
 	background: var(--bg);
 	font-size: 0.78rem;
-	font-weight: 400;
+	font-weight: var(--william-regular);
 	color: var(--muted);
 }
 
@@ -79,7 +79,7 @@
 	flex: none;
 	color: var(--ink);
 	font-style: italic;
-	font-weight: 400;
+	font-weight: var(--william-regular);
 	font-size: 1.2rem;
 	line-height: 1;
 	text-transform: none;
@@ -116,7 +116,7 @@
 	color: inherit;
 	background: var(--cal-fill);
 	border-left: 3px solid var(--ink);
-	scroll-margin-top: calc(var(--mast-height) + var(--cal-heads-height) + 10px);
+	scroll-margin-top: calc(var(--mast-height) + var(--week-head, 0px) + var(--cal-heads-height) + 18px);
 	border-radius: 4px;
 }
 
@@ -284,10 +284,13 @@
 
 .calEvent:global(.hasArt) .calTime,
 .calEvent:global(.hasArt) .calTitle,
-.calEvent:global(.hasArt) .calVenue,
 .calEvent:global(.hasArt) .calPlace,
 .calEvent:global(.hasArt) .calActions {
 	text-shadow: 0 1px 10px var(--cal-fill);
+}
+
+.calEvent:global(.hasArt) .calVenue {
+	text-shadow: 0 1px 2px var(--cal-fill);
 }
 
 .calEvent:global(.hasArt) .calTime {
@@ -438,7 +441,25 @@
 
 :global(html[data-theme='light']) .calEvent:global(.hasArt):hover,
 :global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) {
-	--cal-fill: var(--cal-hover);
+	--cal-fill: #191612;
+	color: #f3eee4;
+}
+
+:global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calTime,
+:global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calTime,
+:global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calPlace,
+:global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calPlace {
+	color: #b7b0a4;
+}
+
+:global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calTitle,
+:global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calTitle {
+	color: #f3eee4;
+}
+
+:global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calEventArt,
+:global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calEventArt {
+	opacity: 0.92;
 }
 
 @media (hover: hover) {
@@ -479,11 +500,12 @@
 :global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calEventLink::after {
 	background: linear-gradient(
 		to bottom,
-		color-mix(in srgb, var(--cal-fill) 94%, transparent) 0%,
-		color-mix(in srgb, var(--cal-fill) 78%, transparent) 48%,
-		color-mix(in srgb, var(--cal-fill) 46%, transparent) 100%
+		color-mix(in srgb, var(--cal-fill) 86%, transparent) 0%,
+		color-mix(in srgb, var(--cal-fill) 64%, transparent) 40%,
+		color-mix(in srgb, var(--cal-fill) 32%, transparent) 100%
 	);
 }
+
 
 .calTime,
 .calMeta .calVenue,
@@ -537,6 +559,10 @@
 	overflow: hidden;
 }
 
+:global(body:not(.isCalSimple)) .calEvent:hover .calTitle {
+	-webkit-line-clamp: 3;
+}
+
 .calEvent:hover,
 .calEvent:global(.isLive),
 .calEvent:has(:global([data-open])) {
@@ -569,21 +595,75 @@
 	padding: 0.42rem 0.5rem 0.48rem 0.55rem;
 }
 
+:global(body.isCalSimple) .calEvent:global(.hasPlay) .calEventLink {
+	padding-bottom: 0.48rem;
+}
+
 :global(body.isCalSimple) .calTitle {
 	font-size: 0.92rem;
 	-webkit-line-clamp: 5;
 }
 
-:global(body.isCalSimple) .calEvent:hover,
-:global(body.isCalSimple) .calEvent:global(.isLive) {
+:global(body.isCalSimple) .calEvent:global(.hasArt):not(:global(.isLive)):not(:has(:global([data-open]))) {
+	--cal-fill: var(--bg-2);
+	color: inherit;
+}
+
+:global(body.isCalSimple) .calEvent:global(.hasArt):not(:global(.isLive)):not(:has(:global([data-open]))) .calTime,
+:global(body.isCalSimple) .calEvent:global(.hasArt):not(:global(.isLive)):not(:has(:global([data-open]))) .calTitle,
+:global(body.isCalSimple) .calEvent:global(.hasArt):not(:global(.isLive)):not(:has(:global([data-open]))) .calPlace,
+:global(body.isCalSimple) .calEvent:global(.hasArt):not(:global(.isLive)):not(:has(:global([data-open]))) .calVenue {
+	text-shadow: none;
+}
+
+:global(body.isCalSimple) .calEvent:global(.hasArt):not(:global(.isLive)):not(:has(:global([data-open]))) .calTime,
+:global(body.isCalSimple) .calEvent:global(.hasArt):not(:global(.isLive)):not(:has(:global([data-open]))) .calPlace {
+	color: var(--muted);
+}
+
+:global(body.isCalSimple) .calEvent:global(.hasArt):not(:global(.isLive)):not(:has(:global([data-open]))) .calTitle {
+	color: inherit;
+}
+
+:global(body.isCalSimple) .calEvent:not(:global(.isLive)):not(:has(:global([data-open]))) .calEventArt,
+:global(body.isCalSimple) .calEvent:not(:global(.isLive)):not(:has(:global([data-open]))) .calEventFallback,
+:global(body.isCalSimple) .calEvent:not(:global(.isLive)):not(:has(:global([data-open]))) .calEventLink::after,
+:global(body.isCalSimple) .calEvent:not(:global(.isLive)):not(:has(:global([data-open]))) [data-play-cluster],
+:global(body.isCalSimple) .calEvent:not(:global(.isLive)):not(:has(:global([data-open]))) > [data-play] {
+	display: none;
+}
+
+:global(body.isCalSimple) .calEvent:hover {
 	z-index: 1;
 	transform: none;
 	box-shadow: none;
 }
 
-:global(body.isCalSimple) .calDay:hover,
-:global(body.isCalSimple) .calDay:has(.calEvent:global(.isLive)) {
-	z-index: 1;
+:global(body.isCalSimple) .calEvent:global(.isLive),
+:global(body.isCalSimple) .calEvent:has(:global([data-open])) {
+	min-height: 7.2rem;
+}
+
+:global(body.isCalSimple) .calEvent:global(.isLive) .calEventLink,
+:global(body.isCalSimple) .calEvent:has(:global([data-open])) .calEventLink {
+	min-height: 7.2rem;
+	padding: 0.5rem 0.55rem 0.55rem 0.65rem;
+}
+
+:global(body.isCalSimple) .calEvent:global(.hasPlay):global(.isLive) .calEventLink,
+:global(body.isCalSimple) .calEvent:global(.hasPlay):has(:global([data-open])) .calEventLink {
+	padding-bottom: 2.15rem;
+}
+
+:global(body.isCalSimple) .calEvent:global(.isLive) .calTitle,
+:global(body.isCalSimple) .calEvent:has(:global([data-open])) .calTitle {
+	font-size: 0.95rem;
+	-webkit-line-clamp: 4;
+}
+
+:global(body.isCalSimple) .calEvent:global(.isLive) [data-play-cluster],
+:global(body.isCalSimple) .calEvent:has(:global([data-open])) [data-play-cluster] {
+	display: grid;
 }
 
 .calActions {
@@ -598,6 +678,25 @@
 	z-index: 4;
 }
 
+.calActions :global([data-listen-more]) {
+	display: inline-flex;
+	align-items: center;
+}
+
+.calEvent :global([data-listen-more]) [role='listbox'] {
+	min-width: calc(10.5rem / var(--cal-hover-scale));
+	max-width: calc(15rem / var(--cal-hover-scale));
+	padding: calc(0.1rem / var(--cal-hover-scale));
+}
+
+.calEvent :global([data-listen-more]) [role='option'] {
+	min-height: calc(1.35rem / var(--cal-hover-scale));
+	padding: 0 calc(0.5rem / var(--cal-hover-scale));
+	gap: calc(0.6rem / var(--cal-hover-scale));
+	font-size: calc(0.68rem / var(--cal-hover-scale));
+	letter-spacing: 0.04em;
+}
+
 .calActions :global(.go) {
 	font-size: calc(0.75rem / var(--cal-hover-scale));
 }
@@ -606,6 +705,10 @@
 .calEvent:global(.isLive) .calActions,
 .calEvent:has(:global([data-open])) .calActions {
 	display: flex;
+}
+
+:global(body.isCalSimple) .calEvent .calActions {
+	display: none;
 }
 
 .calEvent:has([data-play-cluster]:global(.isOpen)) .calActions {
@@ -772,10 +875,24 @@ $venues: debaser, nalen, fallan, slakthusen, kollektivetlivet, sodrateatern, ber
 @include mq($until: tablet) {
 	.week {
 		overflow-x: auto;
+		overflow-y: clip;
+		scroll-snap-type: x mandatory;
+		scroll-padding-inline: 0;
+	}
+
+	.calHeads,
+	.calCols {
+		grid-template-columns: repeat(7, 82vw);
+		width: max-content;
+	}
+
+	.calHead,
+	.calDay {
+		scroll-snap-align: start;
 	}
 
 	.calHeads {
-		top: 0;
+		top: calc(var(--mast-height) + var(--week-head, 0px));
 	}
 }
 

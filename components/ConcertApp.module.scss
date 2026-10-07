@@ -14,6 +14,12 @@
 	grid-column: 2;
 }
 
+@include mq($until: tablet) {
+	.shell {
+		padding-top: 0;
+	}
+}
+
 :global(body.isCalendar) .shell > * {
 	grid-column: 1 / -1;
 }

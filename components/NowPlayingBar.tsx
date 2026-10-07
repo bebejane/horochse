@@ -8,6 +8,29 @@ import { NextIcon, PauseIcon, PlayIcon, PrevIcon } from "./Icons";
 import type { NowPlayingData } from "@/hooks/usePlayer";
 import type { MutableRefObject, PointerEvent as ReactPointerEvent } from "react";
 
+function TrackTitle({ data, playing }: { data: NowPlayingData | null; playing: boolean }) {
+  const ticker = [data?.artist, data?.track].filter(Boolean).join(" — ");
+  const roll = playing && ticker.length > 0;
+  const duration = Math.min(28, Math.max(10, ticker.length * 0.32));
+  const body = roll ? (
+    <span className={s.nowplayingMarquee} style={{ animationDuration: duration + "s" }}>
+      <span>{ticker}</span>
+      <span aria-hidden="true">{ticker}</span>
+    </span>
+  ) : (
+    data?.track || ""
+  );
+  const className = cn(s.nowplayingTrack, { isRolling: roll });
+  if (data?.trackUrl) {
+    return (
+      <a className={className} href={data.trackUrl} target="_blank" rel="noopener noreferrer">
+        {body}
+      </a>
+    );
+  }
+  return <a className={className}>{body}</a>;
+}
+
 export function NowPlayingBar({
   hidden,
   on,
@@ -78,13 +101,7 @@ export function NowPlayingBar({
             />
           ) : null}
           <div className={s.nowplayingCopy}>
-            {data?.trackUrl ? (
-              <a className={s.nowplayingTrack} href={data.trackUrl} target="_blank" rel="noopener noreferrer">
-                {data.track}
-              </a>
-            ) : (
-              <a className={s.nowplayingTrack}>{data?.track || ""}</a>
-            )}
+            <TrackTitle data={data} playing={playing} />
             {data?.artistUrl ? (
               <a className={s.nowplayingArtist} href={data.artistUrl} target="_blank" rel="noopener noreferrer">
                 {data.artist}
@@ -162,7 +179,6 @@ export function NowPlayingBar({
                   : data?.source === "deezer"
                     ? "Deezer"
                     : "Bandcamp"}
-              {data?.preview ? " (preview)" : ""}
             </a>
           </span>
         </div>

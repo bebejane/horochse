@@ -23,13 +23,14 @@
 	align-items: center;
 	gap: 0.8rem 1rem;
 	min-width: 0;
-	padding: 0.2rem 0 1.25rem;
+	padding: 0.2rem 0 0.85rem;
 }
 
 .weekHeadTitle {
 	font-size: clamp(1.55rem, 2.8vw, 2.15rem);
 	font-style: italic;
-	font-weight: 400;
+	font-weight: var(--william-regular);
+	letter-spacing: -0.03em;
 	line-height: 1.1;
 	margin: 0;
 }
@@ -85,7 +86,7 @@
 
 .dayTitle b {
 	color: var(--ink);
-	font-weight: 400;
+	font-weight: var(--william-regular);
 	font-style: italic;
 	text-transform: none;
 	font-size: 1.35rem;
@@ -156,7 +157,7 @@
 
 :global(body.isCalendar) .weekHeadMain {
 	grid-column: 1;
-	padding: 0.2rem 0 0.85rem;
+	padding: 0.15rem 0 0.45rem;
 }
 
 :global(body.isCalendar) .weekHead:global(.isNext) {

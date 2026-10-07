@@ -374,7 +374,7 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
 
       // Look up all artists in a phase concurrently, then add in original order
       // so first-wins dedupe and track order stay deterministic.
-      // Source order is fixed: Bandcamp, then SoundCloud, last Deezer.
+      // Source order: Bandcamp, then Deezer, SoundCloud only if both miss.
       // A later source is only used for an artist the earlier ones missed.
       const runPhase = async (sources: string[]): Promise<(ScrapedTrack | null)[]> =>
         mapPool(people, Math.max(2, people.length), (person) =>
@@ -384,20 +384,10 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
         );
       for (const item of await runPhase(["bandcamp"])) addTrack(item);
       if (!interpreted && !tracks.length) addTrack(takeUnusedPage("bandcamp"));
-      if (people.length) {
-        const soundcloudItems = await mapPool(people, Math.max(2, people.length), (person) =>
-          tracks.some((item) => sameArtist(person, item.artist || "")) || (tracks.length && people.length < 2)
-            ? Promise.resolve(null)
-            : lookupPerson(person, pageTracks, usedPage, ["soundcloud"], context, styles),
-        );
-        for (const item of soundcloudItems) addTrack(item);
-      }
-      if (!interpreted && !tracks.length) addTrack(takeUnusedPage("soundcloud"));
-
       // Spotify fallback: pages (Nalen, Fasching, Hartwig, …) often embed a
       // Spotify artist/album the normal lookup missed. The public oembed endpoint
       // gives the authoritative name without credentials; use it as a stronger
-      // search key for Bandcamp/SoundCloud. The link itself is kept for the UI.
+      // search key for Bandcamp. The link itself is kept for the UI.
       if (!interpreted && !tracks.length && spotifyLinks.length) {
         const spArtist = spotifyLinks.find((l) => l.kind === "artist");
         const spAlbum = spotifyLinks.find((l) => l.kind === "album");
@@ -408,24 +398,56 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
             sameArtist(meta.title, item.artist || "") || namesMatch(meta.title, item.artist || ""),
           );
           if (!already) {
-            for (const source of ["bandcamp", "soundcloud"] as const) {
-              const release =
-                source === "bandcamp"
-                  ? await lookupBandcampFor(meta.title, context, styles)
-                  : await lookupSoundcloudFor(meta.title, context, styles);
-              if (release) {
-                addTrack((source === "bandcamp" ? bcTrack(release) : scTrack(release)) as ScrapedTrack);
-                stats.spotifyHits += 1;
-                break;
-              }
+            const release = await lookupBandcampFor(meta.title, context, styles);
+            if (release) {
+              addTrack(bcTrack(release) as ScrapedTrack);
+              stats.spotifyHits += 1;
             }
           }
         }
       }
 
-      // YouTube is the last resort: only when Bandcamp, SoundCloud and the
-      // Spotify-metadata fallback all came up empty. Strict matching plus the
-      // persistent cache keep the key-less search both accurate and cheap.
+      // Deezer before SoundCloud. The widget is unreliable, so a preview wins
+      // over a SoundCloud track for any artist the earlier sources missed.
+      if (people.length) {
+        let deezerHit = false;
+        const deezerItems = await mapPool(people, Math.max(2, people.length), async (person) => {
+          if (tracks.some((item) => sameArtist(person, item.artist || ""))) return null;
+          const nameKey = foldName(person) + styleKey(styles);
+          if (!dzResolved.has(nameKey)) {
+            const release = await withTimeout(
+              lookupDeezerArtist(person, dz, context, styles),
+              artistTimeoutMs,
+              `deezer ${person}`,
+            ).catch((err) => {
+              warn(String(err));
+              return null;
+            });
+            dzResolved.set(nameKey, release);
+          }
+          const release = dzResolved.get(nameKey) ?? null;
+          return release ? (dzTrack(release) as ScrapedTrack) : null;
+        });
+        for (const item of deezerItems) {
+          if (!item) continue;
+          addTrack(item);
+          deezerHit = true;
+        }
+        if (deezerHit) stats.deezerHits += 1;
+      }
+
+      if (people.length) {
+        const soundcloudItems = await mapPool(people, Math.max(2, people.length), (person) =>
+          tracks.some((item) => sameArtist(person, item.artist || "")) || (tracks.length && people.length < 2)
+            ? Promise.resolve(null)
+            : lookupPerson(person, pageTracks, usedPage, ["soundcloud"], context, styles),
+        );
+        for (const item of soundcloudItems) addTrack(item);
+      }
+      if (!interpreted && !tracks.length) addTrack(takeUnusedPage("soundcloud"));
+
+      // YouTube is off unless SCRAPE_YOUTUBE=1. It only runs when Bandcamp,
+      // Deezer and SoundCloud all missed.
       if (!tracks.length && people.length) {
         // Skip any artist that the Spotify-metadata step already ruled out, so
         // a wrong name (e.g. a sentence-like event title) is not searched twice.
@@ -448,32 +470,6 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
         );
         for (const item of youtubeItems) addTrack(item);
         if (tracks.length) stats.youtubeHits += 1;
-      }
-
-      // Deezer is the very last resort after even the YouTube pass: a 30 s
-      // preview is better than a silent event, but it is a taste, not the track.
-      // Only the first artist is looked up — a preview should anchor the event,
-      // not fill it with sidemen.
-      if (!tracks.length && people.length) {
-        const person = people[0];
-        const nameKey = foldName(person) + styleKey(styles);
-        let release = dzResolved.get(nameKey) ?? null;
-        if (!dzResolved.has(nameKey)) {
-          release = withTimeout(lookupDeezerArtist(person, dz, context, styles), artistTimeoutMs, `deezer ${person}`)
-            .catch((err) => {
-              warn(String(err));
-              return null;
-            })
-            .then((resolved) => {
-              dzResolved.set(nameKey, resolved);
-              return resolved;
-            });
-          release = await release;
-        }
-        if (release) {
-          addTrack(dzTrack(release) as ScrapedTrack);
-          stats.deezerHits += 1;
-        }
       }
 
       applyPrimaryMedia(event, tracks);
