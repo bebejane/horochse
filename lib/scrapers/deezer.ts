@@ -27,6 +27,8 @@ export type DeezerMatch = {
 };
 
 type Release = Record<string, any>;
+type DeezerArtist = { id: number; name: string; nb_album?: number };
+type DeezerAlbum = { id: number; title: string; cover_medium?: string };
 
 // Same generic set YouTube uses: these words are events, not performers.
 const GENERIC_ARTIST_NAMES = new Set([
@@ -47,26 +49,88 @@ const FRAGMENT_ARTIST = new Set([
 
 export async function searchDeezer(query: string): Promise<DeezerMatch[]> {
   const raw = await httpRequest(
-    "https://api.deezer.com/search?q=" + encodeURIComponent(query) + "&limit=10",
+    "https://api.deezer.com/search?q=" + encodeURIComponent(query) + "&limit=25",
     { extraHeaders: { Accept: "application/json" }, timeoutMs: 15000 },
   );
   const data = JSON.parse(raw) as { data?: any[] };
+  return matchesFromRows(data?.data || []);
+}
+
+function matchesFromRows(
+  rows: any[],
+  albumTitle = "",
+  albumImage = "",
+): DeezerMatch[] {
   const out: DeezerMatch[] = [];
-  for (const row of data?.data || []) {
+  for (const row of rows) {
     if (!row?.preview || !row?.artist?.name) continue;
     out.push({
       id: Number(row.id),
       artist: String(row.artist.name || ""),
-      album: String(row.album?.title || ""),
+      album: String(row.album?.title || albumTitle),
       title: String(row.title || ""),
       preview: String(row.preview),
       url: String(row.link || (row.id ? "https://www.deezer.com/track/" + row.id : "")),
-      image: String(row.album?.cover_medium || ""),
+      image: String(row.album?.cover_medium || albumImage),
       seconds: Number(row.duration || 0),
       rank: Number(row.rank || 0),
     });
   }
   return out;
+}
+
+async function deezerJson<T>(path: string): Promise<T> {
+  const raw = await httpRequest("https://api.deezer.com" + path, {
+    extraHeaders: { Accept: "application/json" },
+    timeoutMs: 15000,
+  });
+  return JSON.parse(raw) as T;
+}
+
+function bestDeezerMatch(matches: DeezerMatch[], artist: string): DeezerMatch | undefined {
+  return matches
+    .map((match) => ({ match, score: scoreDeezer(match, artist) }))
+    .filter((entry) => entry.score >= 0)
+    .sort((a, b) => b.score - a.score)[0]?.match;
+}
+
+async function searchDeezerArtistCatalog(artist: string): Promise<DeezerMatch | undefined> {
+  const result = await deezerJson<{ data?: DeezerArtist[] }>(
+    "/search/artist?q=" + encodeURIComponent(artist) + "&limit=10",
+  );
+  const artists = (result.data || [])
+    .filter((candidate) =>
+      candidate?.name &&
+      namesMatch(artist, candidate.name) &&
+      sameArtist(artist, candidate.name),
+    )
+    .sort((a, b) =>
+      Number(namesMatch(artist, b.name) && namesMatch(b.name, artist)) -
+      Number(namesMatch(artist, a.name) && namesMatch(a.name, artist)),
+    );
+
+  for (const candidate of artists) {
+    const top = await deezerJson<{ data?: any[] }>(
+      `/artist/${candidate.id}/top?limit=25`,
+    );
+    const topMatch = bestDeezerMatch(matchesFromRows(top.data || []), artist);
+    if (topMatch) return topMatch;
+
+    const albumResult = await deezerJson<{ data?: DeezerAlbum[] }>(
+      `/artist/${candidate.id}/albums?limit=3`,
+    );
+    const albums = albumResult.data || [];
+    const albumMatches = await Promise.all(
+      albums.map(async (album) => {
+        const tracks = await deezerJson<{ data?: any[] }>(
+          `/album/${album.id}/tracks?limit=50`,
+        );
+        return matchesFromRows(tracks.data || [], album.title, album.cover_medium || "");
+      }),
+    );
+    const catalogMatch = bestDeezerMatch(albumMatches.flat(), artist);
+    if (catalogMatch) return catalogMatch;
+  }
 }
 
 /** Fetch a single track (used by the stream route to resolve a fresh preview). */
@@ -125,13 +189,10 @@ export async function lookupDeezerArtist(
     let best: DeezerMatch | undefined;
     for (const search of queries) {
       const matches = await searchDeezer(search);
-      const ranked = matches
-        .map((match) => ({ match, score: scoreDeezer(match, artist) }))
-        .filter((entry) => entry.score > 0)
-        .sort((a, b) => b.score - a.score);
-      best = ranked[0]?.match;
+      best = bestDeezerMatch(matches, artist);
       if (best) break;
     }
+    if (!best) best = await searchDeezerArtistCatalog(artist);
     if (!best) {
       cache.set(key, null);
       return null;

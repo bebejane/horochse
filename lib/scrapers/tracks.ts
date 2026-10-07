@@ -143,15 +143,15 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
   const bcInflight = new Map<string, Promise<Release | null>>();
   const scInflight = new Map<string, Promise<Release | null>>();
   // Persistent across the whole run: an artist already resolved (or ruled out)
-  // is never looked up again, so repeated names cost nothing.
+  // is not looked up again, so repeated names cost nothing.
   const bcResolved = new Map<string, Release | null>();
   const scResolved = new Map<string, Release | null>();
   const ytResolved = new Map<string, Release | null>();
   // Deezer has no persistent cache: the API is public, key-less and generous
   // with rate limits, and an in-run memo is enough to avoid repeats.
   const dzResolved = new Map<string, Release | null>();
-  // Persisted across runs (Turso): resolved artists are never searched again,
-  // which is the main lever against Bandcamp 429s and slow lookups.
+  // Persisted across runs (Turso): successful results are reused, while old
+  // negative results expire so a temporary miss does not become permanent.
   const persistent = opts.bandcampCache;
   const persistentUpdates = opts.bandcampUpdates;
   const persistentYt = opts.youtubeCache;

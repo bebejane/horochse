@@ -1,9 +1,8 @@
 import type { DateTime } from "luxon";
 
 import { httpRequest } from "../http";
-import { inRange, isConcert, ogImage, parseSvWhen, stripTags } from "../core";
-import { makeEvent, pageBlurb } from "../helpers";
-import { mapPool, warn } from "../log";
+import { inRange, isConcert, parseSvWhen, pickImage, stripTags } from "../core";
+import { makeEvent } from "../helpers";
 import type { ScrapedEvent } from "../types";
 
 const LIST_URL = "https://www.bioaspen.se/visningar/scen/";
@@ -16,6 +15,7 @@ type Candidate = {
   title: string;
   url: string;
   when: DateTime;
+  image: string;
 };
 
 function dateInRange(text: string, start: DateTime, end: DateTime): DateTime | null {
@@ -30,6 +30,12 @@ function candidatesFromPage(html: string, start: DateTime, end: DateTime): Candi
   const headings = [...html.matchAll(DATE_HEADING_RE)];
   const candidates: Candidate[] = [];
   const seen = new Set<string>();
+  const posterByUrl = new Map<string, string>();
+
+  for (const match of html.matchAll(EVENT_LINK_RE)) {
+    const imageMatch = /<img\b[^>]*\bsrc=["']([^"']+)["']/i.exec(match[2]);
+    if (imageMatch) posterByUrl.set(match[1], pickImage(imageMatch[1]));
+  }
 
   for (let i = 0; i < headings.length; i++) {
     const heading = headings[i];
@@ -56,7 +62,7 @@ function candidatesFromPage(html: string, start: DateTime, end: DateTime): Candi
       const key = `${url}-${when.toISO()}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      candidates.push({ title, url, when });
+      candidates.push({ title, url, when, image: posterByUrl.get(url) || "" });
     }
   }
 
@@ -66,28 +72,14 @@ function candidatesFromPage(html: string, start: DateTime, end: DateTime): Candi
 export async function fetch(start: DateTime, end: DateTime): Promise<ScrapedEvent[]> {
   const html = await httpRequest(LIST_URL);
   const candidates = candidatesFromPage(html, start, end);
-  const details = await mapPool(candidates, 4, async ({ url, title }) => {
-    try {
-      return await httpRequest(url);
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      warn(`Bio Aspen: kunde inte hämta "${title}": ${reason}`);
-      return "";
-    }
-  });
-
   const events: ScrapedEvent[] = [];
-  for (let i = 0; i < candidates.length; i++) {
-    const candidate = candidates[i];
-    const detail = details[i];
-    const text = pageBlurb([], detail);
-    if (!isConcert(candidate.title, text, "konsert", true)) continue;
+  for (const candidate of candidates) {
+    if (!isConcert(candidate.title, "", "", true)) continue;
 
     events.push(
       makeEvent("bioaspen", "Bio Aspen", candidate.title, candidate.when, candidate.url, {
         place: "Bio Aspen",
-        image: ogImage(detail),
-        text,
+        image: candidate.image,
         extraId: `${new URL(candidate.url).pathname}-${candidate.when.toFormat("HHmm")}`,
       }),
     );

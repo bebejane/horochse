@@ -289,11 +289,14 @@ export async function upsertEvents(runId: number, inputs: EventInput[]): Promise
 
 export type ArtistCacheEntry = { release: Record<string, unknown> | null; found: boolean };
 
+const BANDCAMP_MISS_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
 /** Load the whole Bandcamp artist cache into memory (folded name → entry). */
 export async function loadBandcampArtists(): Promise<Map<string, ArtistCacheEntry>> {
   const map = new Map<string, ArtistCacheEntry>();
   const rows = await db.select().from(bandcampArtists);
   for (const row of rows) {
+    if (!row.found && Date.now() - row.updatedAt.getTime() > BANDCAMP_MISS_TTL_MS) continue;
     map.set(row.artistKey, { release: row.release ? JSON.parse(row.release) : null, found: row.found });
   }
   return map;

@@ -162,8 +162,9 @@ export const scrapeErrors = sqliteTable("scrape_errors", {
 /**
  * Persistent cache of Bandcamp artist lookups, keyed by the folded artist name.
  * Bandcamp has no public catalog API and its search endpoint is rate-limited, so
- * resolving each artist once and reusing the result across runs (including
- * "no release found") is the main way to keep the track phase fast and avoid 429s.
+ * reusing successful results across runs is the main way to keep the track phase
+ * fast and avoid 429s. Negative results expire after 30 days so artists added
+ * to Bandcamp, or missed during a temporary failure, can be retried.
  * `release` is the serialized Release object, or NULL for a known miss.
  */
 export const bandcampArtists = sqliteTable(
