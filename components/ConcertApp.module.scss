@@ -5,6 +5,7 @@
 	grid-template-columns: var(--title-col) minmax(0, 1fr);
 	column-gap: var(--title-gap);
 	max-width: 110rem;
+	min-height: 100vh;
 	margin: 0 auto;
 	padding: var(--mast-height) var(--margin) var(--margin);
 	align-items: start;

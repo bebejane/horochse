@@ -29,8 +29,7 @@ import type {
 } from '@/lib/types';
 import { usePlayer } from '@/hooks/usePlayer';
 import { CalendarView } from './CalendarView';
-import { ListView } from './ListView';
-import list from './ListView.module.scss';
+import { ListView, WeekHead } from './ListView';
 import { Mast, MastSymbol } from './Mast';
 import { NowPlayingBar } from './NowPlayingBar';
 
@@ -446,7 +445,23 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 			<div className={s.shell}>
 				<main id='program'>
 					<div id='days'>
-						{emptyList ? null : effectiveView === 'calendar' ? (
+						{emptyList ? (
+							peek ? (
+								<WeekHead
+									title='Denna scenen har inga konserter just nu'
+									weekKey=''
+									events={[]}
+									isFirst
+									always
+									hidePlay
+									playing={player.playing}
+									currentWeek={currentWeek}
+									onPlayWeek={(week) =>
+										player.playWeek(week, weekMondayIso, toIso(todayDate()))
+									}
+								/>
+							) : null
+						) : effectiveView === 'calendar' ? (
 							<CalendarView
 								events={visible}
 								rangeTo={rangeTo}
