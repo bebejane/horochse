@@ -487,6 +487,44 @@ $venues: debaser, nalen, fallan, slakthusen, kollektivetlivet, sodrateatern, ber
 		cursor: pointer;
 	}
 
+	.card:global(.isCompact) .meta {
+		flex-wrap: nowrap;
+		align-items: center;
+	}
+
+	.card:global(.isCompact) .meta > button.venue {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.compactCue {
+		display: none;
+	}
+
+	.card:global(.isCompact) .compactCue {
+		display: block;
+		flex: 0 0 auto;
+		margin-left: auto;
+		width: 0;
+		height: 0;
+		border-left: 0.28rem solid transparent;
+		border-right: 0.28rem solid transparent;
+		border-top: 0.34rem solid currentColor;
+		color: var(--muted);
+		transform: translateY(0.02em);
+		transition: transform 0.22s ease;
+	}
+
+	.card:global(.isCompact):not(:global(.isCompactClosed)) .compactCue {
+		transform: translateY(0.02em) rotate(180deg);
+	}
+
+	.card:global(.isCompact) .title {
+		padding-right: 2.75rem;
+	}
+
 	.card:global(.isCompactClosed) {
 		padding-bottom: 0.9rem;
 	}
@@ -546,7 +584,8 @@ $venues: debaser, nalen, fallan, slakthusen, kollektivetlivet, sodrateatern, ber
 		animation: none;
 	}
 
-	.card [data-play-cluster] {
+	.card [data-play-cluster],
+	.compactCue {
 		transition: none;
 	}
 }

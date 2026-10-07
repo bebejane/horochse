@@ -140,6 +140,7 @@ export function EventCard({
       data-card
       data-id={event.id}
       data-venue={event.venue_slug}
+      aria-expanded={compact ? (expanded ? "true" : "false") : undefined}
       onClick={(eventClick) => {
         if (!compact) return;
         const target = eventClick.target;
@@ -188,6 +189,7 @@ export function EventCard({
               Lyssna på fler låtar på {listenLabel}
             </span>
           ) : null}
+          {compact ? <span className={s.compactCue} aria-hidden="true" /> : null}
         </p>
         <div className={s.cardBody}>
           <div className={s.cardCopy}>

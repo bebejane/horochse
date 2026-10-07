@@ -792,6 +792,10 @@ span.filter:global(.isSolo) {
 		max-width: none;
 	}
 
+	.mastIntroWrap:not(:global(.isAbout)) .mastIntro {
+		margin-top: 0.85rem;
+	}
+
 	.mastTools {
 		position: sticky;
 		top: var(--mast-bar);
@@ -855,10 +859,15 @@ span.filter:global(.isSolo) {
 		display: none;
 	}
 
-	.mastIntro,
-	.mastIntroWrap:global(.isAbout) {
+	.mastIntro {
 		padding-left: var(--margin);
 		padding-right: var(--margin);
+	}
+
+	.mastIntroWrap:global(.isAbout) {
+		padding-left: 0;
+		padding-right: 0;
+		overflow-anchor: none;
 	}
 
 	.viewsWrap {
@@ -940,6 +949,7 @@ span.filter:global(.isSolo) {
 		min-height: 0;
 		overflow: hidden;
 		width: 100%;
+		padding: 0;
 	}
 
 	.mast:has(.filters:global(.isOpen)) .mastTop,
@@ -973,6 +983,7 @@ span.filter:global(.isSolo) {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) auto;
 		grid-column: 1 / -1;
+		grid-row: 2;
 		width: 100%;
 		min-height: 0;
 		align-items: stretch;
@@ -1012,7 +1023,10 @@ span.filter:global(.isSolo) {
 		flex: 1 1 auto;
 		min-width: 0;
 		min-height: 0;
+		box-sizing: border-box;
 		width: 100%;
+		padding-left: var(--margin);
+		padding-right: var(--margin);
 		gap: 0.35rem;
 		overflow-x: hidden;
 		overflow-y: auto;

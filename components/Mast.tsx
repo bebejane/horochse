@@ -320,6 +320,13 @@ export function Mast({
 		return () => window.cancelAnimationFrame(frame);
 	}, [pickerOpen, aboutOpen, introHidden, introAway, onLayout]);
 
+	useLayoutEffect(() => {
+		if (!aboutOpen || !window.matchMedia('(max-width: 840px)').matches) return;
+		window.scrollTo(0, 0);
+		const frame = window.requestAnimationFrame(() => window.scrollTo(0, 0));
+		return () => window.cancelAnimationFrame(frame);
+	}, [aboutOpen]);
+
 	useEffect(() => {
 		const node = scrollerRef.current;
 		if (!node) return;

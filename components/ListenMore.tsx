@@ -20,15 +20,44 @@ export function ListenMore({ event, label = "Hör mer" }: { event: ConcertEvent;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
+    let pending = 0;
+    function onCard(e: Event) {
+      const target = e.target;
+      if (!(target instanceof Element) || !wrapRef.current) return;
+      const mine = wrapRef.current.closest("[data-cal-event]");
+      if (!mine) return;
+      if (mine.contains(target)) {
+        window.clearTimeout(pending);
+        pending = 0;
+        return;
+      }
+      const card = target.closest("[data-cal-event]");
+      if (card && card !== mine && !pending) {
+        pending = window.setTimeout(() => setOpen(false), 50);
+      }
+    }
+    function onFocus(e: Event) {
+      const target = e.target;
+      if (!(target instanceof Element) || !wrapRef.current) return;
+      const mine = wrapRef.current.closest("[data-cal-event]");
+      if (!mine) return;
+      const card = target.closest("[data-cal-event]");
+      if (card && card !== mine) setOpen(false);
+    }
     const id = window.setTimeout(() => {
       document.addEventListener("pointerdown", onDoc);
       document.addEventListener("keydown", onKey);
+      document.addEventListener("pointerover", onCard);
+      document.addEventListener("focusin", onFocus);
       window.addEventListener("scroll", onDoc, true);
     }, 0);
     return () => {
       window.clearTimeout(id);
+      window.clearTimeout(pending);
       document.removeEventListener("pointerdown", onDoc);
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerover", onCard);
+      document.removeEventListener("focusin", onFocus);
       window.removeEventListener("scroll", onDoc, true);
     };
   }, [open]);
