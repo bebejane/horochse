@@ -9,6 +9,7 @@ import type { CalStyle, FilterMode, ListDensity, ThemeMode, ViewMode } from '@/l
 import { CloseIcon, GearIcon } from '@/components/Icons';
 
 const WORDMARK = ['H', 'ö', 'r', '&', 'S', 'e'] as const;
+const EYEBROW_WORDMARK = ['H', 'Ö', 'R ', '& ', 'S', 'E '] as const;
 const SPECTRUM_EM = 0.085;
 
 export function Mast({
@@ -59,6 +60,7 @@ export function Mast({
 	onLayout?: () => void;
 }) {
 	const letterRefs = useRef<Array<HTMLSpanElement | null>>([]);
+	const eyebrowLetterRefs = useRef<Array<HTMLSpanElement | null>>([]);
 	const wordmarkRef = useRef<HTMLSpanElement | null>(null);
 	const symbolRef = useRef<HTMLSpanElement | null>(null);
 	const viewRef = useRef(view);
@@ -149,6 +151,11 @@ export function Mast({
 				const letter = letters[i];
 				if (letter) letter.style.opacity = '';
 			}
+			for (const letter of eyebrowLetterRefs.current) {
+				if (!letter) continue;
+				letter.style.display = '';
+				letter.style.opacity = '';
+			}
 			document.documentElement.style.removeProperty('--mast-collapse');
 		};
 
@@ -168,6 +175,11 @@ export function Mast({
 				const t = progress <= start ? 0 : progress >= end ? 1 : (progress - start) / (end - start);
 				const out = t * t * (3 - 2 * t);
 				node.style.opacity = out <= 0.001 ? '' : String(1 - out);
+				const destination = eyebrowLetterRefs.current[i];
+				if (destination) {
+					destination.style.display = out <= 0.001 ? 'none' : 'inline-block';
+					destination.style.opacity = String(out);
+				}
 			}
 			if (wordmarkRef.current) wordmarkRef.current.style.transform = '';
 			if (!symbol) return;
@@ -661,7 +673,22 @@ export function Mast({
 		<header className={cn(s.mast, { isIntroCollapsed: introHidden || introAway })} data-mast>
 			<div className={s.mastInner} data-mast-inner>
 				<div className={s.mastTop} data-mast-bar>
-					<p className={s.eyebrow}>LIVEMUSIK I STOCKHOLM DEN KOMMANDE MÅNADEN</p>
+					<p className={s.eyebrow}>
+						<span className={s.eyebrowWordmark} aria-hidden='true'>
+							{EYEBROW_WORDMARK.map((text, index) => (
+								<span
+									key={index}
+									ref={(node) => {
+										eyebrowLetterRefs.current[index] = node;
+									}}
+									className={s.eyebrowWordmarkLetter}
+								>
+									{text}
+								</span>
+							))}
+						</span>
+						LIVEMUSIK I STOCKHOLM DEN KOMMANDE MÅNADEN
+					</p>
 					<div className={s.mastTopActions}>
 						<button
 							type='button'

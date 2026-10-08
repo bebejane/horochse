@@ -442,6 +442,15 @@
 	flex: 1 1 auto;
 }
 
+.eyebrowWordmarkLetter {
+	display: none;
+	white-space: pre;
+}
+
+.eyebrowWordmark {
+	white-space: nowrap;
+}
+
 .filters {
 	display: flex;
 	flex-wrap: wrap;
