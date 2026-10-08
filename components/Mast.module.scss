@@ -176,7 +176,7 @@
 .mastAmp {
 	font-style: normal;
 	margin-left: 0.1em;
-	margin-right: 0.1em;
+	margin-right: 0.13em;
 }
 
 .mastTopActions {
@@ -883,7 +883,7 @@ span.filter:global(.isSolo) {
 		display: none;
 	}
 
-	.filters[data-mode='all']:not(:global(.isOpen)) .filterMineRow {
+	.filters[data-mode="all"]:not(:global(.isOpen)) .filterMineRow {
 		display: none;
 	}
 
