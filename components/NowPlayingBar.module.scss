@@ -190,6 +190,22 @@
 	text-overflow: ellipsis;
 }
 
+.loadingTrack {
+	animation: loading-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes loading-pulse {
+	50% {
+		opacity: 0.35;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.loadingTrack {
+		animation: none;
+	}
+}
+
 .nowplayingArtist {
 	margin-top: 0.12rem;
 	font-size: 0.72rem;

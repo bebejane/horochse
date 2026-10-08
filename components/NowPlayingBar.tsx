@@ -47,6 +47,7 @@ export function NowPlayingBar({
   hidden,
   on,
   playing,
+  loading,
   data,
   progress,
   scrubbingRef,
@@ -58,6 +59,7 @@ export function NowPlayingBar({
   hidden: boolean;
   on: boolean;
   playing: boolean;
+  loading: boolean;
   data: NowPlayingData | null;
   progress: { ratio: number; current: number; duration: number };
   scrubbingRef: MutableRefObject<boolean>;
@@ -115,7 +117,11 @@ export function NowPlayingBar({
             />
           ) : null}
           <div className={s.nowplayingCopy}>
-            {data?.trackUrl ? (
+            {loading ? (
+              <span className={cn(s.nowplayingTrack, s.loadingTrack)} aria-live="polite">
+                Laddar
+              </span>
+            ) : data?.trackUrl ? (
               <a className={s.nowplayingTrack} href={data.trackUrl} target="_blank" rel="noopener noreferrer">
                 {data.track}
               </a>

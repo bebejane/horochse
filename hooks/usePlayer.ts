@@ -804,23 +804,32 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       stopPlay();
       return;
     }
+    setLoadingId(event.id);
+    fillNowPlaying({
+      artist: track.artist || "",
+      album: track.album,
+      track: "Laddar",
+      url: track.url || req.fallback || "",
+      image: track.image || "",
+      source: req.source,
+      preview: req.source === "deezer" || Boolean(track?.preview),
+    });
+    showNowPlaying();
     sourceRef.current = req.source;
     // YouTube needs no stream resolution: the embedded player takes the id.
     if (req.source === "youtube") {
-      fillNowPlaying({
-        artist: track.artist || "",
-        track: track.track || "",
-        url: track.url || req.fallback,
-        image: track.image || "",
-        source: "youtube",
-      });
-      showNowPlaying();
       onNeedScrollRef.current?.(event);
-      setLoadingId(event.id);
       void playYt(req.videoId || "", token)
         .then(() => {
           if (token !== tokenRef.current) return;
           setLoadingId("");
+          fillNowPlaying({
+            artist: track.artist || "",
+            track: track.track || "",
+            url: track.url || req.fallback,
+            image: track.image || "",
+            source: "youtube",
+          });
           skipGuardRef.current = 0;
           progressLiveRef.current = true;
           showNowPlaying();
@@ -839,10 +848,9 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
           stopPlay();
         });
       return;
-    }
+    };
     const startFromPayload = (data: StreamPayload) => {
       if (token !== tokenRef.current) return Promise.resolve();
-      setLoadingId("");
       if (!data || (!data.stream && !data.widget)) throw new Error("stream");
       skipGuardRef.current = 0;
       fillNowPlaying({
@@ -947,6 +955,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       void startFromPayload(cached)
         .then(() => {
           if (token !== tokenRef.current) return;
+          setLoadingId("");
           showNowPlaying();
           syncPlaying();
           onNeedScrollRef.current?.(event);
@@ -966,14 +975,6 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     }
     if (req.source === "soundcloud" && req.fallback) {
       modeRef.current = "widget";
-      fillNowPlaying({
-        artist: track.artist || "",
-        track: track.track || "",
-        url: track.url || req.fallback,
-        image: track.image || "",
-        source: "soundcloud",
-      });
-      showNowPlaying();
       onNeedScrollRef.current?.(event);
       scPositionRef.current = 0;
       scDurationRef.current = 0;
@@ -989,6 +990,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       })
       .then(() => {
         if (token !== tokenRef.current) return;
+        setLoadingId("");
         showNowPlaying();
         syncPlaying();
         onNeedScrollRef.current?.(event);

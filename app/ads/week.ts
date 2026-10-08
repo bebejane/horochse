@@ -1,4 +1,4 @@
-import { toIso, weekDaysFromMonday, thisWeekMonday } from "@/lib/dates";
+import { weekDaysFromMonday } from "@/lib/dates";
 import { displayTitle, isCancelledEvent } from "@/lib/events";
 import { MONTHS, VENUES, WEEKDAYS, type ConcertEvent, type VenueSlug } from "@/lib/types";
 
@@ -9,12 +9,8 @@ export function posterDate(iso: string): string {
   return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${day.getDate()} ${MONTHS[day.getMonth()]}`;
 }
 
-export function thisWeekIsos(): string[] {
-  return weekDaysFromMonday(toIso(thisWeekMonday()));
-}
-
-export function eventsThisWeek(events: ConcertEvent[]): ConcertEvent[] {
-  const days = new Set(thisWeekIsos());
+export function eventsInWeek(events: ConcertEvent[], mondayIso: string): ConcertEvent[] {
+  const days = new Set(weekDaysFromMonday(mondayIso));
   return events
     .filter((event) => days.has(event.date) && !isCancelledEvent(event))
     .sort((a, b) => {

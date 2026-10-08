@@ -535,6 +535,7 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 				hidden={player.barHidden}
 				on={player.barOn}
 				playing={player.playing}
+				loading={player.loadingId === player.eventId}
 				data={player.nowPlaying}
 				progress={player.progress}
 				scrubbingRef={player.scrubbingRef}

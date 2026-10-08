@@ -18,9 +18,9 @@ import {
   type PosterFonts,
   type PosterFormat,
 } from "../poster";
-import { formatWeekSpan } from "@/lib/dates";
+import { addDays, formatWeekSpan, thisWeekMonday, toIso, weekDaysFromMonday } from "@/lib/dates";
 
-import { eventsThisWeek, formatDuration, posterDate, thisWeekIsos, venuesIn } from "../week";
+import { eventsInWeek, formatDuration, posterDate, venuesIn } from "../week";
 
 type ImageState = HTMLImageElement | "failed";
 
@@ -33,6 +33,7 @@ export default function WeekAdsPage() {
   const [events, setEvents] = useState<ConcertEvent[] | null>(null);
   const [error, setError] = useState("");
   const [venue, setVenue] = useState("");
+  const [weekMonday, setWeekMonday] = useState(() => toIso(thisWeekMonday()));
   const [formatId, setFormatId] = useState<PosterFormat["id"]>("4:5");
   const [seconds, setSeconds] = useState(2);
   const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
@@ -73,9 +74,18 @@ export default function WeekAdsPage() {
   }, []);
 
   const format = POSTER_FORMATS.find((item) => item.id === formatId) ?? POSTER_FORMATS[0];
-  const week = useMemo(() => eventsThisWeek(events ?? []), [events]);
+  const weekOptions = useMemo(
+    () =>
+      Array.from({ length: 5 }, (_, index) => {
+        const monday = toIso(addDays(thisWeekMonday(), index * 7));
+        const days = weekDaysFromMonday(monday);
+        return { monday, label: formatWeekSpan(days[0], days[days.length - 1]) };
+      }),
+    [],
+  );
+  const week = useMemo(() => eventsInWeek(events ?? [], weekMonday), [events, weekMonday]);
   const venues = useMemo(() => venuesIn(week), [week]);
-  const days = thisWeekIsos();
+  const days = useMemo(() => weekDaysFromMonday(weekMonday), [weekMonday]);
   const weekLabel = days.length ? formatWeekSpan(days[0], days[days.length - 1]) : "";
 
   const visible = useMemo(
@@ -114,7 +124,7 @@ export default function WeekAdsPage() {
 
   useEffect(() => {
     setCursor(0);
-  }, [venue]);
+  }, [venue, weekMonday]);
 
   useEffect(() => {
     if (exporting || slides.length < 2) return;
@@ -208,7 +218,7 @@ export default function WeekAdsPage() {
       </Link>
       <h1>Veckans konserter</h1>
       <p className={styles.lead}>
-        {format.label}, {format.width}×{format.height}. {weekLabel ? `Denna vecka, ${weekLabel}. ` : ""}
+        {format.label}, {format.width}×{format.height}. {weekLabel ? `Vecka ${weekLabel}. ` : ""}
         Bilden, titeln, scenen och datumet byts direkt, utan övergång.
       </p>
 
@@ -216,6 +226,16 @@ export default function WeekAdsPage() {
       {events === null && !error ? <p className={styles.empty}>Hämtar konserter…</p> : null}
 
       <div className={styles.controls}>
+        <label className={styles.field}>
+          Vecka
+          <select value={weekMonday} onChange={(event) => setWeekMonday(event.target.value)}>
+            {weekOptions.map((item, index) => (
+              <option key={item.monday} value={item.monday}>
+                {index === 0 ? "Denna vecka · " : ""}{item.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className={styles.field}>
           Scen
           <select value={venue} onChange={(event) => setVenue(event.target.value)}>
