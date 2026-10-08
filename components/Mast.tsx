@@ -609,19 +609,19 @@ export function Mast({
 						pickerOpen
 							? undefined
 							: (event) => {
-									onPeekVenue(item.slug);
-									event.currentTarget.blur();
-								}
+								onPeekVenue(item.slug);
+								event.currentTarget.blur();
+							}
 					}
 					onKeyDown={
 						pickerOpen
 							? undefined
 							: (event) => {
-									if (event.key === 'Enter' || event.key === ' ') {
-										event.preventDefault();
-										onPeekVenue(item.slug);
-									}
+								if (event.key === 'Enter' || event.key === ' ') {
+									event.preventDefault();
+									onPeekVenue(item.slug);
 								}
+							}
 					}
 				>
 					<span className={s.filterLabel}>
@@ -744,7 +744,7 @@ export function Mast({
 									<a href='https://konst-teknik.se' target='_blank' rel='noopener noreferrer'>
 										Konst & Teknik
 									</a>
-									. <a href='mailto:horochse@konst-teknik.se'>Hör gärna av dig</a> du har frågor eller
+									. <a href='mailto:horochse@konst-teknik.se'>Hör gärna av dig</a> om du har frågor eller
 									ser något konstigt.{' '}
 									<button
 										type='button'
@@ -844,16 +844,16 @@ export function Mast({
 									>
 										{pickerOpen
 											? selectedVenues.map((item) => (
-													<span
-														key={item.slug}
-														className={cn(s.filter, { isSolo: true })}
-														data-venue={item.slug}
-													>
-														<span className={s.filterLabel}>
-															<span className={s.filterLabelInner}>{item.name}</span>
-														</span>
+												<span
+													key={item.slug}
+													className={cn(s.filter, { isSolo: true })}
+													data-venue={item.slug}
+												>
+													<span className={s.filterLabel}>
+														<span className={s.filterLabelInner}>{item.name}</span>
 													</span>
-												))
+												</span>
+											))
 											: chipNodes}
 									</div>
 								) : (
@@ -944,7 +944,7 @@ let eyeUsers = 0;
 let unbindEyes: (() => void) | null = null;
 
 function bindEyeFollow() {
-	if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return () => {};
+	if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return () => { };
 	let frame = 0;
 	let tracking = false;
 	let targetX = 0;
