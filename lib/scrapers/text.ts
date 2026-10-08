@@ -36,7 +36,10 @@ export function trackArtistKey(artist?: string | null, title?: string | null, ur
 }
 
 export function nameWords(value: unknown, marks = false): string[] {
-  let words = (marks ? foldNameLetters(value) : foldName(value)).split(" ");
+  let words = (marks ? foldNameLetters(value) : foldName(value))
+    .replace(/\bplus\b/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
   if (words[0] === "the") words = words.slice(1);
   return words;
 }
@@ -185,24 +188,25 @@ export function artistCandidates(title: string): string[] {
     }
   }
   const candidates: string[] = [];
+  const separator = /\s*(?:,|&|\+|\bplus\b|\band\b|\boch\b)\s*/i;
   if (/\s[-–—]\s/.test(t)) {
     const parts = t.split(/\s[-–—]\s/);
     const left = (parts[0] || "").trim();
     let right = parts.slice(1).join(" ").trim();
     if (!right) right = "";
-    const leftIsBill = /[&+]| and | och /.test(left);
+    const leftIsBill = separator.test(left);
     if (!leftIsBill && /^[A-ZÅÄÖ]/.test(right) && right.split(" ").filter(Boolean).length >= 1 && right.split(" ").filter(Boolean).length <= 3 && !right.toLowerCase().includes("party")) {
       candidates.push(right);
     }
     if (isNameAndTheBand(left)) candidates.push(left);
     else {
-      candidates.push(...left.split(/\s*(?:&|\+| and | och )\s*/));
+      candidates.push(...left.split(separator));
       if (!candidates.includes(left)) candidates.push(left);
     }
   } else if (isNameAndTheBand(t)) {
     candidates.push(t);
   } else {
-    candidates.push(...t.split(/\s*(?:&|\+| and | och )\s*/));
+    candidates.push(...t.split(separator));
     if (!candidates.includes(t)) candidates.push(t);
   }
   const seen = new Set<string>();
@@ -239,7 +243,7 @@ export function soundcloudQueries(title: string): string[] {
 }
 
 const BILL_SPLIT_RE =
-  /\s*(?:&amp;|&|\+|,|;|\/\/|\band\b|\boch\b|\bfeat\.?\b|\bft\.?\b|\bx\b)\s*/i;
+  /\s*(?:&amp;|&|\+|,|;|\/\/|\band\b|\boch\b|\bplus\b|\bfeat\.?\b|\bft\.?\b|\bx\b)\s*/i;
 
 export const BILL_SKIP = new Set([
   "friends", "friend", "company", "guest", "guests", "special guests", "maybe more",

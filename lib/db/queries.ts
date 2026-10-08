@@ -550,6 +550,7 @@ export async function loadPayload(opts: LoadOptions = {}): Promise<EventsPayload
     eq(events.status, "active"),
     eq(events.cancelled, false),
     eq(events.isClub, false),
+    notInArray(events.venueSlug, ["engelen", "fryshuset", "kungcarls"]),
   ];
   if (since) conditions.push(gte(events.date, since));
 

@@ -8,7 +8,6 @@ import { fetch as kollektivetlivet } from "./venues/kollektivetlivet";
 import { fetch as sodrateatern } from "./venues/sodrateatern";
 import { fetch as berns } from "./venues/berns";
 import { fetch as cirkus } from "./venues/cirkus";
-import { fetch as fryshuset } from "./venues/fryshuset";
 import { fetch as kulturhuset } from "./venues/kulturhuset";
 import { fetch as hartwig } from "./venues/hartwig";
 import { fetch as annexet } from "./venues/annexet";
@@ -21,8 +20,6 @@ import { fetch as berwaldhallen } from "./venues/berwaldhallen";
 import { fetch as fasching } from "./venues/fasching";
 import { fetch as stampen } from "./venues/stampen";
 import { fetch as glennmillercafe } from "./venues/glennmillercafe";
-import { fetch as kungcarls } from "./venues/kungcarls";
-import { fetch as engelen } from "./venues/engelen";
 import { fetch as petsoundsbar } from "./venues/petsoundsbar";
 import { fetch as reimersholme } from "./venues/reimersholme";
 import { fetch as riche } from "./venues/riche";
@@ -49,7 +46,6 @@ export const SOURCES: [string, VenueFetch][] = [
   ["sodrateatern", sodrateatern],
   ["berns", berns],
   ["cirkus", cirkus],
-  ["fryshuset", fryshuset],
   ["kulturhuset", kulturhuset],
   ["hartwig", hartwig],
   ["annexet", annexet],
@@ -62,8 +58,6 @@ export const SOURCES: [string, VenueFetch][] = [
   ["fasching", fasching],
   ["stampen", stampen],
   ["glennmillercafe", glennmillercafe],
-  ["kungcarls", kungcarls],
-  ["engelen", engelen],
   ["petsoundsbar", petsoundsbar],
   ["reimersholme", reimersholme],
   ["riche", riche],

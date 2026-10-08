@@ -7,7 +7,6 @@ export type VenueSlug =
   | "sodrateatern"
   | "berns"
   | "cirkus"
-  | "fryshuset"
   | "kulturhuset"
   | "hartwig"
   | "annexet"
@@ -20,8 +19,6 @@ export type VenueSlug =
   | "fasching"
   | "stampen"
   | "glennmillercafe"
-  | "kungcarls"
-  | "engelen"
   | "petsoundsbar"
   | "reimersholme"
   | "riche"
@@ -121,7 +118,6 @@ export const VENUES: { slug: VenueSlug; name: string }[] = [
   { slug: "sodrateatern", name: "Södra Teatern" },
   { slug: "berns", name: "Berns" },
   { slug: "cirkus", name: "Cirkus" },
-  { slug: "fryshuset", name: "Fryshuset" },
   { slug: "kulturhuset", name: "Kulturhuset" },
   { slug: "hartwig", name: "Hartwig" },
   { slug: "annexet", name: "Annexet" },
@@ -134,8 +130,6 @@ export const VENUES: { slug: VenueSlug; name: string }[] = [
   { slug: "fasching", name: "Fasching" },
   { slug: "stampen", name: "Stampen" },
   { slug: "glennmillercafe", name: "Glenn Miller Café" },
-  { slug: "kungcarls", name: "Kung Carls" },
-  { slug: "engelen", name: "Engelen" },
   { slug: "petsoundsbar", name: "Pet Sounds Bar" },
   { slug: "reimersholme", name: "Reimersholme Hotel" },
   { slug: "riche", name: "Riche" },
