@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
 		// `srcset` stays small (the defaults emit 10 variants per image).
 		deviceSizes: [400, 800, 1200],
 		imageSizes: [200],
+		qualities: [75, 90],
 		remotePatterns: IMAGE_ALLOWED_HOSTS.flatMap((hostname) => [
 			{ protocol: 'https' as const, hostname },
 			// Subdomains, notably the `www.` form some venues serve from.

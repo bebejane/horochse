@@ -8,7 +8,7 @@ import { listenMoreItems } from "@/lib/events";
 import type { ConcertEvent } from "@/lib/types";
 
 export function ListenMore({ event, label = "Hör mer" }: { event: ConcertEvent; label?: string }) {
-  const items = listenMoreItems(event);
+  const items = listenMoreItems(event).filter((item) => item.source !== "Spotify");
   const wrapRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
 

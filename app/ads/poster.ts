@@ -28,21 +28,31 @@ const CREAM = "#f3eee4";
 const INK = "#14120f";
 
 /** Same-origin variant so the canvas stays exportable. Remote posters would taint it. */
-export function posterImageUrl(src: string, width: 200 | 1200 = 1200): string {
+export function posterImageUrl(src: string, width: 200 | 1200 = 1200, quality = 75): string {
   if (!src) return "";
   if (src.startsWith("/")) return src;
-  return `/_next/image?url=${encodeURIComponent(src)}&w=${width}&q=75`;
+  return `/_next/image?url=${encodeURIComponent(src)}&w=${width}&q=${quality}`;
 }
 
 export function loadPosterImage(src: string): Promise<HTMLImageElement | null> {
-  const url = posterImageUrl(src, 1200);
-  if (!url) return Promise.resolve(null);
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve(img.naturalWidth > 0 ? img : null);
-    img.onerror = () => resolve(null);
-    img.src = url;
-  });
+  const urls = [...new Set([posterImageUrl(src, 1200, 90), posterImageUrl(src, 1200, 75)].filter(Boolean))];
+  if (!urls.length) return Promise.resolve(null);
+
+  const load = (url: string): Promise<HTMLImageElement | null> =>
+    new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img.naturalWidth > 0 ? img : null);
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+
+  return (async () => {
+    for (const url of urls) {
+      const image = await load(url);
+      if (image) return image;
+    }
+    return null;
+  })();
 }
 
 export function venueColor(slug: string): string {

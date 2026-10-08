@@ -83,7 +83,7 @@ async function configureVideo(encoder: VideoEncoder, format: PosterFormat) {
       codec,
       width: format.width,
       height: format.height,
-      bitrate: 3_000_000,
+      bitrate: 8_000_000,
       bitrateMode: "variable",
       hardwareAcceleration: "prefer-software",
       avc: { format: "avc" },
