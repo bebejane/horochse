@@ -487,7 +487,8 @@ function toTrack(row: TrackRow): Track {
     // Deezer rows are always 30 s previews; `source` is the single source of
     // truth for that, so no extra column is needed.
     preview: row.source === "deezer" ? true : undefined,
-    type: row.type ?? undefined,
+    widgetOnly: row.source === "soundcloud" && row.type === "sc-widget-only" ? true : undefined,
+    type: row.type === "sc-widget-only" ? undefined : row.type ?? undefined,
   };
 }
 

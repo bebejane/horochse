@@ -12,6 +12,8 @@ export type ScrapedTrack = {
   track_id?: number | null;
   /** YouTube video id (embedded player, no direct stream). */
   video_id?: string | null;
+  /** SoundCloud fallback playable only through the embedded widget. */
+  widgetOnly?: boolean;
   type?: string;
 };
 

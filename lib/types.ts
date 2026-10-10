@@ -51,6 +51,8 @@ export type Track = {
   video_id?: string;
   /** Deezer tracks are 30 s previews, never full tracks. */
   preview?: boolean;
+  /** SoundCloud tracks that require its embedded widget instead of direct audio. */
+  widgetOnly?: boolean;
   type?: string;
 };
 

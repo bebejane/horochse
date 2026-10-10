@@ -129,7 +129,7 @@ function toEventInput(event: ScrapedEvent, sourceKey: string): EventInput {
       albumId: track.album_id ?? null,
       trackId: track.track_id ?? null,
       videoId: track.video_id ?? null,
-      type: track.type ?? null,
+      type: track.widgetOnly ? "sc-widget-only" : track.type ?? null,
     })),
   };
 }

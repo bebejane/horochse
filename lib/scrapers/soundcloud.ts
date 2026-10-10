@@ -87,11 +87,23 @@ export function releaseFromScTrack(track: any, artistHint = ""): Record<string, 
 export async function latestFromScUser(user: any): Promise<Record<string, any> | null> {
   const data = await soundcloudGet("/users/" + String(user.id) + "/tracks", { limit: 8 });
   const artist = user.username || user.full_name || "";
+  let widgetOnly: Record<string, any> | null = null;
   for (const track of data.collection || []) {
     const release = releaseFromScTrack(track, artist);
-    if (release) return release;
+    if (!release) continue;
+    const direct = await soundcloudStreamFromTrack(track, false, 4000);
+    if (direct) return release;
+    if (!widgetOnly) widgetOnly = { ...release, widgetOnly: true };
   }
-  return null;
+  return widgetOnly;
+}
+
+async function verifiedScTrack(track: any, artistHint = ""): Promise<Record<string, any> | null> {
+  const release = releaseFromScTrack(track, artistHint);
+  if (!release) return null;
+  return (await soundcloudStreamFromTrack(track, false, 4000))
+    ? release
+    : { ...release, widgetOnly: true };
 }
 
 export async function lookupSoundcloudUrl(
@@ -105,14 +117,29 @@ export async function lookupSoundcloudUrl(
     const kind = resolved.kind;
     let release: Record<string, any> | null = null;
     if (kind === "track") {
-      release = releaseFromScTrack(resolved);
+      release = await verifiedScTrack(resolved);
+      if (release?.widgetOnly && resolved.user?.id) {
+        try {
+          const alternative = await latestFromScUser(resolved.user);
+          if (alternative && !alternative.widgetOnly) release = alternative;
+        } catch (exc) {
+          console.warn(`soundcloud-alternativ (${resolved.user.username || resolved.user.id}):`, exc);
+        }
+      }
     } else if (kind === "playlist") {
       const tracks: any[] = resolved.tracks || [];
+      let widgetOnly: Record<string, any> | null = null;
       for (let track of tracks.slice(0, 6)) {
         if (track.id && !track.streamable) track = await soundcloudGet("/tracks/" + String(track.id));
-        release = releaseFromScTrack(track);
-        if (release) break;
+        const candidate = await verifiedScTrack(track);
+        if (!candidate) continue;
+        if (!candidate.widgetOnly) {
+          release = candidate;
+          break;
+        }
+        if (!widgetOnly) widgetOnly = candidate;
       }
+      release ||= widgetOnly;
     } else if (kind === "user") {
       release = await latestFromScUser(resolved);
     }
@@ -139,6 +166,7 @@ export async function lookupSoundcloudArtist(
     for (const albumHint of (clues.albums || []).slice(0, 2)) {
       const data = await soundcloudGet("/search/tracks", { q: query + " " + albumHint, limit: 8 });
       let best: Record<string, any> | null = null;
+      let bestTrack: any = null;
       let bestScore = 0;
       for (const track of data.collection || []) {
         const user = track.user || {};
@@ -151,11 +179,23 @@ export async function lookupSoundcloudArtist(
         if (score < 1) continue;
         const release = releaseFromScTrack(track, names[0] || names[1]);
         if (release && score > bestScore) {
+          bestTrack = track;
           best = release;
           bestScore = score;
         }
       }
       if (best) {
+        const direct = await soundcloudStreamFromTrack(bestTrack, false, 4000);
+        if (!direct) {
+          try {
+            const alternative = await latestFromScUser(bestTrack.user);
+            if (alternative && !alternative.widgetOnly) best = alternative;
+            else best = { ...best, widgetOnly: true };
+          } catch (exc) {
+            console.warn(`soundcloud-alternativ (${bestTrack.user?.username || query}):`, exc);
+            best = { ...best, widgetOnly: true };
+          }
+        }
         cache.set(key, best);
         return best;
       }
@@ -217,7 +257,7 @@ function clueKey(query: string): string {
   return String(query || "").normalize("NFKD").replace(/\p{M}+/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export async function streamWorks(url: string): Promise<boolean> {
+export async function streamWorks(url: string, timeoutMs = 12000): Promise<boolean> {
   try {
     const res = await fetch(url, {
       headers: {
@@ -226,7 +266,7 @@ export async function streamWorks(url: string): Promise<boolean> {
         Referer: "https://soundcloud.com/",
         Origin: "https://soundcloud.com",
       },
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     return res.status === 200 || res.status === 206;
   } catch {
@@ -247,6 +287,7 @@ export function soundcloudMeta(track: any): Record<string, any> {
 export async function soundcloudStreamFromTrack(
   track: any,
   allowWidget = true,
+  streamProbeTimeoutMs = 12000,
 ): Promise<Record<string, any> | null> {
   const transcodings = track?.media?.transcodings || [];
   const ordered = transcodings.filter((item: any) => item?.format?.protocol === "progressive");
@@ -264,7 +305,7 @@ export async function soundcloudStreamFromTrack(
       continue;
     }
     const stream = String(info.url || "").trim();
-    if (!stream || !(await streamWorks(stream))) continue;
+    if (!stream || !(await streamWorks(stream, streamProbeTimeoutMs))) continue;
     meta.stream = stream;
     return meta;
   }
@@ -290,5 +331,6 @@ export function scTrack(release: any): Record<string, any> {
     track_id: release.track_id,
     url: release.url || "",
     image: release.image || "",
+    widgetOnly: Boolean(release.widgetOnly),
   };
 }

@@ -169,6 +169,28 @@ export function isPlayable(event: ConcertEvent): boolean {
   return eventTracks(event).length > 0;
 }
 
+export function mobileCompatibleEvents(
+  events: ConcertEvent[],
+  blockedTrackKeys: ReadonlySet<string> = new Set(),
+): ConcertEvent[] {
+  return events.map((event) => {
+    const tracks = eventTracks(event);
+    const compatible = tracks.filter((track, index) =>
+      !(
+        trackSource(track) === "soundcloud" &&
+        (track.widgetOnly || blockedTrackKeys.has(event.id + ":" + index))
+      ),
+    );
+    if (compatible.length === tracks.length) return event;
+    const rest = { ...event };
+    delete rest.bandcamp;
+    delete rest.soundcloud;
+    delete rest.youtube;
+    delete rest.deezer;
+    return { ...rest, tracks: compatible };
+  });
+}
+
 export function trackSource(track?: Track | null): TrackSource | "" {
   if (track && track.source === "bandcamp") return "bandcamp";
   if (track && track.source === "soundcloud") return "soundcloud";

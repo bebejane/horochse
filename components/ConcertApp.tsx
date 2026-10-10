@@ -12,6 +12,7 @@ import {
 	loadFilterMode,
 	loadMine,
 	loadPickerOpen,
+	mobileCompatibleEvents,
 	saveFilterMode,
 	saveMine,
 	savePickerSeen,
@@ -64,7 +65,9 @@ function scrollToCard(
 	const bar = document.getElementById('nowplaying');
 	let topBound = mastCoverBottom();
 	const bottomBound =
-		bar && bar.classList.contains('isOn') ? bar.getBoundingClientRect().top : window.innerHeight;
+		bar && bar.classList.contains('isOn')
+			? window.innerHeight - bar.getBoundingClientRect().height
+			: window.innerHeight;
 	const motion = opts.behavior || (prefersReducedMotion() ? 'auto' : 'smooth');
 	if (card.matches('[data-cal-event]')) {
 		const week = card.closest<HTMLElement>('[data-week]');
@@ -111,9 +114,7 @@ function scrollToCard(
 		if (!Number.isFinite(stickyTop)) continue;
 		const obstacleRect = obstacle.getBoundingClientRect();
 		if (obstacleRect.height <= 0 || obstacleRect.right <= rect.left || obstacleRect.left >= rect.right) continue;
-		if (obstacleRect.top <= stickyTop + 1 && obstacleRect.bottom > topBound) {
-			topBound = obstacleRect.bottom;
-		}
+		topBound = Math.max(topBound, stickyTop + obstacleRect.height);
 	}
 	if (!opts.force && rect.top >= topBound - 2 && rect.bottom <= bottomBound - 16) return;
 	window.scrollTo({
@@ -148,16 +149,20 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 	);
 	const effectiveView: ViewMode = narrow ? 'list' : view;
 
-	const visible = useMemo(
+	const deviceEvents = useMemo(
+		() => (narrow ? mobileCompatibleEvents(events) : events),
+		[events, narrow],
+	);
+	const visibleBeforePlayback = useMemo(
 		() =>
 			effectiveView === 'calendar'
-				? filteredEvents(events, mine, mode, peek)
-				: upcomingEvents(events, mine, mode, peek),
-		[events, mine, mode, peek, effectiveView],
+				? filteredEvents(deviceEvents, mine, mode, peek)
+				: upcomingEvents(deviceEvents, mine, mode, peek),
+		[deviceEvents, mine, mode, peek, effectiveView],
 	);
 	const playlistEvents = useMemo(
-		() => filteredEvents(events, mine, mode, peek),
-		[events, mine, mode, peek],
+		() => filteredEvents(deviceEvents, mine, mode, peek),
+		[deviceEvents, mine, mode, peek],
 	);
 
 	const colorSlugs = useMemo(() => {
@@ -165,14 +170,14 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 		if (mode === 'mine') return mine;
 		const seen = new Set<string>();
 		const slugs: string[] = [];
-		for (const event of visible) {
+		for (const event of visibleBeforePlayback) {
 			const slug = event.venue_slug;
 			if (!slug || seen.has(slug)) continue;
 			seen.add(slug);
 			slugs.push(slug);
 		}
 		return slugs;
-	}, [peek, mode, mine, visible]);
+	}, [peek, mode, mine, visibleBeforePlayback]);
 
 	useLayoutEffect(() => {
 		applyVenueColors(colorSlugs);
@@ -182,7 +187,17 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 		queueScrollToCard(event);
 	}, []);
 
-	const player = usePlayer({ events: playlistEvents, onNeedScroll: scrollPlaying });
+	const player = usePlayer({ events: playlistEvents, onNeedScroll: scrollPlaying, mobile: narrow });
+	const visible = useMemo(
+		() =>
+			narrow
+				? mobileCompatibleEvents(
+						visibleBeforePlayback,
+						new Set(player.widgetOnlyTrackKeys),
+					)
+				: visibleBeforePlayback,
+		[narrow, visibleBeforePlayback, player.widgetOnlyTrackKeys],
+	);
 
 	useEffect(() => {
 		setMine(loadMine());

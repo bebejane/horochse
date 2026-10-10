@@ -77,9 +77,10 @@ export type NowPlayingData = {
 type PlayerOpts = {
   events: ConcertEvent[];
   onNeedScroll?: (event: ConcertEvent) => void;
+  mobile?: boolean;
 };
 
-export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
+export function usePlayer({ events, onNeedScroll, mobile = false }: PlayerOpts) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const spectrumRef = useRef<SpectrumTap | null>(null);
   const preloadAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -131,6 +132,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   // Generation of the widget load that is allowed to auto-play on READY.
   const scLoadGenRef = useRef(-1);
   const playlistRef = useRef<PlaylistItem[]>([]);
+  const widgetOnlyKeysRef = useRef<Set<string>>(new Set());
   const onNeedScrollRef = useRef(onNeedScroll);
   const playAtRef = useRef<(index: number, fromSkip: boolean) => void>(() => {});
   const updateProgressRef = useRef<() => void>(() => {});
@@ -146,9 +148,29 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
   const [nowPlaying, setNowPlaying] = useState<NowPlayingData | null>(null);
   const [progress, setProgress] = useState({ ratio: 0, current: 0, duration: 0 });
   const [loadingId, setLoadingId] = useState("");
+  const [widgetOnlyTrackKeys, setWidgetOnlyTrackKeys] = useState<string[]>([]);
 
-  playlistRef.current = playlistFrom(events);
+  const availablePlaylist = useCallback(
+    () =>
+      playlistFrom(events).filter(
+        (item) => !mobile || !widgetOnlyKeysRef.current.has(item.key),
+      ),
+    [events, mobile],
+  );
+  playlistRef.current = availablePlaylist();
   onNeedScrollRef.current = onNeedScroll;
+
+  const blockWidgetOnlyItem = useCallback(
+    (item: PlaylistItem) => {
+      if (!mobile || widgetOnlyKeysRef.current.has(item.key)) return;
+      const blocked = new Set(widgetOnlyKeysRef.current);
+      blocked.add(item.key);
+      widgetOnlyKeysRef.current = blocked;
+      setWidgetOnlyTrackKeys([...blocked]);
+      playlistRef.current = availablePlaylist();
+    },
+    [availablePlaylist, mobile],
+  );
 
   useEffect(() => {
     const audio = new Audio();
@@ -668,6 +690,10 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     if (!req || !req.href) return;
     void resolveStream(req.href).then((data) => {
       if (!data) return;
+      if (data.widget && mobile && list[index]) {
+        blockWidgetOnlyItem(list[index]);
+        return;
+      }
       const next = indexRef.current >= 0 ? list[(indexRef.current + 1) % n] : null;
       const isNext = !!(next && streamRequest(next.track)?.href === req.href);
       if (data.stream && (indexRef.current < 0 || isNext)) warmMedia(data.stream);
@@ -675,7 +701,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
         primeWidget(data.url || req.fallback);
       }
     });
-  }, [primeWidget, resolveStream, warmMedia]);
+  }, [blockWidgetOnlyItem, mobile, primeWidget, resolveStream, warmMedia]);
 
   preloadIndexRef.current = preloadIndex;
 
@@ -761,6 +787,24 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     const item = list[index];
     const event = item.event;
     const track = item.track;
+    const continueAfterFailure = () => {
+      if (skipGuardRef.current >= n) {
+        skipGuardRef.current = 0;
+        stopPlay();
+        return;
+      }
+      skipGuardRef.current += 1;
+      const nextItem = list[(index + 1) % n];
+      const nextIndex = nextItem
+        ? playlistRef.current.findIndex((candidate) => candidate.key === nextItem.key)
+        : -1;
+      if (nextIndex < 0) {
+        skipGuardRef.current = 0;
+        stopPlay();
+        return;
+      }
+      playAt(nextIndex, true);
+    };
     const req = streamRequest(track);
     indexRef.current = index;
     eventIdRef.current = event.id;
@@ -775,7 +819,8 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     // A SoundCloud-only track has to start from the iframe URL set in this
     // click. Parking the iframe on the idle page first consumes the gesture,
     // and the real track then stays paused at 0:00.
-    const widgetInClick = !!(req && req.source === "soundcloud" && req.fallback && !cached?.stream);
+    const widgetInClick =
+      !mobile && !!(req && req.source === "soundcloud" && req.fallback && !cached?.stream);
     // Drop the previous media before any fetch. Progress stays at 0 until the
     // new file actually starts, so a late timeupdate cannot restore the old bar.
     progressLiveRef.current = false;
@@ -793,7 +838,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     } else {
       pauseWidget();
     }
-    onNeedScrollRef.current?.(event);
+    if (!mobile) onNeedScrollRef.current?.(event);
     preloadIndexRef.current(index + 1);
     if (!req) {
       if (fromSkip && skipGuardRef.current < n) {
@@ -818,7 +863,6 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     sourceRef.current = req.source;
     // YouTube needs no stream resolution: the embedded player takes the id.
     if (req.source === "youtube") {
-      onNeedScrollRef.current?.(event);
       void playYt(req.videoId || "", token)
         .then(() => {
           if (token !== tokenRef.current) return;
@@ -835,17 +879,12 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
           showNowPlaying();
           syncPlaying();
           updateProgress();
+          if (mobile) onNeedScrollRef.current?.(event);
         })
         .catch(() => {
           if (token !== tokenRef.current) return;
           setLoadingId("");
-          if (skipGuardRef.current < n) {
-            skipGuardRef.current += 1;
-            playAt(index + 1, true);
-            return;
-          }
-          skipGuardRef.current = 0;
-          stopPlay();
+          continueAfterFailure();
         });
       return;
     };
@@ -865,6 +904,10 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
       const startWidget = () => {
         const url = data.url || req.fallback;
         if (req.source !== "soundcloud" || !url) throw new Error("stream");
+        if (mobile) {
+          if (data.widget) blockWidgetOnlyItem(item);
+          throw new Error("widget-only");
+        }
         // Ingen mp3: telefonen startar inte en dold widget. Spelaren visas
         // så att trycket hamnar på den.
         widgetChrome(true);
@@ -958,24 +1001,17 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
           setLoadingId("");
           showNowPlaying();
           syncPlaying();
-          onNeedScrollRef.current?.(event);
+          if (mobile) onNeedScrollRef.current?.(event);
         })
         .catch(() => {
           if (token !== tokenRef.current) return;
           setLoadingId("");
-          if (skipGuardRef.current < n) {
-            skipGuardRef.current += 1;
-            playAt(index + 1, true);
-            return;
-          }
-          skipGuardRef.current = 0;
-          stopPlay();
+          continueAfterFailure();
         });
       return;
     }
-    if (req.source === "soundcloud" && req.fallback) {
+    if (!mobile && req.source === "soundcloud" && req.fallback) {
       modeRef.current = "widget";
-      onNeedScrollRef.current?.(event);
       scPositionRef.current = 0;
       scDurationRef.current = 0;
       scUrlRef.current = req.fallback;
@@ -993,27 +1029,20 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
         setLoadingId("");
         showNowPlaying();
         syncPlaying();
-        onNeedScrollRef.current?.(event);
+        if (mobile) onNeedScrollRef.current?.(event);
       })
       .catch(() => {
         if (token !== tokenRef.current) return;
         setLoadingId("");
-        if (modeRef.current === "widget" && scUrlRef.current) {
+        if (!mobile && modeRef.current === "widget" && scUrlRef.current) {
           widgetChrome(true);
           showNowPlaying();
           syncPlaying();
-          onNeedScrollRef.current?.(event);
           return;
         }
-        if (skipGuardRef.current < n) {
-          skipGuardRef.current += 1;
-          playAt(index + 1, true);
-          return;
-        }
-        skipGuardRef.current = 0;
-        stopPlay();
+        continueAfterFailure();
       });
-  }, [applyPlaybackVolume, fillNowPlaying, pauseHtmlAudio, pauseWidget, pauseYt, peekStream, playWidget, playYt, resolveStream, showNowPlaying, stopPlay, syncPlaying, updateProgress, widgetChrome]);
+  }, [applyPlaybackVolume, blockWidgetOnlyItem, fillNowPlaying, mobile, pauseHtmlAudio, pauseWidget, pauseYt, peekStream, playWidget, playYt, resolveStream, showNowPlaying, stopPlay, syncPlaying, updateProgress, widgetChrome]);
 
   playAtRef.current = playAt;
 
@@ -1181,6 +1210,7 @@ export function usePlayer({ events, onNeedScroll }: PlayerOpts) {
     eventId,
     trackIndex,
     itemKey,
+    widgetOnlyTrackKeys,
     barOn,
     barHidden,
     nowPlaying,
