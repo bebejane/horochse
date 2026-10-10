@@ -40,7 +40,10 @@ function prefersReducedMotion() {
 function mastCoverBottom() {
 	const mast = document.querySelector<HTMLElement>('[data-mast]');
 	if (!mast) return 0;
-	if (mast.getBoundingClientRect().height >= 1) return mast.getBoundingClientRect().bottom;
+	const mastRect = mast.getBoundingClientRect();
+	if (getComputedStyle(mast).display !== 'contents' && mastRect.height >= 1) {
+		return mastRect.bottom;
+	}
 	const pieces = mast.querySelectorAll<HTMLElement>('[data-mast-bar], [data-mast-tools]');
 	let bottom = 0;
 	pieces.forEach((piece) => {
@@ -92,12 +95,26 @@ function scrollToCard(
 		});
 		return;
 	}
-	const day = card.closest<HTMLElement>('[data-day]');
-	const heading = day?.querySelector<HTMLElement>('[data-day-title]');
-	if (heading && heading.getBoundingClientRect().bottom <= card.getBoundingClientRect().top + 4) {
-		topBound += heading.getBoundingClientRect().height;
-	}
 	const rect = card.getBoundingClientRect();
+	const day = card.closest<HTMLElement>('[data-day]');
+	const weekRoot = day?.parentElement;
+	const stickyObstacles = [
+		weekRoot?.querySelector<HTMLElement>('[data-week-head]'),
+		day?.querySelector<HTMLElement>('[data-day-title]'),
+		day?.querySelector<HTMLElement>('[data-list-rule]'),
+	];
+	for (const obstacle of stickyObstacles) {
+		if (!obstacle) continue;
+		const style = getComputedStyle(obstacle);
+		if (style.position !== 'sticky') continue;
+		const stickyTop = parseFloat(style.top);
+		if (!Number.isFinite(stickyTop)) continue;
+		const obstacleRect = obstacle.getBoundingClientRect();
+		if (obstacleRect.height <= 0 || obstacleRect.right <= rect.left || obstacleRect.left >= rect.right) continue;
+		if (obstacleRect.top <= stickyTop + 1 && obstacleRect.bottom > topBound) {
+			topBound = obstacleRect.bottom;
+		}
+	}
 	if (!opts.force && rect.top >= topBound - 2 && rect.bottom <= bottomBound - 16) return;
 	window.scrollTo({
 		top: Math.max(0, window.scrollY + rect.top - topBound - 10),
@@ -106,13 +123,9 @@ function scrollToCard(
 }
 
 function queueScrollToCard(event: ConcertEvent) {
-	const id = event.id;
 	window.requestAnimationFrame(() => {
-		window.requestAnimationFrame(() => {
-			scrollToCard(event);
-		});
+		scrollToCard(event);
 	});
-	void id;
 }
 
 export function ConcertApp({ payload }: { payload: EventsPayload }) {
@@ -166,7 +179,6 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 	}, [colorSlugs, theme]);
 
 	const scrollPlaying = useCallback((event: ConcertEvent) => {
-		scrollToCard(event);
 		queueScrollToCard(event);
 	}, []);
 

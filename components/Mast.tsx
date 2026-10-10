@@ -312,8 +312,8 @@ export function Mast({
 	}, []);
 
 	useEffect(() => {
-		if (introHidden) {
-			setIntroAway(false);
+		if (introHidden || mine.length > 0) {
+			setIntroAway(mine.length > 0 && !introHidden);
 			return;
 		}
 		const hideAt = 96;
@@ -325,7 +325,7 @@ export function Mast({
 		apply();
 		window.addEventListener('scroll', apply, { passive: true });
 		return () => window.removeEventListener('scroll', apply);
-	}, [introHidden]);
+	}, [introHidden, mine.length]);
 
 	useEffect(() => {
 		if (!pickerOpen) return;

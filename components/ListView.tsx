@@ -137,7 +137,7 @@ export function ListView({
 									<span>{heading.rest}</span>
 								</h2>
 								<div className={s.list}>
-									<div className={s.listRule} aria-hidden='true' />
+									<div className={s.listRule} data-list-rule aria-hidden='true' />
 									{day.events.map((event) => (
 										<EventCard
 											key={event.id}
