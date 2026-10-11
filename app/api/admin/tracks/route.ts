@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 import { adminPassword, isAdmin } from "@/lib/admin/auth";
 import { addEventTrack, AdminTrackError, removeEventTrack, replaceEventTrack } from "@/lib/admin/tracks";
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
             ? await replaceEventTrack(eventId, position, url)
             : null;
     if (!tracks) return NextResponse.json({ error: "Ogiltig åtgärd." }, { status: 400 });
+    revalidatePath("/", "layout");
+    revalidatePath("/api/events");
     return NextResponse.json({ tracks }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     const status = err instanceof AdminTrackError ? err.status : 500;
