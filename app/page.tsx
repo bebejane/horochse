@@ -2,7 +2,7 @@ import { ConcertApp } from '@/components/ConcertApp';
 import { loadPayload } from '@/lib/db/queries';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 export default async function Page() {
 	const payload = await loadPayload();
