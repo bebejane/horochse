@@ -294,14 +294,6 @@ export function listenMoreItems(event: ConcertEvent): { url: string; artist: str
     seen[url] = true;
     items.push({ url, artist: track.artist || "", source: trackSourceName(track) });
   });
-  // Spotify link found on the venue page — opens in the Spotify app/web player.
-  if (event.spotify) {
-    const url = mediaPageUrl(event.spotify);
-    if (url && !seen[url]) {
-      seen[url] = true;
-      items.push({ url, artist: "", source: "Spotify" });
-    }
-  }
   return items;
 }
 

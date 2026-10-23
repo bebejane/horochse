@@ -3,7 +3,7 @@
 /*
  * Global layer: design tokens, resets, page/body state and the small set of
  * cross-cutting primitives that more than one component composes
- * (.skip, .mastSymbol*, .go, .icon-*). Everything component-specific
+ * (.mastSymbol*, .go, .icon-*). Everything component-specific
  * (including the play control) lives in a *.module.scss next to the component.
  */
 
@@ -154,20 +154,6 @@ body {
 html[data-theme='light'] body {
 	font-weight: var(--william-regular);
 	font-synthesis: none;
-}
-
-.skip {
-	position: absolute;
-	left: -999px;
-	top: 0.5rem;
-	background: var(--ink);
-	color: var(--bg);
-	padding: 0.4rem 0.7rem;
-}
-
-.skip:focus {
-	left: 0.5rem;
-	z-index: 30;
 }
 
 /* Brand symbol, shared by Mast, EventCard, CalendarView and the colophon. */

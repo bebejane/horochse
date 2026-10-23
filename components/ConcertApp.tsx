@@ -380,9 +380,6 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 
 	return (
 		<div>
-			<a className='skip' href='#program'>
-				Hoppa till programmet
-			</a>
 			<Mast
 				mode={mode}
 				mine={mine}
