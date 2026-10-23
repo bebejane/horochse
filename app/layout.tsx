@@ -11,11 +11,6 @@ const william = localFont({
       weight: "400 700",
       style: "normal",
     },
-    {
-      path: "../public/fonts/William/WilliamTextVFItalicNormal.woff2",
-      weight: "400 700",
-      style: "italic",
-    },
   ],
   variable: "--font-anselm",
   display: "swap",

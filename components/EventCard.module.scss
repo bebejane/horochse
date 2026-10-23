@@ -574,7 +574,6 @@ $venues: debaser, nalen, fallan, slakthusen, kollektivetlivet, sodrateatern, ber
 
 	.posterSlot > [data-play]:global(.isOn),
 	.posterSlot > [data-play-cluster] [data-play]:global(.isOn) {
-		background: var(--ink);
 		color: var(--bg);
 	}
 }

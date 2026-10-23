@@ -71,7 +71,6 @@ export async function loadPosterFonts(): Promise<PosterFonts> {
   const walter = firstFamily(root.getPropertyValue("--font-walter")) || "sans-serif";
   await Promise.all([
     document.fonts.load(`400 64px "${anselm}"`),
-    document.fonts.load(`italic 400 42px "${anselm}"`),
     document.fonts.load(`700 80px "${anselm}"`),
     document.fonts.load(`400 36px "${walter}"`),
   ]);

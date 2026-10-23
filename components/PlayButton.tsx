@@ -52,6 +52,7 @@ export function PlayButton({
       className={cn(s.play, { isOn: playing && current, isLoading: loading })}
       data-play
       data-id={event.id}
+      data-venue={event.venue_slug}
       title={label}
       aria-label={label}
       aria-pressed={playing && current ? "true" : "false"}

@@ -78,7 +78,6 @@
 .calHead b {
 	flex: none;
 	color: var(--ink);
-	font-style: italic;
 	font-weight: var(--william-regular);
 	font-size: 1.2rem;
 	line-height: 1;
@@ -190,7 +189,6 @@
 }
 
 .calEvent [data-play]:global(.isOn) {
-	background: var(--ink);
 	color: var(--bg);
 }
 
@@ -260,10 +258,10 @@
 	pointer-events: none;
 	background: linear-gradient(
 		to bottom,
-		var(--cal-fill) 0%,
-		color-mix(in srgb, var(--cal-fill) 88%, transparent) 32%,
-		color-mix(in srgb, var(--cal-fill) 38%, transparent) 62%,
-		color-mix(in srgb, var(--cal-fill) 6%, transparent) 100%
+		color-mix(in srgb, var(--cal-fill) 70%, transparent) 0%,
+		color-mix(in srgb, var(--cal-fill) 54%, transparent) 32%,
+		color-mix(in srgb, var(--cal-fill) 18%, transparent) 62%,
+		transparent 100%
 	);
 }
 
@@ -476,9 +474,9 @@
 .calEvent:global(.hasArt):global(.isLive) .calEventLink::after {
 	background: linear-gradient(
 		to bottom,
-		color-mix(in srgb, var(--cal-fill) 86%, transparent) 0%,
-		color-mix(in srgb, var(--cal-fill) 64%, transparent) 40%,
-		color-mix(in srgb, var(--cal-fill) 32%, transparent) 100%
+		color-mix(in srgb, var(--cal-fill) 58%, transparent) 0%,
+		color-mix(in srgb, var(--cal-fill) 38%, transparent) 40%,
+		color-mix(in srgb, var(--cal-fill) 14%, transparent) 100%
 	);
 }
 
@@ -500,9 +498,9 @@
 :global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calEventLink::after {
 	background: linear-gradient(
 		to bottom,
-		color-mix(in srgb, var(--cal-fill) 86%, transparent) 0%,
-		color-mix(in srgb, var(--cal-fill) 64%, transparent) 40%,
-		color-mix(in srgb, var(--cal-fill) 32%, transparent) 100%
+		color-mix(in srgb, var(--cal-fill) 58%, transparent) 0%,
+		color-mix(in srgb, var(--cal-fill) 38%, transparent) 40%,
+		color-mix(in srgb, var(--cal-fill) 14%, transparent) 100%
 	);
 }
 

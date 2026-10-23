@@ -27,10 +27,9 @@
 }
 
 .weekHeadTitle {
-	font-size: clamp(1.55rem, 2.8vw, 2.15rem);
-	font-style: italic;
+	font-size: clamp(1.35rem, 2.4vw, 1.85rem);
 	font-weight: var(--william-regular);
-	letter-spacing: -0.03em;
+	letter-spacing: -0.02em;
 	line-height: 1.1;
 	margin: 0;
 }
@@ -43,12 +42,6 @@
 	vertical-align: baseline;
 	position: relative;
 	top: -1em;
-}
-
-@include mq($from: tablet) {
-	.weekHeadTitle {
-		font-size: 1.95rem;
-	}
 }
 
 .weekHeadListen {
@@ -79,6 +72,7 @@
 	align-items: flex-start;
 	gap: 0.12rem;
 	font-size: 0.95rem;
+	font-weight: var(--william-regular);
 	color: var(--muted);
 	padding: 0.85rem 0.4rem 0.7rem 0;
 	border-top: 1px solid var(--ink);
@@ -100,7 +94,6 @@
 .dayTitle b {
 	color: var(--ink);
 	font-weight: var(--william-regular);
-	font-style: italic;
 	text-transform: none;
 	font-size: 1.35rem;
 	line-height: 1.15;
@@ -153,7 +146,6 @@
 
 .empty {
 	color: var(--muted);
-	font-style: italic;
 }
 
 .list > [data-card]:last-child {

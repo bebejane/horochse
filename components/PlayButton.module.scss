@@ -27,14 +27,30 @@
 	fill: currentColor;
 }
 
-.play:hover,
-.play:focus-visible {
-	border-color: var(--ink);
-}
-
 .play:global(.isOn) {
 	background: var(--ink);
 	color: var(--bg);
+	border-color: var(--ink);
+}
+
+$venues: debaser, nalen, fallan, slakthusen, kollektivetlivet, sodrateatern, berns, cirkus, fryshuset, kulturhuset, hartwig, annexet, hovet, aviciiarena, trearena, strawberryarena, konserthuset, berwaldhallen, fasching, stampen, glennmillercafe, kungcarls, engelen, petsoundsbar, reimersholme, riche, landet, encore, bioaspen, scalateatern, gotalejon, bagarmossen, kmh, ericericsonhallen, gronalund, fylkingen, ronnells, larryscorner;
+
+@each $slug in $venues {
+	.play[data-venue='#{$slug}']:not(:global(.isOn)) {
+		border-color: var(--#{$slug});
+	}
+
+	.play[data-venue='#{$slug}']:global(.isOn) {
+		background: var(--#{$slug});
+		border-color: var(--#{$slug});
+		color: var(--bg);
+	}
+}
+
+.play:hover:not(:global(.isOn)),
+.play:focus-visible:not(:global(.isOn)),
+.play[data-venue]:hover:not(:global(.isOn)),
+.play[data-venue]:focus-visible:not(:global(.isOn)) {
 	border-color: var(--ink);
 }
 
