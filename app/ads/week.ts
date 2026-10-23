@@ -1,6 +1,20 @@
-import { weekDaysFromMonday } from "@/lib/dates";
+import { parseDay, weekDaysFromMonday } from "@/lib/dates";
 import { displayTitle, isCancelledEvent } from "@/lib/events";
 import { MONTHS, VENUES, WEEKDAYS, type ConcertEvent, type VenueSlug } from "@/lib/types";
+
+const MONTHS_SHORT = [
+  "jan", "feb", "mar", "apr", "maj", "jun",
+  "jul", "aug", "sep", "okt", "nov", "dec",
+];
+
+/** "LIVE I STOCKHOLM 3 DEC – 8 DEC" för den valda veckan. */
+export function posterWeekLine(fromIso: string, toIso: string): string {
+  const from = parseDay(fromIso);
+  const to = parseDay(toIso);
+  const start = `${from.getDate()} ${MONTHS_SHORT[from.getMonth()]}`;
+  const end = `${to.getDate()} ${MONTHS_SHORT[to.getMonth()]}`;
+  return `LIVE I STOCKHOLM ${start} – ${end}`.toLocaleUpperCase("sv");
+}
 
 export function posterDate(iso: string): string {
   const parts = iso.split("-");

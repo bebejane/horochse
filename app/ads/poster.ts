@@ -24,6 +24,19 @@ export type PosterSlide = {
   image: CanvasImageSource | null;
 };
 
+export type PosterTicker = {
+  text: string;
+  offset: number;
+};
+
+/** Pixlar per sekund för den löpande raden överst. */
+export const TICKER_SPEED = 140;
+
+const VENUE_SIZE = 34;
+const DATE_SIZE = 42;
+/** Em-boxens underkant på datumet ligger så här många pixlar ovanför bildens nederkant. */
+const DATE_EM_BOTTOM = 84;
+
 const CREAM = "#f3eee4";
 const INK = "#14120f";
 
@@ -71,8 +84,8 @@ export async function loadPosterFonts(): Promise<PosterFonts> {
   const walter = firstFamily(root.getPropertyValue("--font-walter")) || "sans-serif";
   await Promise.all([
     document.fonts.load(`400 64px "${anselm}"`),
-    document.fonts.load(`700 80px "${anselm}"`),
-    document.fonts.load(`400 36px "${walter}"`),
+    document.fonts.load(`450 86px "${anselm}"`),
+    document.fonts.load(`400 ${VENUE_SIZE}px "${walter}"`),
   ]);
   await document.fonts.ready;
   return { anselm, walter };
@@ -136,15 +149,16 @@ function layoutTitle(
   family: string,
   maxWidth: number,
 ): { size: number; lines: string[] } {
+  ctx.letterSpacing = "-0.02em";
   let size = 86;
   while (size >= 40) {
-    ctx.font = font(700, size, family);
+    ctx.font = font(450, size, family);
     const lines = wrapLine(ctx, title, maxWidth);
     const tooWide = lines.some((line) => ctx.measureText(line).width > maxWidth + 1);
     if (!tooWide && lines.length <= 6) return { size, lines };
     size -= 2;
   }
-  ctx.font = font(700, 40, family);
+  ctx.font = font(450, 40, family);
   return { size: 40, lines: wrapLine(ctx, title, maxWidth).slice(0, 8) };
 }
 
@@ -172,7 +186,107 @@ function heightOf(image: CanvasImageSource): number {
   return 0;
 }
 
-export function drawPoster(ctx: CanvasRenderingContext2D, slide: PosterSlide | null, fonts: PosterFonts) {
+/** Avstånd från datumets bläck till bildens nederkant. Samma mått används som toppmarginal. */
+function dateInkMargin(ctx: CanvasRenderingContext2D, date: string, family: string, height: number): number {
+  ctx.font = font(400, DATE_SIZE, family);
+  ctx.letterSpacing = "0px";
+  ctx.textBaseline = "top";
+  const descent = ctx.measureText(date || "Måndag").actualBoundingBoxDescent;
+  const dateTop = height - DATE_EM_BOTTOM - DATE_SIZE;
+  return height - (dateTop + descent);
+}
+
+type TickerStrip = {
+  canvas: HTMLCanvasElement;
+  textWidth: number;
+  pad: number;
+};
+
+const tickerStrips = new Map<string, TickerStrip>();
+
+/** Ritas en gång. Att rita om bokstäverna varje bildruta får raden att hacka. */
+function tickerStrip(text: string, family: string): TickerStrip {
+  const key = `${family}\0${text}`;
+  const cached = tickerStrips.get(key);
+  if (cached) return cached;
+
+  const probe = document.createElement("canvas").getContext("2d");
+  const empty = document.createElement("canvas");
+  if (!probe) return { canvas: empty, textWidth: 1, pad: 0 };
+  probe.font = font(400, VENUE_SIZE, family);
+  probe.letterSpacing = "0.16em";
+  probe.textBaseline = "alphabetic";
+  const metrics = probe.measureText(text);
+  const ascent = Math.max(1, Math.ceil(metrics.actualBoundingBoxAscent));
+  const descent = Math.max(1, Math.ceil(metrics.actualBoundingBoxDescent));
+  const pad = 4;
+  const textWidth = Math.max(1, Math.ceil(metrics.width));
+  const canvas = document.createElement("canvas");
+  canvas.width = textWidth + pad * 2;
+  canvas.height = ascent + descent + pad * 2;
+  const stripCtx = canvas.getContext("2d");
+  if (!stripCtx) return { canvas, textWidth, pad };
+  stripCtx.font = font(400, VENUE_SIZE, family);
+  stripCtx.letterSpacing = "0.16em";
+  stripCtx.fillStyle = "#ffffff";
+  stripCtx.textBaseline = "alphabetic";
+  stripCtx.fillText(text, pad, pad + ascent);
+  const strip = { canvas, textWidth, pad };
+  tickerStrips.set(key, strip);
+  return strip;
+}
+
+function drawTicker(
+  ctx: CanvasRenderingContext2D,
+  ticker: PosterTicker,
+  family: string,
+  width: number,
+  inkTop: number,
+) {
+  const text = ticker.text.trim();
+  if (!text) return;
+  const strip = tickerStrip(text, family);
+  const gap = width / 5;
+  const period = strip.textWidth + gap;
+  if (period < 1) return;
+  const shift = ((ticker.offset % period) + period) % period;
+  const y = inkTop * 0.85 - strip.pad;
+  const base = width - shift;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, width, ctx.canvas.height);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  const first = Math.floor((-strip.canvas.width - base) / period) - 1;
+  const last = Math.ceil((width - base) / period) + 1;
+  for (let copy = first; copy <= last; copy++) {
+    const x = base + copy * period - strip.pad;
+    if (x < width && x + strip.canvas.width > 0) ctx.drawImage(strip.canvas, x, y);
+  }
+  ctx.restore();
+}
+
+/** Ritar bara den löpande raden ovanpå en redan ritad bild. */
+export function paintTicker(
+  ctx: CanvasRenderingContext2D,
+  ticker: PosterTicker,
+  fonts: PosterFonts,
+  date: string,
+) {
+  const width = ctx.canvas.width;
+  const height = ctx.canvas.height;
+  ctx.save();
+  drawTicker(ctx, ticker, fonts.walter, width, dateInkMargin(ctx, date, fonts.anselm, height));
+  ctx.restore();
+}
+
+export function drawPoster(
+  ctx: CanvasRenderingContext2D,
+  slide: PosterSlide | null,
+  fonts: PosterFonts,
+  ticker?: PosterTicker,
+) {
   const width = ctx.canvas.width;
   const height = ctx.canvas.height;
   ctx.save();
@@ -195,6 +309,7 @@ export function drawPoster(ctx: CanvasRenderingContext2D, slide: PosterSlide | n
   ctx.fillRect(0, height - 14, width, 14);
 
   if (!slide) {
+    if (ticker?.text) paintTicker(ctx, ticker, fonts, "Måndag");
     ctx.restore();
     return;
   }
@@ -202,8 +317,8 @@ export function drawPoster(ctx: CanvasRenderingContext2D, slide: PosterSlide | n
   const padX = 72;
   const maxWidth = width - padX * 2;
   const title = layoutTitle(ctx, slide.title || "Konsert", fonts.anselm, maxWidth);
-  const venueSize = 34;
-  const dateSize = 42;
+  const venueSize = VENUE_SIZE;
+  const dateSize = DATE_SIZE;
   const titleLineHeight = Math.round(title.size * 1.12);
   const titleHeight = title.lines.length * titleLineHeight;
   const blockHeight = venueSize + 26 + titleHeight + 28 + dateSize;
@@ -218,15 +333,19 @@ export function drawPoster(ctx: CanvasRenderingContext2D, slide: PosterSlide | n
 
   y += venueSize + 26;
   ctx.fillStyle = CREAM;
-  ctx.font = font(700, title.size, fonts.anselm);
+  ctx.letterSpacing = "-0.02em";
+  ctx.font = font(450, title.size, fonts.anselm);
   for (const line of title.lines) {
     ctx.fillText(line, padX, y);
     y += titleLineHeight;
   }
+  ctx.letterSpacing = "0px";
 
   y += 8;
   ctx.fillStyle = "rgba(243, 238, 228, 0.86)";
   ctx.font = font(400, dateSize, fonts.anselm);
   ctx.fillText(slide.date, padX, y);
+
+  if (ticker?.text) paintTicker(ctx, ticker, fonts, slide.date);
   ctx.restore();
 }

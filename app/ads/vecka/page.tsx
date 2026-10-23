@@ -12,15 +12,17 @@ import {
   drawPoster,
   loadPosterFonts,
   loadPosterImage,
+  paintTicker,
   POSTER_FORMATS,
   posterImageUrl,
+  TICKER_SPEED,
   venueColor,
   type PosterFonts,
   type PosterFormat,
 } from "../poster";
 import { addDays, formatWeekSpan, thisWeekMonday, toIso, weekDaysFromMonday } from "@/lib/dates";
 
-import { eventsInWeek, formatDuration, posterDate, venuesIn } from "../week";
+import { eventsInWeek, formatDuration, posterDate, posterWeekLine, venuesIn } from "../week";
 
 type ImageState = HTMLImageElement | "failed";
 
@@ -87,6 +89,7 @@ export default function WeekAdsPage() {
   const venues = useMemo(() => venuesIn(week), [week]);
   const days = useMemo(() => weekDaysFromMonday(weekMonday), [weekMonday]);
   const weekLabel = days.length ? formatWeekSpan(days[0], days[days.length - 1]) : "";
+  const ticker = days.length >= 2 ? posterWeekLine(days[0], days[days.length - 1]) : "";
 
   const visible = useMemo(
     () => week.filter((event) => !venue || event.venue_slug === venue),
@@ -141,25 +144,43 @@ export default function WeekAdsPage() {
     if (!canvas || !loaded) return;
     const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) return;
-    canvas.width = format.width;
-    canvas.height = format.height;
-    if (!current) {
-      drawPoster(ctx, null, loaded);
-      return;
+    if (canvas.width !== format.width || canvas.height !== format.height) {
+      canvas.width = format.width;
+      canvas.height = format.height;
     }
     const bitmap = currentImage;
-    drawPoster(
-      ctx,
-      {
-        title: displayTitle(current),
-        venue: current.venue,
-        date: posterDate(current.date),
-        color: venueColor(current.venue_slug),
-        image: bitmap && bitmap !== "failed" ? bitmap : null,
-      },
-      loaded,
-    );
-  }, [current, currentImage, fonts, format]);
+    const slide = current
+      ? {
+          title: displayTitle(current),
+          venue: current.venue,
+          date: posterDate(current.date),
+          color: venueColor(current.venue_slug),
+          image: bitmap && bitmap !== "failed" ? bitmap : null,
+        }
+      : null;
+    const still = document.createElement("canvas");
+    still.width = canvas.width;
+    still.height = canvas.height;
+    const stillCtx = still.getContext("2d", { alpha: false });
+    if (!stillCtx) return;
+    drawPoster(stillCtx, slide, loaded);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let frame = 0;
+    const paint = (now: number) => {
+      ctx.drawImage(still, 0, 0);
+      if (ticker) {
+        paintTicker(
+          ctx,
+          { text: ticker, offset: reduced ? canvas.width : (now / 1000) * TICKER_SPEED },
+          loaded,
+          slide?.date || "Måndag",
+        );
+      }
+      frame = window.requestAnimationFrame(paint);
+    };
+    frame = window.requestAnimationFrame(paint);
+    return () => window.cancelAnimationFrame(frame);
+  }, [current, currentImage, fonts, format, ticker]);
 
   function toggle(id: string) {
     setExcluded((prev) => {
@@ -195,6 +216,7 @@ export default function WeekAdsPage() {
         seconds,
         loaded,
         format,
+        ticker,
         (done, total) => setProgress(`Kodar ${done} av ${total}`),
         () => cancelExport.current,
       );
