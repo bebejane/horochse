@@ -18,12 +18,46 @@ const MONTHS_SHORT: Record<string, number> = {
   jul: 7, aug: 8, sep: 9, okt: 10, nov: 11, dec: 12,
 };
 
+type ListingCard = { urlPath: string; body: string; image: string };
+
+/** Cards on /konserter. The current page wraps each show in div.event-info; the older anchor markup is kept. */
+function listingCards(htmlPage: string): ListingCard[] {
+  const cards: ListingCard[] = [];
+  const seen = new Set<string>();
+  const push = (urlPath: string, body: string, index: number) => {
+    if (seen.has(urlPath)) return;
+    seen.add(urlPath);
+    const around = htmlPage.slice(Math.max(0, index - 500), index + body.length + 2500);
+    const listingImg = /url\(&quot;(\/img\/card\/uploads\/img\/[^&]+)&quot;\)/.exec(around);
+    cards.push({
+      urlPath,
+      body,
+      image: listingImg ? "https://debaser.se" + listingImg[1] : "",
+    });
+  };
+
+  // `event-info-box` is inside the card. A bare word-boundary would stop the
+  // card there and keep only the empty overlay link.
+  const divRe =
+    /<div class="event-info(?:\s[^"]*)?">([\s\S]*?)(?=<div class="event-info(?:\s|")|<div role="listitem"|$)/g;
+  for (const match of htmlPage.matchAll(divRe)) {
+    const href = /href="(\/events\/[^"]+)"/.exec(match[1]);
+    if (href) push(href[1], match[1], match.index ?? 0);
+  }
+
+  const anchorRe = /<a href="(\/events\/[^"]+)" class="event-info[^"]*">([\s\S]*?)<\/a>/g;
+  for (const match of htmlPage.matchAll(anchorRe)) {
+    push(match[1], match[2], match.index ?? 0);
+  }
+  return cards;
+}
+
 export async function fetch(start: DateTime, end: DateTime): Promise<ScrapedEvent[]> {
   const htmlPage = await httpRequest("https://debaser.se/konserter");
   const events: ScrapedEvent[] = [];
   const seen = new Set<string>();
-  for (const match of htmlPage.matchAll(/<a href="(\/events\/[^"]+)" class="event-info[^"]*">([\s\S]*?)<\/a>/g)) {
-    const body = match[2];
+  for (const card of listingCards(htmlPage)) {
+    const body = card.body;
     const kind = /class="b2 white">([^<]+)/.exec(body);
     if (!kind || !unescape(kind[1]).toLowerCase().includes("konsert")) continue;
     const titleMatch = /class="h3[^"]*">([^<]+)/.exec(body);
@@ -46,12 +80,10 @@ export async function fetch(start: DateTime, end: DateTime): Promise<ScrapedEven
     let when = DateTime.fromObject({ year, month, day: dayN, hour: 20, minute: 0 }, { zone: TZ });
     if (!inRange(when, start, end)) continue;
     if (!isConcert(title, "", "konsert")) continue;
-    const url = "https://debaser.se" + match[1];
+    const url = "https://debaser.se" + card.urlPath;
     if (seen.has(url)) continue;
     seen.add(url);
-    const start0 = Math.max(0, (match.index ?? 0) - 3500);
-    const listingImg = /url\(&quot;(\/img\/card\/uploads\/img\/[^&]+)&quot;\)/.exec(htmlPage.slice(start0, match.index));
-    let image = pickImage(listingImg ? "https://debaser.se" + listingImg[1] : "");
+    let image = pickImage(card.image);
     let detail = "";
     let timeStr = "20:00";
     try {

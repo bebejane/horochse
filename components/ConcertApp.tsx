@@ -350,41 +350,6 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 	}, [syncLayout, effectiveView, calStyle, player.barOn, visible.length, pickerOpen]);
 
 	useEffect(() => {
-		if (effectiveView !== 'list') return;
-		let frame = 0;
-		const syncLeaving = () => {
-			frame = 0;
-			const mast =
-				parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mast-height')) || 0;
-			let limit = mast;
-			document.querySelectorAll<HTMLElement>('[data-week-head]').forEach((head) => {
-				const box = head.getBoundingClientRect();
-				if (box.bottom <= mast + 1 || box.top > limit) return;
-				limit = Math.max(limit, box.bottom);
-			});
-			document.querySelectorAll<HTMLElement>('[data-day]').forEach((day) => {
-				const title = day.querySelector<HTMLElement>('[data-day-title]');
-				if (!title) return;
-				const leaving = title.getBoundingClientRect().top < limit - 1;
-				title.toggleAttribute('data-leaving', leaving);
-				day.querySelector('[data-list-rule]')?.toggleAttribute('data-leaving', leaving);
-			});
-		};
-		const onScroll = () => {
-			if (frame) return;
-			frame = window.requestAnimationFrame(syncLeaving);
-		};
-		syncLeaving();
-		window.addEventListener('scroll', onScroll, { passive: true });
-		window.addEventListener('resize', onScroll);
-		return () => {
-			window.removeEventListener('scroll', onScroll);
-			window.removeEventListener('resize', onScroll);
-			if (frame) window.cancelAnimationFrame(frame);
-		};
-	}, [effectiveView, visible.length]);
-
-	useEffect(() => {
 		player.rebindAfterRender();
 		// Intentionally omit `player` so rebind runs on view/filter changes, not every player tick.
 		// eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,4 +1,5 @@
-import type { ConcertEvent, Track } from "./types";
+import { eventTracks, listenMoreItems } from "./events";
+import type { ConcertEvent } from "./types";
 
 const VENUE_ADDRESSES: Record<string, string> = {
   debaser: "Hornstulls Strand 4, 117 39 Stockholm",
@@ -122,19 +123,19 @@ function eventDescription(event: ConcertEvent): string {
     lines.push("Till eventet:");
     lines.push(url);
   }
-  let tracks: Track[] = event.tracks || [];
-  if (!tracks.length) {
-    if (event.bandcamp) tracks = [{ ...event.bandcamp, source: "bandcamp" }];
-    else if (event.soundcloud) tracks = [{ ...event.soundcloud, source: "soundcloud" }];
-  }
-  for (const item of tracks) {
-    const source = item.source === "bandcamp" ? "Bandcamp" : "SoundCloud";
+  for (const item of eventTracks(event)) {
+    const source = item.source === "deezer" ? "Deezer" : item.source === "youtube" ? "YouTube" : "SoundCloud";
     const extra = [item.artist, item.album || item.track].filter(Boolean).join(" — ");
     const itemUrl = (item.url || "").trim();
     if (!itemUrl && !extra) continue;
     lines.push("");
     lines.push(source + (extra ? ": " + extra : ""));
     if (itemUrl) lines.push(itemUrl);
+  }
+  for (const item of listenMoreItems(event)) {
+    lines.push("");
+    lines.push("Hör mer på " + item.source + (item.artist ? ": " + item.artist : ""));
+    lines.push(item.url);
   }
   return lines.join("\n").trim();
 }

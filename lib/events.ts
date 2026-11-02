@@ -47,17 +47,16 @@ function properName(name: string): string {
 export function eventTracks(event?: ConcertEvent | null): Track[] {
   let tracks: Track[] = [];
   if (event && Array.isArray(event.tracks) && event.tracks.length) tracks = event.tracks.slice();
-  else if (event && event.bandcamp && event.bandcamp.band_id && event.bandcamp.album_id) {
-    tracks = [{ source: "bandcamp", ...event.bandcamp }];
-  } else if (event && event.deezer && event.deezer.track_id) {
+  else if (event && event.deezer && event.deezer.track_id) {
     tracks = [{ source: "deezer", ...event.deezer }];
   } else if (event && event.soundcloud && event.soundcloud.track_id) {
     tracks = [{ source: "soundcloud", ...event.soundcloud }];
   } else if (event && event.youtube && event.youtube.video_id) {
     tracks = [{ source: "youtube", ...event.youtube }];
   }
+  tracks = tracks.filter((track) => track.type !== "link" && trackSource(track) !== "bandcamp");
   if (tracks.length < 2) return tracks;
-  // SoundCloud spelas bara när varken Bandcamp eller Deezer finns.
+  // Deezer spelas före SoundCloud. Bandcamp är aldrig en låt i spelaren.
   const rest: Track[] = [];
   const soundcloud: Track[] = [];
   for (const track of tracks) {
@@ -285,15 +284,34 @@ export function trackSourceName(track?: Track | null): string {
   return "";
 }
 
+function storedTracks(event: ConcertEvent): Track[] {
+  if (Array.isArray(event.tracks) && event.tracks.length) return event.tracks;
+  const legacy: Track[] = [];
+  if (event.bandcamp?.url) legacy.push({ source: "bandcamp", ...event.bandcamp });
+  if (event.soundcloud?.url) legacy.push({ source: "soundcloud", ...event.soundcloud });
+  return legacy;
+}
+
 export function listenMoreItems(event: ConcertEvent): { url: string; artist: string; source: string }[] {
+  const ranked = storedTracks(event)
+    .filter((track) => {
+      const src = trackSource(track);
+      return (src === "bandcamp" || src === "soundcloud") && artistExploreUrl(track);
+    })
+    .sort((a, b) => Number(trackSource(a) !== "bandcamp") - Number(trackSource(b) !== "bandcamp"));
   const items: { url: string; artist: string; source: string }[] = [];
-  const seen: Record<string, boolean> = {};
-  eventTracks(event).forEach((track) => {
+  const seenUrl = new Set<string>();
+  const seenArtist = new Set<string>();
+  for (const track of ranked) {
     const url = artistExploreUrl(track);
-    if (!url || seen[url]) return;
-    seen[url] = true;
-    items.push({ url, artist: track.artist || "", source: trackSourceName(track) });
-  });
+    if (!url || seenUrl.has(url)) continue;
+    const artist = track.artist || "";
+    const artistKey = foldLetters(artist);
+    if (artistKey && seenArtist.has(artistKey)) continue;
+    seenUrl.add(url);
+    if (artistKey) seenArtist.add(artistKey);
+    items.push({ url, artist, source: trackSourceName(track) });
+  }
   return items;
 }
 

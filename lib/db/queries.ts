@@ -283,6 +283,33 @@ export async function upsertEvents(runId: number, inputs: EventInput[]): Promise
   await db.batch(statements as unknown as Parameters<typeof db.batch>[0]);
 }
 
+/** Replace tracks for existing events. Does not touch the event row. */
+export async function replaceTracksBatch(groups: { eventId: string; tracks: TrackInput[] }[]): Promise<void> {
+  if (!groups.length) return;
+  const overrideRows = await db
+    .select()
+    .from(trackOverrides)
+    .where(inArray(trackOverrides.eventId, groups.map((group) => group.eventId)));
+  const overridesByEvent = new Map<string, typeof overrideRows>();
+  for (const row of overrideRows) {
+    const list = overridesByEvent.get(row.eventId);
+    if (list) list.push(row);
+    else overridesByEvent.set(row.eventId, [row]);
+  }
+
+  const statements: unknown[] = [];
+  for (const group of groups) {
+    const merged = mergeScrapedTracks(group.tracks, overridesByEvent.get(group.eventId) ?? []);
+    statements.push(db.delete(tracks).where(eq(tracks.eventId, group.eventId)));
+    if (merged.length) {
+      statements.push(
+        db.insert(tracks).values(merged.map((item, index) => trackRow(group.eventId, index, item))),
+      );
+    }
+  }
+  await db.batch(statements as unknown as Parameters<typeof db.batch>[0]);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Bandcamp artist cache                                                       */
 /* -------------------------------------------------------------------------- */
@@ -370,10 +397,23 @@ export async function saveYoutubeVideos(
     });
 }
 
+/** Ids among `ids` that are already stored. A scrape uses this so it only inserts new events. */
+export async function loadExistingEventIds(ids: string[]): Promise<Set<string>> {
+  const found = new Set<string>();
+  const chunk = 200;
+  for (let i = 0; i < ids.length; i += chunk) {
+    const slice = ids.slice(i, i + chunk);
+    if (!slice.length) continue;
+    const rows = await db.select({ id: events.id }).from(events).where(inArray(events.id, slice));
+    for (const row of rows) found.add(row.id);
+  }
+  return found;
+}
+
 /**
  * Demote the active events of a source that did not reappear this run.
- * Only call for sources that actually ran and finished without error, so a
- * failed venue keeps its previously-seen events live.
+ * Not used by the scrape writer: a run only inserts events that are not
+ * already stored, and leaves the existing rows in place.
  */
 export async function reconcileSource(
   sourceKey: string,

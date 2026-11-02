@@ -211,7 +211,7 @@
 	z-index: 0;
 	pointer-events: none;
 	opacity: 0.92;
-	filter: grayscale(1);
+	filter: grayscale(0.45);
 	transition: filter 0.22s ease;
 }
 
@@ -487,10 +487,10 @@
 :global(html[data-theme='light']) .calEvent:global(.hasArt) .calEventLink::after {
 	background: linear-gradient(
 		to bottom,
-		var(--cal-fill) 0%,
-		color-mix(in srgb, var(--cal-fill) 96%, transparent) 42%,
-		color-mix(in srgb, var(--cal-fill) 78%, transparent) 70%,
-		color-mix(in srgb, var(--cal-fill) 42%, transparent) 100%
+		color-mix(in srgb, var(--cal-fill) 78%, transparent) 0%,
+		color-mix(in srgb, var(--cal-fill) 50%, transparent) 36%,
+		color-mix(in srgb, var(--cal-fill) 22%, transparent) 68%,
+		transparent 100%
 	);
 }
 

@@ -1,5 +1,5 @@
 import { BANDCAMP_CACHE_VERSION } from "./bandcamp-match";
-import { bandcampReleaseMatchesArtist, bcTrack, isBandcampSearchBlocked, lookupBandcamp, lookupBandcampUrl } from "./bandcamp";
+import { bandcampReleaseMatchesArtist, isBandcampSearchBlocked, lookupBandcampLink } from "./bandcamp";
 import { lookupSoundcloudArtist, lookupSoundcloudUrl, scTrack } from "./soundcloud";
 import { lookupYoutubeArtist, youtubeDisabled, ytTrack } from "./youtube";
 import { lookupDeezerArtist, dzTrack } from "./deezer";
@@ -46,28 +46,34 @@ export function trackFitsEvent(track: any, artists: string[], title: string): bo
   return words.length >= 2 && words.every((word) => titleWords.has(word));
 }
 
+function bandcampLinkTrack(release: { artist?: string; url?: string } | null | undefined): ScrapedTrack | null {
+  const url = String(release?.url || "").trim();
+  if (!url || !/bandcamp\.com/i.test(url)) return null;
+  return { source: "bandcamp", artist: release?.artist || "", url, type: "link" };
+}
+
+function isLinkTrack(track: ScrapedTrack): boolean {
+  return track.type === "link" || track.source === "bandcamp";
+}
+
 export function applyPrimaryMedia(event: ScrapedEvent, tracks: ScrapedTrack[]): void {
   delete event.bandcamp;
   delete event.soundcloud;
   delete event.youtube;
-  if (!tracks.length) {
+  delete event.deezer;
+  const playable = tracks.filter((item) => !isLinkTrack(item));
+  const links = tracks.filter(isLinkTrack).map((item) =>
+    item.source === "bandcamp" ? bandcampLinkTrack(item) || item : item,
+  );
+  const ordered = [...playable, ...links];
+  if (!ordered.length) {
     delete event.tracks;
     return;
   }
-  event.tracks = tracks;
-  const first = tracks[0];
-  if (first.source === "bandcamp") {
-    event.bandcamp = {
-      artist: first.artist || "",
-      album: first.album || "",
-      track: first.track || "",
-      url: first.url || "",
-      band_id: first.band_id,
-      album_id: first.album_id,
-      track_id: first.track_id,
-      type: first.type || "a",
-    };
-  } else if (first.source === "youtube") {
+  event.tracks = ordered;
+  const first = playable[0];
+  if (!first) return;
+  if (first.source === "youtube") {
     event.youtube = {
       artist: first.artist || "",
       track: first.track || "",
@@ -137,7 +143,6 @@ function trim(value: string): string {
 const DEFAULT_ARTIST_TIMEOUT_MS = 45000;
 
 export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions = {}): Promise<void> {
-  const bc = new Map<string, Release | null>();
   const sc = new Map<string, Release | null>();
   const yt = new Map<string, Release | null>();
   const dz = new Map<string, Release | null>();
@@ -203,7 +208,7 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
     }
     const contextKey = nameKey + "\t" + context;
     if (bcInflight.has(contextKey)) return bcInflight.get(contextKey)!;
-    const promise = withTimeout(lookupBandcamp(person, bc, context, styles), artistTimeoutMs, `bandcamp ${person}`)
+    const promise = withTimeout(lookupBandcampLink(person, context, styles), artistTimeoutMs, `bandcamp ${person}`)
       .catch((err) => {
         warn(String(err));
         return null;
@@ -289,12 +294,7 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
     styles: StyleHint,
   ): Promise<ScrapedTrack | null> => {
     for (const source of sources) {
-      if (source === "bandcamp") {
-        const item = firstMatchingPageTrack(pageTracks, usedPage, person, "bandcamp");
-        if (item) return item;
-        const release = await lookupBandcampFor(person, context, styles);
-        if (release) return bcTrack(release) as ScrapedTrack;
-      } else if (source === "soundcloud") {
+      if (source === "soundcloud") {
         const item = firstMatchingPageTrack(pageTracks, usedPage, person, "soundcloud");
         if (item) return item;
         const release = await lookupSoundcloudFor(person, context, styles);
@@ -319,22 +319,22 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
     const matchesPeople = (item: { artist?: string }) =>
       people.some((person) => sameArtist(person, item.artist || ""));
 
-    if (
-      existing.length &&
+    const playableExisting = existing.filter((item) => !isLinkTrack(item));
+    const alreadyCovered =
+      playableExisting.length > 0 &&
       (interpreted
-        ? people.length > 0 && existing.every(matchesPeople)
-        : !people.length || people.every((person) => existing.some((item) => sameArtist(person, item.artist || ""))))
-    ) {
+        ? people.length > 0 && playableExisting.every(matchesPeople)
+        : !people.length || people.every((person) => playableExisting.some((item) => sameArtist(person, item.artist || ""))));
+
+    if (alreadyCovered) {
       applyPrimaryMedia(event, existing);
-      stats.found += 1;
-      stats.extra += Math.max(0, existing.length - 1);
     } else {
       const [bcLinks, scLinks, spotifyLinks] = await takePageLinks(event);
       const pageTracks: ScrapedTrack[] = [];
       for (const url of bcLinks) {
-        const release = await lookupBandcampUrl(url, bc);
-        if (release) {
-          pageTracks.push(bcTrack(release) as ScrapedTrack);
+        const link = bandcampLinkTrack({ url });
+        if (link) {
+          pageTracks.push(link);
           stats.fromPage += 1;
         }
       }
@@ -356,6 +356,10 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
         people = interpretedPerformers(title, text).filter(isSearchableArtist);
       }
 
+      const playableFor = (person: string) =>
+        tracks.some((item) => !isLinkTrack(item) && sameArtist(person, item.artist || ""));
+      const bandcampLinkFor = (person: string) =>
+        tracks.some((item) => item.source === "bandcamp" && item.artist && sameArtist(person, item.artist));
       const takeUnusedPage = (source: string): ScrapedTrack | null => {
         for (let i = 0; i < pageTracks.length; i++) {
           if (usedPage.has(i) || pageTracks[i].source !== source) continue;
@@ -364,129 +368,146 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
         }
         return null;
       };
-      const addTrack = (item: ScrapedTrack | null | undefined): void => {
-        if (!item) return;
+      const addPlayable = (item: ScrapedTrack | null | undefined): void => {
+        if (!item || isLinkTrack(item)) return;
         const artist = item.artist || "";
-        if (artist && trackArtistSeen(tracks, artist)) return;
+        if (artist && playableFor(artist)) return;
         tracks.push(item);
+      };
+      const addLink = (item: ScrapedTrack | null | undefined): void => {
+        if (!item?.url) return;
+        const artist = item.artist || "";
+        if (item.source === "bandcamp") {
+          if (artist && bandcampLinkFor(artist)) return;
+          if (!artist && tracks.some((entry) => entry.source === "bandcamp" && entry.url === item.url)) return;
+          tracks.push({ source: "bandcamp", artist, url: item.url, type: "link" });
+          return;
+        }
+        if (artist && tracks.some((entry) => entry.type === "link" && entry.source === item.source && sameArtist(artist, entry.artist || ""))) return;
+        tracks.push({ source: item.source, artist, url: item.url, type: "link" });
       };
 
       for (const item of event.tracks || []) {
         if (interpreted && !matchesPeople(item)) continue;
-        addTrack(item);
+        if (isLinkTrack(item)) addLink(item.source === "bandcamp" ? bandcampLinkTrack(item) : item);
+        else addPlayable(item);
+      }
+      for (const item of pageTracks) {
+        if (item.source === "bandcamp") addLink(item);
       }
 
-      // Look up all artists in a phase concurrently, then add in original order
-      // so first-wins dedupe and track order stay deterministic.
-      // Source order: Bandcamp, then Deezer, SoundCloud only if both miss.
-      // A later source is only used for an artist the earlier ones missed.
-      const runPhase = async (sources: string[]): Promise<(ScrapedTrack | null)[]> =>
-        mapPool(people, Math.max(2, people.length), (person) =>
-          tracks.some((item) => sameArtist(person, item.artist || ""))
-            ? Promise.resolve(null)
-            : lookupPerson(person, pageTracks, usedPage, sources, context, styles),
-        );
-      for (const item of await runPhase(["bandcamp"])) addTrack(item);
-      if (!interpreted && !tracks.length) addTrack(takeUnusedPage("bandcamp"));
-      // Spotify fallback: pages (Nalen, Fasching, Hartwig, …) often embed a
-      // Spotify artist/album the normal lookup missed. The public oembed endpoint
-      // gives the authoritative name without credentials; use it as a stronger
-      // search key for Bandcamp. The link itself is kept for the UI.
-      if (!interpreted && !tracks.length && spotifyLinks.length) {
-        const spArtist = spotifyLinks.find((l) => l.kind === "artist");
-        const spAlbum = spotifyLinks.find((l) => l.kind === "album");
-        if (spArtist || spAlbum) event.spotify = (spArtist || spAlbum)!.url;
-        const meta = await spotifyMeta(spArtist || spAlbum!);
-        if (meta?.title) {
-          const already = tracks.some((item) =>
-            sameArtist(meta.title, item.artist || "") || namesMatch(meta.title, item.artist || ""),
-          );
-          if (!already) {
-            const release = await lookupBandcampFor(meta.title, context, styles);
-            if (release) {
-              addTrack(bcTrack(release) as ScrapedTrack);
-              stats.spotifyHits += 1;
-            }
-          }
+      // Deezer is the track we play. SoundCloud fills in only where Deezer misses.
+      // Bandcamp is stored as a link for Hör mer, never as audio.
+      const lookupDeezerFor = async (person: string): Promise<ScrapedTrack | null> => {
+        const nameKey = foldName(person) + styleKey(styles);
+        if (!dzResolved.has(nameKey)) {
+          const release = await withTimeout(
+            lookupDeezerArtist(person, dz, context, styles),
+            artistTimeoutMs,
+            `deezer ${person}`,
+          ).catch((err) => {
+            warn(String(err));
+            return null;
+          });
+          // Only remember a real answer. A timeout must not skip the artist.
+          if (release) dzResolved.set(nameKey, release);
         }
-      }
+        const release = dzResolved.get(nameKey) ?? null;
+        return release ? (dzTrack(release) as ScrapedTrack) : null;
+      };
 
-      // Deezer before SoundCloud. The widget is unreliable, so a preview wins
-      // over a SoundCloud track for any artist the earlier sources missed.
       if (people.length) {
         let deezerHit = false;
-        const deezerItems = await mapPool(people, Math.max(2, people.length), async (person) => {
-          if (tracks.some((item) => sameArtist(person, item.artist || ""))) return null;
-          const nameKey = foldName(person) + styleKey(styles);
-          if (!dzResolved.has(nameKey)) {
-            const release = await withTimeout(
-              lookupDeezerArtist(person, dz, context, styles),
-              artistTimeoutMs,
-              `deezer ${person}`,
-            ).catch((err) => {
-              warn(String(err));
-              return null;
-            });
-            dzResolved.set(nameKey, release);
-          }
-          const release = dzResolved.get(nameKey) ?? null;
-          return release ? (dzTrack(release) as ScrapedTrack) : null;
-        });
+        const deezerItems = await mapPool(people, Math.max(2, people.length), (person) =>
+          playableFor(person) ? Promise.resolve(null) : lookupDeezerFor(person),
+        );
         for (const item of deezerItems) {
           if (!item) continue;
-          addTrack(item);
+          addPlayable(item);
           deezerHit = true;
         }
         if (deezerHit) stats.deezerHits += 1;
       }
 
-      if (people.length) {
-        const soundcloudItems = await mapPool(people, Math.max(2, people.length), (person) =>
-          tracks.some((item) => sameArtist(person, item.artist || "")) || (tracks.length && people.length < 2)
-            ? Promise.resolve(null)
-            : lookupPerson(person, pageTracks, usedPage, ["soundcloud"], context, styles),
-        );
-        for (const item of soundcloudItems) addTrack(item);
-      }
-      if (!interpreted && !tracks.length) addTrack(takeUnusedPage("soundcloud"));
-
-      // YouTube is off unless SCRAPE_YOUTUBE=1. It only runs when Bandcamp,
-      // Deezer and SoundCloud all missed.
-      if (!tracks.length && people.length) {
-        // Skip any artist that the Spotify-metadata step already ruled out, so
-        // a wrong name (e.g. a sentence-like event title) is not searched twice.
-        let spTitle = "";
-        if (spotifyLinks.length) {
-          const spArtist = spotifyLinks.find((l) => l.kind === "artist");
-          const spAlbum = spotifyLinks.find((l) => l.kind === "album");
-          const meta = await spotifyMeta(spArtist || spAlbum!);
-          spTitle = meta?.title || "";
+      // Spotify oembed supplies a cleaner artist name when the title lookup missed.
+      let spotifyTitle = "";
+      if (!interpreted && spotifyLinks.length) {
+        const spArtist = spotifyLinks.find((l) => l.kind === "artist");
+        const spAlbum = spotifyLinks.find((l) => l.kind === "album");
+        if (spArtist || spAlbum) event.spotify = (spArtist || spAlbum)!.url;
+        const meta = await spotifyMeta(spArtist || spAlbum!);
+        spotifyTitle = meta?.title || "";
+        if (spotifyTitle && !playableFor(spotifyTitle) && !tracks.some((item) => !isLinkTrack(item))) {
+          const item = await lookupDeezerFor(spotifyTitle);
+          if (item) {
+            addPlayable(item);
+            stats.spotifyHits += 1;
+            stats.deezerHits += 1;
+          }
         }
-        const ytPeople = spTitle
-          ? people.filter((person) => !sameArtist(person, spTitle) && !namesMatch(person, spTitle))
+      }
+
+      if (people.length) {
+        const bandcampLinks = await mapPool(people, Math.max(2, people.length), (person) =>
+          bandcampLinkFor(person)
+            ? Promise.resolve(null)
+            : lookupBandcampFor(person, context, styles).then((release) => bandcampLinkTrack(release)),
+        );
+        for (const item of bandcampLinks) addLink(item);
+      }
+      if (spotifyTitle && !bandcampLinkFor(spotifyTitle)) {
+        addLink(bandcampLinkTrack(await lookupBandcampFor(spotifyTitle, context, styles)));
+      }
+
+      if (people.length) {
+        const soundcloudItems = await mapPool(people, Math.max(2, people.length), async (person) => {
+          const playing = playableFor(person);
+          if (playing && bandcampLinkFor(person)) return null;
+          if (!playing && tracks.some((item) => !isLinkTrack(item) && item.source === "soundcloud" && sameArtist(person, item.artist || ""))) {
+            return null;
+          }
+          const item = await lookupPerson(person, pageTracks, usedPage, ["soundcloud"], context, styles);
+          if (!item) return null;
+          if (playing) return { source: "soundcloud", artist: item.artist || person, url: item.url || "", type: "link" } as ScrapedTrack;
+          return item;
+        });
+        for (const item of soundcloudItems) {
+          if (!item) continue;
+          if (item.type === "link") addLink(item);
+          else addPlayable(item);
+        }
+      }
+      if (!interpreted && !tracks.some((item) => !isLinkTrack(item))) addPlayable(takeUnusedPage("soundcloud"));
+
+      // YouTube is off unless SCRAPE_YOUTUBE=1, and only when nothing is playable.
+      if (!tracks.some((item) => !isLinkTrack(item)) && people.length) {
+        const ytPeople = spotifyTitle
+          ? people.filter((person) => !sameArtist(person, spotifyTitle) && !namesMatch(person, spotifyTitle))
           : people;
         const youtubeItems = await mapPool(ytPeople, 2, (person) =>
-          tracks.some((item) => sameArtist(person, item.artist || ""))
+          playableFor(person)
             ? Promise.resolve(null)
             : lookupYoutubeFor(person, context).then((release) =>
                 release ? (ytTrack(release) as ScrapedTrack) : null,
               ),
         );
-        for (const item of youtubeItems) addTrack(item);
-        if (tracks.length) stats.youtubeHits += 1;
+        for (const item of youtubeItems) addPlayable(item);
+        if (tracks.some((item) => item.source === "youtube")) stats.youtubeHits += 1;
       }
 
       applyPrimaryMedia(event, tracks);
-      if (tracks.length) {
-        stats.found += 1;
-        stats.extra += Math.max(0, tracks.length - 1);
-      }
+    }
+
+    const playableCount = (event.tracks || []).filter((item) => !isLinkTrack(item)).length;
+    if (playableCount) {
+      stats.found += 1;
+      stats.extra += Math.max(0, playableCount - 1);
     }
 
     done += 1;
     if (!quiet) {
       const n = `(${done}/${total})`;
-      const count = (event.tracks || []).length;
+      const count = (event.tracks || []).filter((item) => !isLinkTrack(item)).length;
       if (count) log(`♪ ${n} ${trim(event.title)} → ${count} spår`);
       else log(`· ${n} ${trim(event.title)}`);
     }

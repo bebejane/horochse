@@ -1,7 +1,9 @@
 @use "../styles/mediaqueries" as *;
 
-.week + .week {
-	padding-top: 2rem;
+/* Contains the last day's margin, so the sticky heading stays put until the
+   next week arrives. A collapsed margin lets the heading slip under the mast. */
+.weekGroup {
+	display: flow-root;
 }
 
 .weekHead {
@@ -27,6 +29,7 @@
 }
 
 .weekHeadTitle {
+	min-width: 0;
 	font-size: clamp(1.35rem, 2.4vw, 1.85rem);
 	font-weight: var(--william-regular);
 	letter-spacing: -0.02em;
@@ -65,8 +68,6 @@
 	grid-template-columns: var(--title-col) minmax(0, 1fr);
 	column-gap: var(--title-gap);
 	align-items: start;
-	/* Between days, outside the sticky box, so the date and the rule
-	   release together instead of leaving a gap the cards show through. */
 	margin-bottom: 2.4rem;
 }
 
@@ -135,9 +136,6 @@
 		display: block;
 		position: sticky;
 		top: calc(var(--mast-height) + var(--week-head, 4.5rem));
-		/* Same height as the date, and no negative margin: a shorter rule
-		   (or a negative margin) stays stuck after the date has started
-		   to leave, and the cards show through the gap. */
 		height: var(--day-title, 4.6rem);
 		border-top: 1px solid var(--ink);
 		background: linear-gradient(
@@ -148,14 +146,6 @@
 		box-shadow: 0 -0.4rem 0 var(--bg);
 		z-index: 4;
 		pointer-events: none;
-	}
-
-	:global(body:not(.isCalendar)) .dayTitle[data-leaving] {
-		visibility: hidden;
-	}
-
-	:global(body:not(.isCalendar)) .listRule[data-leaving] {
-		background: var(--bg);
 	}
 
 	:global(body:not(.isCalendar)) .list > [data-list-rule] + [data-card] {

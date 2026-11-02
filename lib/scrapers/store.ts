@@ -21,8 +21,8 @@ import type { EventInput, SourceInput, VenueInput } from "@/lib/db/queries";
 import {
   finishScrapeRun,
   loadBandcampArtists,
+  loadExistingEventIds,
   loadYoutubeVideos,
-  reconcileSource,
   recordScrapeErrors,
   saveBandcampArtists,
   saveYoutubeVideos,
@@ -156,7 +156,7 @@ export async function scrapeAndStore(opts: CollectOptions = {}): Promise<StoreSu
     if (youtubeCache.size) log(`DB: ${youtubeCache.size} youtube-videor i cache`);
 
     const result = await collect({ ...opts, bandcampCache, bandcampUpdates, youtubeCache, youtubeUpdates });
-    const { events, provenance, okSources, errors } = result;
+    const { events, provenance, errors } = result;
 
     if (bandcampUpdates.size) {
       await saveBandcampArtists(bandcampUpdates);
@@ -173,10 +173,17 @@ export async function scrapeAndStore(opts: CollectOptions = {}): Promise<StoreSu
     await upsertSources(sourceRows);
     log(`DB: ${venueRows.length} scener, ${sourceRows.length} källor seedade`);
 
-    // Upsert per source so reconciliation can be scoped and only for sources
-    // that finished cleanly (a failed venue keeps its previous events live).
+    // A run only inserts concerts that are not already stored — typically the
+    // week that just entered the window. Rows already in the database are left
+    // as they are, including their tracks.
+    const existing = await loadExistingEventIds(events.map((event) => event.id));
+    const fresh = events.filter((event) => !existing.has(event.id));
+    log(
+      `DB: ${fresh.length} nya event, ${events.length - fresh.length} redan lagrade lämnas orörda`,
+    );
+
     const bySource = new Map<string, ScrapedEvent[]>();
-    for (const event of events) {
+    for (const event of fresh) {
       const source = provenance[event.id];
       if (!source) continue;
       const list = bySource.get(source);
@@ -192,13 +199,9 @@ export async function scrapeAndStore(opts: CollectOptions = {}): Promise<StoreSu
       );
       stored += batch.length;
     }
-    log(`DB: ${stored} event upsertade från ${bySource.size} källor`);
+    log(`DB: ${stored} event tillagda från ${bySource.size} källor`);
 
     const reconciled: Record<string, number> = {};
-    for (const source of okSources) {
-      const seenIds = (bySource.get(source) ?? []).map((event) => event.id);
-      reconciled[source] = await reconcileSource(source, seenIds);
-    }
 
     await recordScrapeErrors(runId, errors);
     const ok = Object.keys(errors).length === 0;

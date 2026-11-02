@@ -40,6 +40,10 @@
 	min-width: 0;
 }
 
+.nowplayingMeta:not(:has(.nowplayingArt)) {
+	grid-template-columns: minmax(0, 1fr);
+}
+
 .nowplayingMain {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto auto;

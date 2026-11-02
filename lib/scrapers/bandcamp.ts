@@ -305,6 +305,49 @@ export async function findBandcampAlbumForArtist(
   return null;
 }
 
+/**
+ * Artist- or album-page URL for "Hör mer". Search only — no tralbum fetch,
+ * because that call no longer returns audio we can play.
+ */
+export async function lookupBandcampLink(
+  query: string,
+  context = "",
+  styles?: StyleHint,
+): Promise<{ artist: string; url: string } | null> {
+  query = cleanPersonName(query) || query;
+  const hint = styles ?? eventStyles("", context);
+  const started = Date.now();
+  try {
+    const rows = await searchBandcampRowsAsync(query, "artist");
+    const hits = await searchBandcampArtists(query, rows);
+    const scored = hits
+      .filter((band) => band.url)
+      .map((band) => ({
+        band,
+        align: styleAlignment(band.genre, band.tags, hint) + placeScore(band.location || "", context),
+      }));
+    scored.sort((a, b) => bandcampNameScore(query, b.band.name) - bandcampNameScore(query, a.band.name) || b.align - a.align);
+    const best = scored[0];
+    if (best?.band.url) {
+      console.log(`bandcamp-länk (${query}): ${best.band.url} (${secs(started)})`);
+      return { artist: best.band.name, url: best.band.url };
+    }
+    const releases = await searchBandcampReleasesForArtist(query, rows);
+    const row = releases[0];
+    const url = String(row?.item_url_path || "").trim();
+    const artist = String(row?.band_name || "").trim();
+    if (url && artist && bandcampNameScore(query, artist)) {
+      console.log(`bandcamp-länk (${query}): ${url} (${secs(started)})`);
+      return { artist, url };
+    }
+    if (!isBandcampSearchBlocked()) console.log(`bandcamp-länk (${query}): ingen (${secs(started)})`);
+    return null;
+  } catch (exc) {
+    console.error(`bandcamp-länk (${query}):`, exc);
+    return null;
+  }
+}
+
 export async function lookupBandcampUrl(url: string, cache: Map<string, Release | null>): Promise<Release | null> {
   const key = "url:" + String(url || "").split("?")[0].replace(/\/+$/, "").toLowerCase();
   if (cache.has(key)) return cache.get(key) ?? null;

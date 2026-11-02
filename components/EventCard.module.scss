@@ -164,19 +164,23 @@
 	letter-spacing: 0;
 }
 
-.card:has(.cardTitleLink:is(:hover, :focus-visible), .cardRead:is(:hover, :focus-visible)) .meta > :not(.metaHint) {
+.card:has(.cardRead:hover, .cardTitleLink:hover) .meta > :not(.metaHint),
+.card:has(.cardRead:focus-visible, .cardTitleLink:focus-visible):not(:has([data-listen-more]:hover)) .meta > :not(.metaHint) {
 	visibility: hidden;
 }
 
-.card:has(.cardTitleLink:is(:hover, :focus-visible), .cardRead:is(:hover, :focus-visible)) .metaRead {
+.card:has(.cardRead:hover, .cardTitleLink:hover) .metaRead,
+.card:has(.cardRead:focus-visible, .cardTitleLink:focus-visible):not(:has([data-listen-more]:hover)) .metaRead {
 	display: flex;
 }
 
-.card:has([data-listen-more]:is(:hover, :focus-within)):not(:has([data-listen-more][data-open])) .meta > :not(.metaHint) {
+.card:has([data-listen-more]:hover):not(:has([data-listen-more][data-open], .cardRead:hover, .cardTitleLink:hover)) .meta > :not(.metaHint),
+.card:has([data-listen-more]:focus-within):not(:has([data-listen-more][data-open], .cardRead:hover, .cardTitleLink:hover, [data-listen-more]:hover)) .meta > :not(.metaHint) {
 	visibility: hidden;
 }
 
-.card:has([data-listen-more]:is(:hover, :focus-within)):not(:has([data-listen-more][data-open])) .metaListen {
+.card:has([data-listen-more]:hover):not(:has([data-listen-more][data-open], .cardRead:hover, .cardTitleLink:hover)) .metaListen,
+.card:has([data-listen-more]:focus-within):not(:has([data-listen-more][data-open], .cardRead:hover, .cardTitleLink:hover, [data-listen-more]:hover)) .metaListen {
 	display: flex;
 }
 

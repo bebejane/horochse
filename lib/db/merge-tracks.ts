@@ -22,6 +22,14 @@ function keyOf(item: TrackInput): string {
   return trackArtistKey(item.artist, item.title, item.url);
 }
 
+/** One playable track per artist, plus a separate link (Bandcamp / SoundCloud). */
+function trackIdentity(item: TrackInput): string {
+  const name = keyOf(item);
+  if (!name) return "";
+  const kind = item.source === "bandcamp" || item.type === "link" ? "link:" + (item.source || "") : "play";
+  return kind + ":" + name;
+}
+
 /** Slå ihop skrapade låtar med manuella byten och borttagningar. */
 export function mergeScrapedTracks(scraped: TrackInput[], overrides: TrackOverrideInput[]): TrackInput[] {
   const removed = new Set(
@@ -32,7 +40,9 @@ export function mergeScrapedTracks(scraped: TrackInput[], overrides: TrackOverri
 
   for (const row of overrides) {
     if (!row.artistKey) continue;
-    blocked.add(row.artistKey);
+    // A Bandcamp choice is the Hör mer link. It must not replace the playable track.
+    const bandcampLink = row.source === "bandcamp";
+    if (row.action === "remove" || !bandcampLink) blocked.add(row.artistKey);
     if (row.action !== "replace" || !row.source) continue;
     const item: TrackInput = {
       source: row.source,
@@ -41,11 +51,11 @@ export function mergeScrapedTracks(scraped: TrackInput[], overrides: TrackOverri
       title: row.title ?? null,
       url: row.url ?? null,
       image: row.image ?? null,
-      bandId: row.bandId ?? null,
-      albumId: row.albumId ?? null,
-      trackId: row.trackId ?? null,
+      bandId: bandcampLink ? null : row.bandId ?? null,
+      albumId: bandcampLink ? null : row.albumId ?? null,
+      trackId: bandcampLink ? null : row.trackId ?? null,
       videoId: row.videoId ?? null,
-      type: row.type ?? null,
+      type: bandcampLink ? "link" : row.type ?? null,
     };
     const key = keyOf(item);
     if (key && removed.has(key)) continue;
@@ -63,7 +73,7 @@ export function dedupeTracks(items: TrackInput[]): TrackInput[] {
   const seen = new Set<string>();
   const out: TrackInput[] = [];
   for (const item of items) {
-    const key = keyOf(item);
+    const key = trackIdentity(item);
     if (key && seen.has(key)) continue;
     if (key) seen.add(key);
     out.push(item);

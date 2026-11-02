@@ -113,7 +113,7 @@ export function ListView({
 	return (
 		<>
 			{groupEventsByWeek(events).map((group, index) => (
-				<div key={group.key}>
+				<div className={s.weekGroup} key={group.key}>
 					<WeekHead
 						title={weekTitle(group.key, group.days)}
 						weekKey={group.key}

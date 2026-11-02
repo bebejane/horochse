@@ -1,9 +1,10 @@
-// Deezer — preview source, preferred over SoundCloud.
+// Deezer — the playable track. A 30 s preview is enough.
 //
 // Deezer's public API needs no credentials and every track row carries a
-// streamable ~30 s MP3 `preview`. Bandcamp is tried first. Deezer is next,
-// and SoundCloud only if both miss. The track is marked `preview: true` so the
-// UI can present it as a förhandslyssning rather than a full track.
+// streamable ~30 s MP3 `preview`. It is the first choice for playback.
+// SoundCloud is only used when Deezer misses. Bandcamp is a "Hör mer" link,
+// never a track we play. The track is marked `preview: true` so the UI can
+// present it as a förhandslyssning rather than a full track.
 //
 // Matching is strict, same as YouTube: Deezer returns something for almost any
 // query, so a wrong track is worse than no track. The candidate's artist must
@@ -52,8 +53,9 @@ export async function searchDeezer(query: string): Promise<DeezerMatch[]> {
     "https://api.deezer.com/search?q=" + encodeURIComponent(query) + "&limit=25",
     { extraHeaders: { Accept: "application/json" }, timeoutMs: 15000 },
   );
-  const data = JSON.parse(raw) as { data?: any[] };
-  return matchesFromRows(data?.data || []);
+  const data = JSON.parse(raw) as { data?: any[]; error?: { message?: string } };
+  if (data.error) throw new Error(data.error.message || "Deezer-svar utan träfflista");
+  return matchesFromRows(data.data || []);
 }
 
 function matchesFromRows(
@@ -84,7 +86,9 @@ async function deezerJson<T>(path: string): Promise<T> {
     extraHeaders: { Accept: "application/json" },
     timeoutMs: 15000,
   });
-  return JSON.parse(raw) as T;
+  const data = JSON.parse(raw) as T & { error?: { message?: string } };
+  if (data.error) throw new Error(data.error.message || "Deezer-svar utan träfflista");
+  return data;
 }
 
 function bestDeezerMatch(matches: DeezerMatch[], artist: string): DeezerMatch | undefined {
@@ -210,9 +214,9 @@ export async function lookupDeezerArtist(
     };
     cache.set(key, release);
     return release;
-  } catch {
-    // Network failure is not a definitive miss — don't poison the cache.
-    return null;
+  } catch (err) {
+    // A quota or network failure is not a miss. Callers can retry.
+    throw err;
   }
 }
 
