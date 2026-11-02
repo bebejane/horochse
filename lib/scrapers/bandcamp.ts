@@ -1,8 +1,10 @@
 import { httpJson, httpRequest, HttpError } from "./http";
 import { parseBcDate } from "./dates";
 import { parseBandcampIds } from "./links";
-import { albumTitleScore, cleanPersonName, cluesCacheKey, eventLookupClues, foldName, nameWords, namesMatch, sameArtist } from "./text";
+import { albumTitleScore, cleanPersonName, cluesCacheKey, eventLookupClues, foldName, nameWords } from "./text";
 import { eventStyles, placeScore, styleAlignment, styleKey, type StyleHint } from "./style";
+
+import { bandcampNameScore } from "./bandcamp-match";
 
 type Release = Record<string, any>;
 
@@ -47,12 +49,12 @@ export async function searchBandcampRowsAsync(query: string, searchFilter: strin
   }
 }
 
-export async function searchBandcampArtists(query: string, allowFolded = false): Promise<any[]> {
+export async function searchBandcampArtists(query: string, rows?: any[]): Promise<any[]> {
   const hits: any[] = [];
-  for (const row of await searchBandcampRowsAsync(query, "artist")) {
+  for (const row of (rows ?? await searchBandcampRowsAsync(query, "artist"))) {
     if (row.type !== "b" || row.is_label) continue;
     const name = row.name || "";
-    if (!namesMatch(query, name, allowFolded)) continue;
+    if (!bandcampNameScore(query, name)) continue;
     hits.push({
       name,
       band_id: row.id,
@@ -65,29 +67,40 @@ export async function searchBandcampArtists(query: string, allowFolded = false):
   return hits;
 }
 
-export async function bandcampRowMatchesArtist(query: string, row: any): Promise<boolean> {
-  if (row.is_label) return false;
-  const bandName = row.band_name || "";
-  const name = row.name || "";
-  if (row.type === "b") return Boolean(name) && (namesMatch(query, name) || sameArtist(query, name));
-  return Boolean(bandName) && (namesMatch(query, bandName) || sameArtist(query, bandName));
+function suspiciousReleaseTitle(title: string): boolean {
+  return /\b(?:bootlegs?|karaoke|tribute|instrumental covers|covers of|alternate (?:single|versions?)|no .{1,40} leads? version)\b|\([^)]*\bcover\)/i.test(title);
 }
 
-export async function searchBandcampReleasesForArtist(query: string): Promise<any[]> {
+export function bandcampReleaseMatchesArtist(query: string, release: Release): boolean {
+  return Boolean(bandcampNameScore(query, release.artist || "")) &&
+    !suspiciousReleaseTitle([release.album || "", release.track || ""].join(" "));
+}
+
+export async function bandcampRowMatchesArtist(query: string, row: any): Promise<boolean> {
+  if (row.is_label) return false;
+  if (row.type !== "b" && suspiciousReleaseTitle([row.name || "", row.album_name || ""].join(" "))) return false;
+  const bandName = row.band_name || "";
+  const name = row.name || "";
+  if (row.type === "b") return Boolean(name) && Boolean(bandcampNameScore(query, name));
+  return Boolean(bandName) && Boolean(bandcampNameScore(query, bandName));
+}
+
+export async function searchBandcampReleasesForArtist(query: string, initialRows?: any[]): Promise<any[]> {
   const seen = new Set<string>();
   const hits: any[] = [];
-  for (const searchFilter of ["album", ""]) {
-    for (const row of await searchBandcampRowsAsync(query, searchFilter)) {
+  for (const searchFilter of ["artist", "album", ""]) {
+    const rows = searchFilter === "artist" ? (initialRows ?? []) : await searchBandcampRowsAsync(query, searchFilter);
+    for (const row of rows) {
       if (row.type !== "a" && row.type !== "t") continue;
       if (!(await bandcampRowMatchesArtist(query, row))) continue;
-      const rowKey = [String(row.band_id || ""), String(row.album_id || row.id || ""), String(row.type || "")].join(":");
+      const rowKey = [String(row.band_id || ""), String(row.id || ""), String(row.type || "")].join(":");
       if (seen.has(rowKey)) continue;
       seen.add(rowKey);
       hits.push(row);
     }
     if (hits.length) break;
   }
-  hits.sort((a, b) => (a.type === "a" ? 0 : 1) - (b.type === "a" ? 0 : 1));
+  hits.sort((a, b) => bandcampNameScore(query, b.band_name) - bandcampNameScore(query, a.band_name) || (a.type === "a" ? 0 : 1) - (b.type === "a" ? 0 : 1));
   return hits;
 }
 
@@ -97,9 +110,6 @@ export async function releaseFromBandcampSearchRow(row: any, cache: Map<string, 
   let itemType: string;
   if (row.type === "a") {
     itemId = row.id;
-    itemType = "a";
-  } else if (row.album_id) {
-    itemId = row.album_id;
     itemType = "a";
   } else {
     itemId = row.id;
@@ -267,8 +277,7 @@ export async function findBandcampAlbumForArtist(
     seenQ.add(key);
     for (const row of await searchBandcampRowsAsync(query, "album")) {
       if (row.type !== "a" && row.type !== "t") continue;
-      const bandName = row.band_name || "";
-      if (!(namesMatch(artist, bandName) || sameArtist(artist, bandName))) continue;
+      if (!(await bandcampRowMatchesArtist(artist, row))) continue;
       const albumName = row.album_name || row.name || "";
       const trackName = row.type === "t" ? row.name || "" : "";
       let score = 0;
@@ -291,7 +300,7 @@ export async function findBandcampAlbumForArtist(
   ranked.sort((a, b) => b[0] - a[0]);
   for (const [, row] of ranked) {
     const release = await releaseFromBandcampSearchRow(row, cache);
-    if (release) return release;
+    if (release && bandcampReleaseMatchesArtist(artist, release)) return release;
   }
   return null;
 }
@@ -362,8 +371,8 @@ export async function lookupBandcamp(
         return release;
       }
     }
-    let hits = await searchBandcampArtists(query);
-    if (!hits.length) hits = await searchBandcampArtists(query, true);
+    const searchRows = await searchBandcampRowsAsync(query, "artist");
+    const hits = await searchBandcampArtists(query, searchRows);
     const scored = hits.map((band) => ({
       band,
       // Genre from the search row, so a clashing namesake is dropped before we
@@ -371,15 +380,15 @@ export async function lookupBandcamp(
       align:
         styleAlignment(band.genre, band.tags, hint) + placeScore(band.location || "", context),
     }));
-    scored.sort((a, b) => b.align - a.align);
-    const bestAlign = scored[0]?.align ?? 0;
+    scored.sort((a, b) => bandcampNameScore(query, b.band.name) - bandcampNameScore(query, a.band.name) || b.align - a.align);
+    const bestAlign = Math.max(0, ...scored.map(item => item.align));
     const viable = scored.filter((item) => item.align >= 0 || item.align === bestAlign).slice(0, 4);
     let best: Release | null = null;
-    let bestTuple: [number, number] | null = null;
+    let bestTuple: [number, number, number] | null = null;
     for (const { band, align } of viable) {
       const details = await bandcampDetails(band.band_id);
       const release = await latestFromBand(band, details);
-      if (!release) continue;
+      if (!release || !bandcampReleaseMatchesArtist(query, release)) continue;
       const about = String(release.about || "");
       delete release.about;
       const blob = [
@@ -393,8 +402,8 @@ export async function lookupBandcamp(
       ].join(" ");
       const clueScore = scoreTextAgainstClues(blob, clues, context, ignore) + placeScore(blob, context);
       const when = parseBcDate(release.released || "").toMillis();
-      const rank: [number, number] = [align + clueScore, when];
-      if (best === null || rank[0] > bestTuple![0] || (rank[0] === bestTuple![0] && rank[1] > bestTuple![1])) {
+      const rank: [number, number, number] = [bandcampNameScore(query, release.artist), align + clueScore, Number.isFinite(when) ? when : 0];
+      if (best === null || rank[0] > bestTuple![0] || (rank[0] === bestTuple![0] && (rank[1] > bestTuple![1] || (rank[1] === bestTuple![1] && rank[2] > bestTuple![2])))) {
         best = release;
         bestTuple = rank;
       }
@@ -404,7 +413,7 @@ export async function lookupBandcamp(
       cache.set(key, best);
       return best;
     }
-    const releaseRows = (await searchBandcampReleasesForArtist(query)).map((row) => ({
+    const releaseRows = (await searchBandcampReleasesForArtist(query, searchRows)).map((row) => ({
       row,
       align: styleAlignment(
         String(row.genre_name || ""),
@@ -416,8 +425,7 @@ export async function lookupBandcamp(
     const bestRow = releaseRows[0]?.align ?? 0;
     for (const { row } of releaseRows.filter((item) => item.align >= 0 || item.align === bestRow).slice(0, 4)) {
       const release = await releaseFromBandcampSearchRow(row, cache);
-      const artist = release?.artist || "";
-      if (release && (sameArtist(query, artist) || namesMatch(query, artist))) {
+      if (release && bandcampReleaseMatchesArtist(query, release)) {
         console.log(`bandcamp (${query}): ${release.album || release.track} via album-sökning (${secs(started)})`);
         cache.set(key, release);
         return release;

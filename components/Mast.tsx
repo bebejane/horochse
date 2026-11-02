@@ -1051,33 +1051,33 @@ export function MastSymbol({ lockupRef }: { lockupRef?: Ref<HTMLSpanElement> }) 
 				<path
 					d={SYMBOL_OUTLINE}
 					fill='none'
-					stroke='#eee'
+					stroke='#faf6f0'
 					strokeLinecap='round'
 					strokeLinejoin='round'
 					strokeWidth='18'
 				/>
 				<g data-mast-eye>
-					<circle cx={EYE_CX} cy={EYE_CY} r='95.6' fill='#eee' stroke='#eee' strokeWidth='18' />
-					<ellipse cx='232.8' cy={EYE_CY} rx='45.3' ry='64.7' fill='#111' />
+					<circle cx={EYE_CX} cy={EYE_CY} r='95.6' fill='#faf6f0' stroke='#faf6f0' strokeWidth='18' />
+					<ellipse cx='232.8' cy={EYE_CY} rx='45.3' ry='64.7' fill='#0e0c0a' />
 				</g>
 			</svg>
 			<svg className='mastSymbol mastSymbolLight' viewBox='0 0 364.1 601.6' aria-hidden='true'>
 				<path
 					d={SYMBOL_OUTLINE}
 					fill='none'
-					stroke='#111'
+					stroke='#101010'
 					strokeLinecap='round'
 					strokeLinejoin='round'
 					strokeWidth='21.6'
 				/>
 				<g data-mast-eye>
-					<ellipse cx='236.8' cy={EYE_CY} rx='41.3' ry='58.9' fill='#111' />
+					<ellipse cx='236.8' cy={EYE_CY} rx='41.3' ry='58.9' fill='#101010' />
 					<circle
 						cx={EYE_CX}
 						cy={EYE_CY}
 						r='95.6'
 						fill='none'
-						stroke='#111'
+						stroke='#101010'
 						strokeLinecap='round'
 						strokeLinejoin='round'
 						strokeWidth='21.6'

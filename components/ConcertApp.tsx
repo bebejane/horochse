@@ -294,15 +294,29 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 				Math.ceil(heads.getBoundingClientRect().height) + 'px',
 			);
 		}
-		const weekHead = document.querySelector<HTMLElement>('[data-week-head]');
-		if (weekHead) {
-			document.documentElement.style.setProperty(
-				'--week-head',
-				Math.ceil(weekHead.getBoundingClientRect().height) + 'px',
-			);
+		const weekHeads = document.querySelectorAll<HTMLElement>('[data-week-head]');
+		if (weekHeads.length) {
+			// Each week sticks its dates just under its own header. A single
+			// global height (the first, often taller, header) leaves a gap
+			// under shorter headers when the date snaps, and the cards show through.
+			let tallest = 0;
+			weekHeads.forEach((head) => {
+				const height = head.getBoundingClientRect().height;
+				if (height < 1) return;
+				tallest = Math.max(tallest, height);
+				head.parentElement?.style.setProperty('--week-head', height + 'px');
+			});
+			if (tallest) root.style.setProperty('--week-head', tallest + 'px');
 		} else {
-			document.documentElement.style.removeProperty('--week-head');
+			root.style.removeProperty('--week-head');
 		}
+		const dayTitles = document.querySelectorAll<HTMLElement>('[data-day-title]');
+		let dayTitleHeight = 0;
+		dayTitles.forEach((title) => {
+			dayTitleHeight = Math.max(dayTitleHeight, title.getBoundingClientRect().height);
+		});
+		if (dayTitleHeight) root.style.setProperty('--day-title', dayTitleHeight + 'px');
+		else root.style.removeProperty('--day-title');
 		const bar = document.getElementById('nowplaying');
 		let height = 0;
 		if (bar && !bar.hidden && bar.classList.contains('isOn')) {
@@ -311,12 +325,13 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 		document.documentElement.style.setProperty('--player-height', height + 'px');
 	}, []);
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		syncLayout();
 		const mast = document.querySelector<HTMLElement>('[data-mast]');
 		const bar = document.getElementById('nowplaying');
 		const heads = document.querySelector<HTMLElement>('[data-cal-heads]');
-		const weekHead = document.querySelector<HTMLElement>('[data-week-head]');
+		const weekHeads = document.querySelectorAll<HTMLElement>('[data-week-head]');
+		const dayTitle = document.querySelector<HTMLElement>('[data-day-title]');
 		const ro = window.ResizeObserver ? new ResizeObserver(syncLayout) : null;
 		if (ro && mast) ro.observe(mast);
 		const mastBar = mast?.querySelector<HTMLElement>('[data-mast-bar]');
@@ -325,13 +340,49 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 		if (ro && mastTools) ro.observe(mastTools);
 		if (ro && bar) ro.observe(bar);
 		if (ro && heads) ro.observe(heads);
-		if (ro && weekHead) ro.observe(weekHead);
+		weekHeads.forEach((head) => ro?.observe(head));
+		if (ro && dayTitle) ro.observe(dayTitle);
 		window.addEventListener('resize', syncLayout);
 		return () => {
 			window.removeEventListener('resize', syncLayout);
 			ro?.disconnect();
 		};
 	}, [syncLayout, effectiveView, calStyle, player.barOn, visible.length, pickerOpen]);
+
+	useEffect(() => {
+		if (effectiveView !== 'list') return;
+		let frame = 0;
+		const syncLeaving = () => {
+			frame = 0;
+			const mast =
+				parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mast-height')) || 0;
+			let limit = mast;
+			document.querySelectorAll<HTMLElement>('[data-week-head]').forEach((head) => {
+				const box = head.getBoundingClientRect();
+				if (box.bottom <= mast + 1 || box.top > limit) return;
+				limit = Math.max(limit, box.bottom);
+			});
+			document.querySelectorAll<HTMLElement>('[data-day]').forEach((day) => {
+				const title = day.querySelector<HTMLElement>('[data-day-title]');
+				if (!title) return;
+				const leaving = title.getBoundingClientRect().top < limit - 1;
+				title.toggleAttribute('data-leaving', leaving);
+				day.querySelector('[data-list-rule]')?.toggleAttribute('data-leaving', leaving);
+			});
+		};
+		const onScroll = () => {
+			if (frame) return;
+			frame = window.requestAnimationFrame(syncLeaving);
+		};
+		syncLeaving();
+		window.addEventListener('scroll', onScroll, { passive: true });
+		window.addEventListener('resize', onScroll);
+		return () => {
+			window.removeEventListener('scroll', onScroll);
+			window.removeEventListener('resize', onScroll);
+			if (frame) window.cancelAnimationFrame(frame);
+		};
+	}, [effectiveView, visible.length]);
 
 	useEffect(() => {
 		player.rebindAfterRender();

@@ -65,6 +65,9 @@
 	grid-template-columns: var(--title-col) minmax(0, 1fr);
 	column-gap: var(--title-gap);
 	align-items: start;
+	/* Between days, outside the sticky box, so the date and the rule
+	   release together instead of leaving a gap the cards show through. */
+	margin-bottom: 2.4rem;
 }
 
 .dayTitle {
@@ -104,9 +107,9 @@
 	display: grid;
 	gap: 1rem;
 	padding-top: 0.85rem;
-	padding-bottom: 2.4rem;
 	border-top: 1px solid var(--line);
 	min-width: 0;
+	--day-rule: 0.85rem;
 }
 
 .listRule {
@@ -114,11 +117,8 @@
 }
 
 :global(body:not(.isCalendar)) .day:global(.isWeekStart) {
+	margin-bottom: 0.85rem;
 	scroll-margin-top: calc(var(--mast-height) + var(--week-head, 4.5rem));
-}
-
-:global(body:not(.isCalendar)) .day:global(.isWeekStart) .list {
-	padding-bottom: 0.85rem;
 }
 
 :global(body:not(.isCalendar)) .list {
@@ -135,13 +135,31 @@
 		display: block;
 		position: sticky;
 		top: calc(var(--mast-height) + var(--week-head, 4.5rem));
-		height: 0.85rem;
-		margin-bottom: -1rem;
+		/* Same height as the date, and no negative margin: a shorter rule
+		   (or a negative margin) stays stuck after the date has started
+		   to leave, and the cards show through the gap. */
+		height: var(--day-title, 4.6rem);
 		border-top: 1px solid var(--ink);
-		background: var(--bg);
+		background: linear-gradient(
+			var(--bg),
+			var(--bg) var(--day-rule),
+			transparent var(--day-rule)
+		);
 		box-shadow: 0 -0.4rem 0 var(--bg);
 		z-index: 4;
 		pointer-events: none;
+	}
+
+	:global(body:not(.isCalendar)) .dayTitle[data-leaving] {
+		visibility: hidden;
+	}
+
+	:global(body:not(.isCalendar)) .listRule[data-leaving] {
+		background: var(--bg);
+	}
+
+	:global(body:not(.isCalendar)) .list > [data-list-rule] + [data-card] {
+		margin-top: calc(-1 * var(--day-title, 4.6rem) - 1rem + var(--day-rule));
 	}
 }
 

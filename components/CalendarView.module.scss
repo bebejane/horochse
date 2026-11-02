@@ -161,8 +161,8 @@
 .calEvent [data-play] {
 	width: 1.85rem;
 	height: 1.85rem;
-	background: rgba(20, 18, 15, 0.62);
-	color: #f3eee4;
+	background: rgba(14, 12, 10, 0.72);
+	color: #faf6f0;
 }
 
 .calEvent [data-play-cluster] [data-play] {
@@ -174,8 +174,8 @@
 .calEvent [data-play-skip] {
 	width: 1.45rem;
 	height: 1.45rem;
-	background: rgba(20, 18, 15, 0.62);
-	color: #f3eee4;
+	background: rgba(14, 12, 10, 0.72);
+	color: #faf6f0;
 }
 
 .calEvent [data-play-skip] svg {
@@ -246,8 +246,8 @@
 }
 
 .calEvent:global(.hasArt) {
-	--cal-fill: #1c1914;
-	color: #f3eee4;
+	--cal-fill: #171512;
+	color: #faf6f0;
 }
 
 .calEvent:global(.hasArt) .calEventLink::after {
@@ -292,11 +292,11 @@
 }
 
 .calEvent:global(.hasArt) .calTime {
-	color: #b7b0a4;
+	color: #c9c3b7;
 }
 
 .calEvent:global(.hasArt) .calTitle {
-	color: #f3eee4;
+	color: #faf6f0;
 }
 
 .calEvent[data-venue='debaser'] {
@@ -421,7 +421,7 @@
 
 .calEvent:global(.hasArt):hover,
 .calEvent:global(.hasArt):global(.isLive) {
-	--cal-fill: #191612;
+	--cal-fill: #141210;
 }
 
 :global(html[data-theme='light']) .calEvent:global(.hasArt) {
@@ -439,20 +439,20 @@
 
 :global(html[data-theme='light']) .calEvent:global(.hasArt):hover,
 :global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) {
-	--cal-fill: #191612;
-	color: #f3eee4;
+	--cal-fill: #141210;
+	color: #faf6f0;
 }
 
 :global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calTime,
 :global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calTime,
 :global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calPlace,
 :global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calPlace {
-	color: #b7b0a4;
+	color: #c9c3b7;
 }
 
 :global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calTitle,
 :global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calTitle {
-	color: #f3eee4;
+	color: #faf6f0;
 }
 
 :global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calEventArt,

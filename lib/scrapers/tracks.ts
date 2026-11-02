@@ -1,4 +1,5 @@
-import { bcTrack, isBandcampSearchBlocked, lookupBandcamp, lookupBandcampUrl } from "./bandcamp";
+import { BANDCAMP_CACHE_VERSION } from "./bandcamp-match";
+import { bandcampReleaseMatchesArtist, bcTrack, isBandcampSearchBlocked, lookupBandcamp, lookupBandcampUrl } from "./bandcamp";
 import { lookupSoundcloudArtist, lookupSoundcloudUrl, scTrack } from "./soundcloud";
 import { lookupYoutubeArtist, youtubeDisabled, ytTrack } from "./youtube";
 import { lookupDeezerArtist, dzTrack } from "./deezer";
@@ -173,7 +174,8 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
     const clues = eventLookupClues(context, person);
     const clueKey = cluesCacheKey(clues);
     const bareKey = foldName(person);
-    const baseKey = bareKey + styleKey(styles);
+    const legacyBaseKey = bareKey + styleKey(styles);
+    const baseKey = BANDCAMP_CACHE_VERSION + legacyBaseKey;
     const nameKey = clueKey ? baseKey + "\t" + clueKey : baseKey;
     if (bcResolved.has(nameKey)) {
       stats.cached += 1;
@@ -183,7 +185,9 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
     // A hit stored before the style suffix, or under the bare name, still wins
     // over SoundCloud. An explicit style in the event text does not reuse that
     // older hit — it may be a different namesake.
-    const exact = persistent?.get(nameKey);
+    const legacyKey = clueKey ? legacyBaseKey + "\t" + clueKey : legacyBaseKey;
+    const legacy = persistent?.get(legacyKey);
+    const exact = persistent?.get(nameKey) ?? (legacy?.found ? legacy : undefined);
     const bare = bareKey === nameKey ? exact : persistent?.get(bareKey);
     const bareHit = bare?.found && bare.release ? bare : undefined;
     const persisted = (exact?.found && exact.release)
@@ -191,7 +195,7 @@ export async function attachTracks(events: ScrapedEvent[], opts: AttachOptions =
       : (!styles.explicit && bareHit)
         ? bareHit
         : exact;
-    if (persisted !== undefined) {
+    if (persisted !== undefined && (!persisted.found || persisted.release && bandcampReleaseMatchesArtist(person, persisted.release))) {
       const release = (persisted.release as Release | null) ?? null;
       bcResolved.set(nameKey, release);
       stats.persistentHits += 1;
