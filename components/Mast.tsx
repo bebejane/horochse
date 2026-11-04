@@ -1051,33 +1051,33 @@ export function MastSymbol({ lockupRef }: { lockupRef?: Ref<HTMLSpanElement> }) 
 				<path
 					d={SYMBOL_OUTLINE}
 					fill='none'
-					stroke='#faf6f0'
+					stroke='var(--dark-ink)'
 					strokeLinecap='round'
 					strokeLinejoin='round'
 					strokeWidth='18'
 				/>
 				<g data-mast-eye>
-					<circle cx={EYE_CX} cy={EYE_CY} r='95.6' fill='#faf6f0' stroke='#faf6f0' strokeWidth='18' />
-					<ellipse cx='232.8' cy={EYE_CY} rx='45.3' ry='64.7' fill='#0e0c0a' />
+					<circle cx={EYE_CX} cy={EYE_CY} r='95.6' fill='var(--dark-ink)' stroke='var(--dark-ink)' strokeWidth='18' />
+					<ellipse cx='232.8' cy={EYE_CY} rx='45.3' ry='64.7' fill='var(--dark-bg)' />
 				</g>
 			</svg>
 			<svg className='mastSymbol mastSymbolLight' viewBox='0 0 364.1 601.6' aria-hidden='true'>
 				<path
 					d={SYMBOL_OUTLINE}
 					fill='none'
-					stroke='#101010'
+					stroke='var(--light-ink)'
 					strokeLinecap='round'
 					strokeLinejoin='round'
 					strokeWidth='21.6'
 				/>
 				<g data-mast-eye>
-					<ellipse cx='236.8' cy={EYE_CY} rx='41.3' ry='58.9' fill='#101010' />
+					<ellipse cx='236.8' cy={EYE_CY} rx='41.3' ry='58.9' fill='var(--light-ink)' />
 					<circle
 						cx={EYE_CX}
 						cy={EYE_CY}
 						r='95.6'
 						fill='none'
-						stroke='#101010'
+						stroke='var(--light-ink)'
 						strokeLinecap='round'
 						strokeLinejoin='round'
 						strokeWidth='21.6'

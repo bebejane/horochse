@@ -161,8 +161,8 @@
 .calEvent [data-play] {
 	width: 1.85rem;
 	height: 1.85rem;
-	background: rgba(14, 12, 10, 0.72);
-	color: #faf6f0;
+	background: color-mix(in srgb, var(--bg) 72%, transparent);
+	color: var(--ink);
 }
 
 .calEvent [data-play-cluster] [data-play] {
@@ -174,8 +174,8 @@
 .calEvent [data-play-skip] {
 	width: 1.45rem;
 	height: 1.45rem;
-	background: rgba(14, 12, 10, 0.72);
-	color: #faf6f0;
+	background: color-mix(in srgb, var(--bg) 72%, transparent);
+	color: var(--ink);
 }
 
 .calEvent [data-play-skip] svg {
@@ -246,8 +246,8 @@
 }
 
 .calEvent:global(.hasArt) {
-	--cal-fill: #171512;
-	color: #faf6f0;
+	--cal-fill: var(--bg-2);
+	color: var(--ink);
 }
 
 .calEvent:global(.hasArt) .calEventLink::after {
@@ -292,126 +292,11 @@
 }
 
 .calEvent:global(.hasArt) .calTime {
-	color: #c9c3b7;
+	color: var(--muted);
 }
 
 .calEvent:global(.hasArt) .calTitle {
-	color: #faf6f0;
-}
-
-.calEvent[data-venue='debaser'] {
-	border-left-color: var(--debaser);
-}
-.calEvent[data-venue='nalen'] {
-	border-left-color: var(--nalen);
-}
-.calEvent[data-venue='fallan'] {
-	border-left-color: var(--fallan);
-}
-.calEvent[data-venue='slakthusen'] {
-	border-left-color: var(--slakthusen);
-}
-.calEvent[data-venue='kollektivetlivet'] {
-	border-left-color: var(--kollektivetlivet);
-}
-.calEvent[data-venue='sodrateatern'] {
-	border-left-color: var(--sodrateatern);
-}
-.calEvent[data-venue='berns'] {
-	border-left-color: var(--berns);
-}
-.calEvent[data-venue='cirkus'] {
-	border-left-color: var(--cirkus);
-}
-.calEvent[data-venue='fryshuset'] {
-	border-left-color: var(--fryshuset);
-}
-.calEvent[data-venue='kulturhuset'] {
-	border-left-color: var(--kulturhuset);
-}
-.calEvent[data-venue='hartwig'] {
-	border-left-color: var(--hartwig);
-}
-.calEvent[data-venue='annexet'] {
-	border-left-color: var(--annexet);
-}
-.calEvent[data-venue='hovet'] {
-	border-left-color: var(--hovet);
-}
-.calEvent[data-venue='aviciiarena'] {
-	border-left-color: var(--aviciiarena);
-}
-.calEvent[data-venue='trearena'] {
-	border-left-color: var(--trearena);
-}
-.calEvent[data-venue='strawberryarena'] {
-	border-left-color: var(--strawberryarena);
-}
-.calEvent[data-venue='konserthuset'] {
-	border-left-color: var(--konserthuset);
-}
-.calEvent[data-venue='berwaldhallen'] {
-	border-left-color: var(--berwaldhallen);
-}
-.calEvent[data-venue='fasching'] {
-	border-left-color: var(--fasching);
-}
-.calEvent[data-venue='stampen'] {
-	border-left-color: var(--stampen);
-}
-.calEvent[data-venue='glennmillercafe'] {
-	border-left-color: var(--glennmillercafe);
-}
-.calEvent[data-venue='kungcarls'] {
-	border-left-color: var(--kungcarls);
-}
-.calEvent[data-venue='engelen'] {
-	border-left-color: var(--engelen);
-}
-.calEvent[data-venue='petsoundsbar'] {
-	border-left-color: var(--petsoundsbar);
-}
-.calEvent[data-venue='reimersholme'] {
-	border-left-color: var(--reimersholme);
-}
-.calEvent[data-venue='riche'] {
-	border-left-color: var(--riche);
-}
-.calEvent[data-venue='landet'] {
-	border-left-color: var(--landet);
-}
-.calEvent[data-venue='encore'] {
-	border-left-color: var(--encore);
-}
-.calEvent[data-venue='bioaspen'] {
-	border-left-color: var(--bioaspen);
-}
-.calEvent[data-venue='scalateatern'] {
-	border-left-color: var(--scalateatern);
-}
-.calEvent[data-venue='gotalejon'] {
-	border-left-color: var(--gotalejon);
-}
-.calEvent[data-venue='bagarmossen'] {
-	border-left-color: var(--bagarmossen);
-}
-.calEvent[data-venue='kmh'] {
-	border-left-color: var(--kmh);
-}
-.calEvent[data-venue='ericericsonhallen'] {
-	border-left-color: var(--ericericsonhallen);
-}
-.calEvent[data-venue='gronalund'] {
-	border-left-color: var(--gronalund);
-}
-.calEvent[data-venue='fylkingen'] {
-	border-left-color: var(--fylkingen);
-}
-.calEvent[data-venue='ronnells'] {
-	border-left-color: var(--ronnells);
-}
-.calEvent[data-venue='larryscorner'] {
-	border-left-color: var(--larryscorner);
+	color: var(--ink);
 }
 
 .calEvent:hover,
@@ -421,55 +306,55 @@
 
 .calEvent:global(.hasArt):hover,
 .calEvent:global(.hasArt):global(.isLive) {
-	--cal-fill: #141210;
+	--cal-fill: var(--player);
 }
 
 /* Korten behåller den mörka ytans färger även när sidan är ljus. */
 :global(html[data-theme='light']) .calEvent {
-	--bg: #0e0c0a;
-	--bg-2: #171512;
-	--ink: #faf6f0;
-	--muted: #c9c3b7;
-	--cal-hover: #221f1a;
-	--player: #141210;
-	--debaser: #d4573c;
-	--nalen: #e0b25a;
-	--fallan: #7ea4c9;
-	--slakthusen: #e0b25a;
-	--kollektivetlivet: #9a7bb8;
-	--sodrateatern: #d98b4a;
-	--berns: #5aa0c8;
-	--cirkus: #c46b6b;
-	--fryshuset: #8ab07a;
-	--kulturhuset: #7ea4c9;
-	--hartwig: #9a7bb8;
-	--annexet: #7b8ec4;
-	--hovet: #b57a9a;
-	--aviciiarena: #6aa89a;
-	--trearena: #d4a07a;
-	--strawberryarena: #8c7ab8;
-	--konserthuset: #a9784e;
-	--berwaldhallen: #b08960;
-	--fasching: #d4573c;
-	--stampen: #6bb3a0;
-	--glennmillercafe: #c47a8a;
-	--kungcarls: #8a9660;
-	--engelen: #d98b4a;
-	--petsoundsbar: #c46b6b;
-	--reimersholme: #8ab07a;
-	--riche: #c45c48;
-	--landet: #c9a05a;
-	--encore: #c49a72;
-	--bioaspen: #6aa89a;
-	--scalateatern: #d4a07a;
-	--gotalejon: #8c7ab8;
-	--bagarmossen: #6bb3a0;
-	--kmh: #c47a8a;
-	--ericericsonhallen: #9a7bb8;
-	--gronalund: #d98b4a;
-	--fylkingen: #6bb3a0;
-	--ronnells: #c47a8a;
-	--larryscorner: #7388a0;
+	--bg: var(--dark-bg);
+	--bg-2: var(--dark-bg-2);
+	--ink: var(--dark-ink);
+	--muted: var(--dark-muted);
+	--cal-hover: var(--dark-cal-hover);
+	--player: var(--dark-player);
+	--debaser: var(--dark-debaser);
+	--nalen: var(--dark-nalen);
+	--fallan: var(--dark-fallan);
+	--slakthusen: var(--dark-slakthusen);
+	--kollektivetlivet: var(--dark-kollektivetlivet);
+	--sodrateatern: var(--dark-sodrateatern);
+	--berns: var(--dark-berns);
+	--cirkus: var(--dark-cirkus);
+	--fryshuset: var(--dark-fryshuset);
+	--kulturhuset: var(--dark-kulturhuset);
+	--hartwig: var(--dark-hartwig);
+	--annexet: var(--dark-annexet);
+	--hovet: var(--dark-hovet);
+	--aviciiarena: var(--dark-aviciiarena);
+	--trearena: var(--dark-trearena);
+	--strawberryarena: var(--dark-strawberryarena);
+	--konserthuset: var(--dark-konserthuset);
+	--berwaldhallen: var(--dark-berwaldhallen);
+	--fasching: var(--dark-fasching);
+	--stampen: var(--dark-stampen);
+	--glennmillercafe: var(--dark-glennmillercafe);
+	--kungcarls: var(--dark-kungcarls);
+	--engelen: var(--dark-engelen);
+	--petsoundsbar: var(--dark-petsoundsbar);
+	--reimersholme: var(--dark-reimersholme);
+	--riche: var(--dark-riche);
+	--landet: var(--dark-landet);
+	--encore: var(--dark-encore);
+	--bioaspen: var(--dark-bioaspen);
+	--scalateatern: var(--dark-scalateatern);
+	--gotalejon: var(--dark-gotalejon);
+	--bagarmossen: var(--dark-bagarmossen);
+	--kmh: var(--dark-kmh);
+	--ericericsonhallen: var(--dark-ericericsonhallen);
+	--gronalund: var(--dark-gronalund);
+	--fylkingen: var(--dark-fylkingen);
+	--ronnells: var(--dark-ronnells);
+	--larryscorner: var(--dark-larryscorner);
 	color: var(--ink);
 }
 
@@ -728,126 +613,16 @@ button.calVenue:focus-visible {
 	text-underline-offset: 0.12em;
 }
 
-.calEvent[data-venue='debaser'] .calVenue {
-	color: var(--debaser);
-}
-.calEvent[data-venue='nalen'] .calVenue {
-	color: var(--nalen);
-}
-.calEvent[data-venue='fallan'] .calVenue {
-	color: var(--fallan);
-}
-.calEvent[data-venue='slakthusen'] .calVenue {
-	color: var(--slakthusen);
-}
-.calEvent[data-venue='kollektivetlivet'] .calVenue {
-	color: var(--kollektivetlivet);
-}
-.calEvent[data-venue='sodrateatern'] .calVenue {
-	color: var(--sodrateatern);
-}
-.calEvent[data-venue='berns'] .calVenue {
-	color: var(--berns);
-}
-.calEvent[data-venue='cirkus'] .calVenue {
-	color: var(--cirkus);
-}
-.calEvent[data-venue='fryshuset'] .calVenue {
-	color: var(--fryshuset);
-}
-.calEvent[data-venue='kulturhuset'] .calVenue {
-	color: var(--kulturhuset);
-}
-.calEvent[data-venue='hartwig'] .calVenue {
-	color: var(--hartwig);
-}
-.calEvent[data-venue='annexet'] .calVenue {
-	color: var(--annexet);
-}
-.calEvent[data-venue='hovet'] .calVenue {
-	color: var(--hovet);
-}
-.calEvent[data-venue='aviciiarena'] .calVenue {
-	color: var(--aviciiarena);
-}
-.calEvent[data-venue='trearena'] .calVenue {
-	color: var(--trearena);
-}
-.calEvent[data-venue='strawberryarena'] .calVenue {
-	color: var(--strawberryarena);
-}
-.calEvent[data-venue='konserthuset'] .calVenue {
-	color: var(--konserthuset);
-}
-.calEvent[data-venue='berwaldhallen'] .calVenue {
-	color: var(--berwaldhallen);
-}
-.calEvent[data-venue='fasching'] .calVenue {
-	color: var(--fasching);
-}
-.calEvent[data-venue='stampen'] .calVenue {
-	color: var(--stampen);
-}
-.calEvent[data-venue='glennmillercafe'] .calVenue {
-	color: var(--glennmillercafe);
-}
-.calEvent[data-venue='kungcarls'] .calVenue {
-	color: var(--kungcarls);
-}
-.calEvent[data-venue='engelen'] .calVenue {
-	color: var(--engelen);
-}
-.calEvent[data-venue='petsoundsbar'] .calVenue {
-	color: var(--petsoundsbar);
-}
-.calEvent[data-venue='reimersholme'] .calVenue {
-	color: var(--reimersholme);
-}
-.calEvent[data-venue='riche'] .calVenue {
-	color: var(--riche);
-}
-.calEvent[data-venue='landet'] .calVenue {
-	color: var(--landet);
-}
-.calEvent[data-venue='encore'] .calVenue {
-	color: var(--encore);
-}
-.calEvent[data-venue='bioaspen'] .calVenue {
-	color: var(--bioaspen);
-}
-.calEvent[data-venue='scalateatern'] .calVenue {
-	color: var(--scalateatern);
-}
-.calEvent[data-venue='gotalejon'] .calVenue {
-	color: var(--gotalejon);
-}
-.calEvent[data-venue='bagarmossen'] .calVenue {
-	color: var(--bagarmossen);
-}
-.calEvent[data-venue='kmh'] .calVenue {
-	color: var(--kmh);
-}
-.calEvent[data-venue='ericericsonhallen'] .calVenue {
-	color: var(--ericericsonhallen);
-}
-.calEvent[data-venue='gronalund'] .calVenue {
-	color: var(--gronalund);
-}
-.calEvent[data-venue='fylkingen'] .calVenue {
-	color: var(--fylkingen);
-}
-.calEvent[data-venue='ronnells'] .calVenue {
-	color: var(--ronnells);
-}
-.calEvent[data-venue='larryscorner'] .calVenue {
-	color: var(--larryscorner);
-}
-
 $venues: debaser, nalen, fallan, slakthusen, kollektivetlivet, sodrateatern, berns, cirkus, fryshuset, kulturhuset, hartwig, annexet, hovet, aviciiarena, trearena, strawberryarena, konserthuset, berwaldhallen, fasching, stampen, glennmillercafe, kungcarls, engelen, petsoundsbar, reimersholme, riche, landet, encore, bioaspen, scalateatern, gotalejon, bagarmossen, kmh, ericericsonhallen, gronalund, fylkingen, ronnells, larryscorner;
 
 @each $slug in $venues {
 	.calEvent[data-venue='#{$slug}'] {
 		--cal-tint: var(--#{$slug});
+		border-left-color: var(--#{$slug});
+	}
+
+	.calEvent[data-venue='#{$slug}'] .calVenue {
+		color: var(--#{$slug});
 	}
 }
 

@@ -9,8 +9,8 @@
 .play {
 	appearance: none;
 	position: relative;
-	width: 2.85rem;
-	height: 2.85rem;
+	width: var(--play-size);
+	height: var(--play-size);
 	border-radius: 999px;
 	border: 1px solid var(--line);
 	background: transparent;

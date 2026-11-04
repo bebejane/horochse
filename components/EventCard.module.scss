@@ -214,121 +214,6 @@ button.venue:focus-visible {
 	text-underline-offset: 0.18em;
 }
 
-.venue[data-venue='debaser'] {
-	color: var(--debaser);
-}
-.venue[data-venue='nalen'] {
-	color: var(--nalen);
-}
-.venue[data-venue='fallan'] {
-	color: var(--fallan);
-}
-.venue[data-venue='slakthusen'] {
-	color: var(--slakthusen);
-}
-.venue[data-venue='kollektivetlivet'] {
-	color: var(--kollektivlivet);
-}
-.venue[data-venue='sodrateatern'] {
-	color: var(--sodrateatern);
-}
-.venue[data-venue='berns'] {
-	color: var(--berns);
-}
-.venue[data-venue='cirkus'] {
-	color: var(--cirkus);
-}
-.venue[data-venue='fryshuset'] {
-	color: var(--fryshuset);
-}
-.venue[data-venue='kulturhuset'] {
-	color: var(--kulturhuset);
-}
-.venue[data-venue='hartwig'] {
-	color: var(--hartwig);
-}
-.venue[data-venue='annexet'] {
-	color: var(--annexet);
-}
-.venue[data-venue='hovet'] {
-	color: var(--hovet);
-}
-.venue[data-venue='aviciiarena'] {
-	color: var(--aviciiarena);
-}
-.venue[data-venue='trearena'] {
-	color: var(--trearena);
-}
-.venue[data-venue='strawberryarena'] {
-	color: var(--strawberryarena);
-}
-.venue[data-venue='konserthuset'] {
-	color: var(--konserthuset);
-}
-.venue[data-venue='berwaldhallen'] {
-	color: var(--berwaldhallen);
-}
-.venue[data-venue='fasching'] {
-	color: var(--fasching);
-}
-.venue[data-venue='stampen'] {
-	color: var(--stampen);
-}
-.venue[data-venue='glennmillercafe'] {
-	color: var(--glennmillercafe);
-}
-.venue[data-venue='kungcarls'] {
-	color: var(--kungcarls);
-}
-.venue[data-venue='engelen'] {
-	color: var(--engelen);
-}
-.venue[data-venue='petsoundsbar'] {
-	color: var(--petsoundsbar);
-}
-.venue[data-venue='reimersholme'] {
-	color: var(--reimersholme);
-}
-.venue[data-venue='riche'] {
-	color: var(--riche);
-}
-.venue[data-venue='landet'] {
-	color: var(--landet);
-}
-.venue[data-venue='encore'] {
-	color: var(--encore);
-}
-.venue[data-venue='bioaspen'] {
-	color: var(--bioaspen);
-}
-.venue[data-venue='scalateatern'] {
-	color: var(--scalateatern);
-}
-.venue[data-venue='gotalejon'] {
-	color: var(--gotalejon);
-}
-.venue[data-venue='bagarmossen'] {
-	color: var(--bagarmossen);
-}
-.venue[data-venue='kmh'] {
-	color: var(--kmh);
-}
-.venue[data-venue='ericericsonhallen'] {
-	color: var(--ericericsonhallen);
-}
-.venue[data-venue='gronalund'] {
-	color: var(--gronalund);
-}
-.venue[data-venue='fylkingen'] {
-	color: var(--fylkingen);
-}
-.venue[data-venue='ronnells'] {
-	color: var(--ronnells);
-}
-.venue[data-venue='larryscorner'] {
-	color: var(--larryscorner);
-}
-
 .nowLabel {
 	display: none;
 	color: var(--ink);
@@ -383,6 +268,12 @@ button.venue:focus-visible {
 }
 
 $venues: debaser, nalen, fallan, slakthusen, kollektivetlivet, sodrateatern, berns, cirkus, fryshuset, kulturhuset, hartwig, annexet, hovet, aviciiarena, trearena, strawberryarena, konserthuset, berwaldhallen, fasching, stampen, glennmillercafe, kungcarls, engelen, petsoundsbar, reimersholme, riche, landet, encore, bioaspen, scalateatern, gotalejon, bagarmossen, kmh, ericericsonhallen, gronalund, fylkingen, ronnells, larryscorner;
+
+@each $slug in $venues {
+	.venue[data-venue='#{$slug}'] {
+		color: var(--#{$slug});
+	}
+}
 
 @each $slug in $venues {
 	.card[data-venue='#{$slug}']:global(.isLive) .title:not(:global(.hasCurrentArtist)),
@@ -571,8 +462,8 @@ $venues: debaser, nalen, fallan, slakthusen, kollektivetlivet, sodrateatern, ber
 	.posterSlot > [data-play-cluster] [data-play] {
 		width: 2.45rem;
 		height: 2.45rem;
-		background: rgba(14, 12, 10, 0.72);
-		color: #faf6f0;
+		background: color-mix(in srgb, var(--dark-bg) 72%, transparent);
+		color: var(--dark-ink);
 		border: 1px solid color-mix(in srgb, var(--ink) 42%, transparent);
 	}
 

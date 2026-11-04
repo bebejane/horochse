@@ -50,8 +50,21 @@ const DATE_EM_BOTTOM = 84;
 const CREAM = "#f3eee4";
 const INK = "#14120f";
 
-/** Appens mörka bakgrund efter kontrastjusteringen (`--bg`). */
-const APP_BG = "#0e0c0a";
+/** Läser en färg från stilmallen. Canvas kan inte använda `var()` själv. */
+function cssToken(name: string): string {
+  if (typeof document === "undefined") return "";
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function withAlpha(color: string, alpha: number): string {
+  const hex = color.trim().replace("#", "");
+  const full = hex.length === 3 ? hex.split("").map((channel) => channel + channel).join("") : hex;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return color;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 export const MONTH_LINES = ["Hitta och lyssna", "på artister", "som spelar live", "i Stockholm"];
 export const MONTH_LINES_NEXT = [
@@ -165,14 +178,11 @@ export function loadPosterImage(src: string): Promise<HTMLImageElement | null> {
 }
 
 export function venueColor(slug: string): string {
-  if (typeof document === "undefined") return "#d4573c";
-  const value = getComputedStyle(document.documentElement).getPropertyValue(`--${slug}`).trim();
-  return value || "#d4573c";
+  return cssToken(`--${slug}`) || cssToken("--debaser");
 }
 
 /** Unika scenfärger från appen, i den ordning knappen ska växla. */
 export function monthPlayColors(): string[] {
-  if (typeof document === "undefined") return ["#d4573c"];
   const seen = new Set<string>();
   const colors: string[] = [];
   for (const slug of MONTH_PLAY_SLUGS) {
@@ -181,11 +191,11 @@ export function monthPlayColors(): string[] {
     seen.add(value);
     colors.push(value);
   }
-  return colors.length ? colors : ["#d4573c"];
+  return colors.length ? colors : [cssToken("--debaser")];
 }
 
 export function monthPlayColor(index: number, colors: string[]): string {
-  if (!colors.length) return "#d4573c";
+  if (!colors.length) return cssToken("--debaser");
   const i = ((index % colors.length) + colors.length) % colors.length;
   return colors[i];
 }
@@ -478,7 +488,7 @@ export function drawMonthPoster(
   const height = ctx.canvas.height;
   ctx.save();
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = slide?.solid || APP_BG;
+  ctx.fillStyle = slide?.solid || cssToken("--dark-bg");
   ctx.fillRect(0, 0, width, height);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
@@ -514,9 +524,10 @@ export function drawMonthPoster(
   const baseline = (index: number) => textTop + ascent + index * lineHeight;
 
   const fade = ctx.createRadialGradient(width / 2, textMid, height * 0.02, width / 2, textMid, height * 0.42);
-  fade.addColorStop(0, "rgba(14, 12, 10, 0.48)");
-  fade.addColorStop(0.55, "rgba(14, 12, 10, 0.14)");
-  fade.addColorStop(1, "rgba(14, 12, 10, 0)");
+  const bg = cssToken("--dark-bg");
+  fade.addColorStop(0, withAlpha(bg, 0.48));
+  fade.addColorStop(0.55, withAlpha(bg, 0.14));
+  fade.addColorStop(1, withAlpha(bg, 0));
   ctx.fillStyle = fade;
   ctx.fillRect(0, 0, width, height);
 
@@ -537,7 +548,7 @@ export function drawMonthPoster(
     width / 2,
     textTop + slotHeight + gap + MONTH_PLAY / 2,
     mark === "symbol" ? Math.round(MONTH_PLAY * 1.3) : MONTH_PLAY,
-    slide?.color || "#d4573c",
+    slide?.color || cssToken("--debaser"),
     mark,
   );
   ctx.restore();
@@ -550,7 +561,6 @@ const SYMBOL_W = 364.1;
 const SYMBOL_H = 601.6;
 const EYE_CX = 191.2;
 const EYE_CY = 280.4;
-const SYMBOL_INK = "#101010";
 
 function monthLineWidth(
   ctx: CanvasRenderingContext2D,
@@ -652,7 +662,7 @@ function drawPlus(ctx: CanvasRenderingContext2D, cx: number, cy: number, diamete
   const scale = icon / 24;
   const thick = 3.2 * scale;
   const span = 12 * scale;
-  ctx.fillStyle = APP_BG;
+  ctx.fillStyle = cssToken("--dark-bg");
   ctx.fillRect(cx - thick / 2, cy - span / 2, thick, span);
   ctx.fillRect(cx - span / 2, cy - thick / 2, span, thick);
 }
@@ -663,7 +673,7 @@ function drawPlayTriangle(ctx: CanvasRenderingContext2D, cx: number, cy: number,
   ctx.save();
   ctx.translate(cx - icon / 2, cy - icon / 2);
   ctx.scale(scale, scale);
-  ctx.fillStyle = APP_BG;
+  ctx.fillStyle = cssToken("--dark-bg");
   ctx.beginPath();
   ctx.moveTo(8, 5.5);
   ctx.lineTo(8, 18.5);
@@ -681,9 +691,9 @@ function drawMastSymbol(ctx: CanvasRenderingContext2D, cx: number, cy: number, h
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.lineWidth = 21.6;
-  ctx.strokeStyle = SYMBOL_INK;
+  ctx.strokeStyle = cssToken("--light-ink");
   ctx.stroke(new Path2D(SYMBOL_OUTLINE));
-  ctx.fillStyle = SYMBOL_INK;
+  ctx.fillStyle = cssToken("--light-ink");
   ctx.beginPath();
   ctx.ellipse(236.8, EYE_CY, 41.3, 58.9, 0, 0, Math.PI * 2);
   ctx.fill();

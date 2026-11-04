@@ -26,6 +26,8 @@
 	gap: 0.8rem 1rem;
 	min-width: 0;
 	padding: 0.2rem 0 0.85rem;
+	/* Rubriken ska sitta kvar även när spelknappen inte ritas ut. */
+	min-height: calc(var(--play-size) + 0.2rem + 0.85rem);
 }
 
 .weekHeadTitle {
@@ -172,6 +174,7 @@
 :global(body.isCalendar) .weekHeadMain {
 	grid-column: 1;
 	padding: 0.15rem 0 0.45rem;
+	min-height: calc(var(--play-size) + 0.15rem + 0.45rem);
 }
 
 :global(body.isCalendar) .weekHead:global(.isNext) {
@@ -180,6 +183,7 @@
 
 :global(body.isCalendar) .weekHead:global(.isNext) .weekHeadMain {
 	padding-top: 0.2rem;
+	min-height: calc(var(--play-size) + 0.2rem + 0.45rem);
 }
 
 @include mq($until: tablet) {

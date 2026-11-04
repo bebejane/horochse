@@ -80,7 +80,7 @@
 	max-width: 100%;
 	height: auto;
 	display: block;
-	background: #0e0c0a;
+	background: var(--dark-bg);
 	transition: none;
 }
 
@@ -159,7 +159,7 @@
 
 .status {
 	min-height: 1.3em;
-	color: #d4573c;
+	color: var(--debaser);
 }
 
 .list {
@@ -197,7 +197,7 @@
 	width: 3.1rem;
 	height: 3.9rem;
 	object-fit: cover;
-	background: #171512;
+	background: var(--bg-2);
 	display: block;
 }
 
