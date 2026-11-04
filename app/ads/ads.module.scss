@@ -103,7 +103,8 @@
 	color: var(--muted);
 }
 
-.field select {
+.field select,
+.field input {
 	appearance: none;
 	font: inherit;
 	font-size: 1rem;
@@ -112,6 +113,11 @@
 	border: 1px solid var(--line);
 	padding: 0.45rem 0.7rem;
 	min-width: 10rem;
+}
+
+.field input {
+	width: 6.5rem;
+	min-width: 6.5rem;
 }
 
 .actions {
@@ -172,6 +178,11 @@
 	align-items: center;
 	padding: 0.4rem 0.45rem;
 	border-left: 3px solid transparent;
+}
+
+.rowPlain {
+	grid-template-columns: 3.1rem auto;
+	justify-content: space-between;
 }
 
 .row[data-current='true'] {

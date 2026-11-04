@@ -424,40 +424,53 @@
 	--cal-fill: #141210;
 }
 
-:global(html[data-theme='light']) .calEvent:global(.hasArt) {
-	--cal-fill: var(--bg);
+/* Korten behåller den mörka ytans färger även när sidan är ljus. */
+:global(html[data-theme='light']) .calEvent {
+	--bg: #0e0c0a;
+	--bg-2: #171512;
+	--ink: #faf6f0;
+	--muted: #c9c3b7;
+	--cal-hover: #221f1a;
+	--player: #141210;
+	--debaser: #d4573c;
+	--nalen: #e0b25a;
+	--fallan: #7ea4c9;
+	--slakthusen: #e0b25a;
+	--kollektivetlivet: #9a7bb8;
+	--sodrateatern: #d98b4a;
+	--berns: #5aa0c8;
+	--cirkus: #c46b6b;
+	--fryshuset: #8ab07a;
+	--kulturhuset: #7ea4c9;
+	--hartwig: #9a7bb8;
+	--annexet: #7b8ec4;
+	--hovet: #b57a9a;
+	--aviciiarena: #6aa89a;
+	--trearena: #d4a07a;
+	--strawberryarena: #8c7ab8;
+	--konserthuset: #a9784e;
+	--berwaldhallen: #b08960;
+	--fasching: #d4573c;
+	--stampen: #6bb3a0;
+	--glennmillercafe: #c47a8a;
+	--kungcarls: #8a9660;
+	--engelen: #d98b4a;
+	--petsoundsbar: #c46b6b;
+	--reimersholme: #8ab07a;
+	--riche: #c45c48;
+	--landet: #c9a05a;
+	--encore: #c49a72;
+	--bioaspen: #6aa89a;
+	--scalateatern: #d4a07a;
+	--gotalejon: #8c7ab8;
+	--bagarmossen: #6bb3a0;
+	--kmh: #c47a8a;
+	--ericericsonhallen: #9a7bb8;
+	--gronalund: #d98b4a;
+	--fylkingen: #6bb3a0;
+	--ronnells: #c47a8a;
+	--larryscorner: #7388a0;
 	color: var(--ink);
-}
-
-:global(html[data-theme='light']) .calEvent:global(.hasArt) .calTime {
-	color: var(--muted);
-}
-
-:global(html[data-theme='light']) .calEvent:global(.hasArt) .calTitle {
-	color: var(--ink);
-}
-
-:global(html[data-theme='light']) .calEvent:global(.hasArt):hover,
-:global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) {
-	--cal-fill: #141210;
-	color: #faf6f0;
-}
-
-:global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calTime,
-:global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calTime,
-:global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calPlace,
-:global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calPlace {
-	color: #c9c3b7;
-}
-
-:global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calTitle,
-:global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calTitle {
-	color: #faf6f0;
-}
-
-:global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calEventArt,
-:global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calEventArt {
-	opacity: 0.92;
 }
 
 @media (hover: hover) {
@@ -479,31 +492,6 @@
 		color-mix(in srgb, var(--cal-fill) 14%, transparent) 100%
 	);
 }
-
-:global(html[data-theme='light']) .calEvent:global(.hasArt) .calEventArt {
-	opacity: 0.7;
-}
-
-:global(html[data-theme='light']) .calEvent:global(.hasArt) .calEventLink::after {
-	background: linear-gradient(
-		to bottom,
-		color-mix(in srgb, var(--cal-fill) 78%, transparent) 0%,
-		color-mix(in srgb, var(--cal-fill) 50%, transparent) 36%,
-		color-mix(in srgb, var(--cal-fill) 22%, transparent) 68%,
-		transparent 100%
-	);
-}
-
-:global(html[data-theme='light']) .calEvent:global(.hasArt):hover .calEventLink::after,
-:global(html[data-theme='light']) .calEvent:global(.hasArt):global(.isLive) .calEventLink::after {
-	background: linear-gradient(
-		to bottom,
-		color-mix(in srgb, var(--cal-fill) 58%, transparent) 0%,
-		color-mix(in srgb, var(--cal-fill) 38%, transparent) 40%,
-		color-mix(in srgb, var(--cal-fill) 14%, transparent) 100%
-	);
-}
-
 
 .calTime,
 .calMeta .calVenue,

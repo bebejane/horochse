@@ -312,6 +312,9 @@ export function listenMoreItems(event: ConcertEvent): { url: string; artist: str
     if (artistKey) seenArtist.add(artistKey);
     items.push({ url, artist, source: trackSourceName(track) });
   }
+  if (!items.length && event.spotify) {
+    items.push({ url: event.spotify, artist: "", source: "Spotify" });
+  }
   return items;
 }
 

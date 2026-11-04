@@ -11,7 +11,7 @@
 // match on name, generic queries are rejected, and the top result by Deezer's
 // own popularity rank wins.
 
-import { httpRequest } from "./http";
+import { httpRequest, sleep } from "./http";
 import { cleanPersonName, isGenericEvent, namesMatch, sameArtist } from "./text";
 import { eventStyles, styleKey, type StyleHint } from "./style";
 
@@ -48,13 +48,27 @@ const FRAGMENT_ARTIST = new Set([
   "världen", "himlen", "livet", "kärleken", "stjärnorna", "solen", "månen",
 ]);
 
+/** Deezer answers quota errors with HTTP 200 and an error object. Retry those. */
+async function deezerGet(url: string): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const raw = await httpRequest(url, {
+      extraHeaders: { Accept: "application/json" },
+      timeoutMs: 15000,
+    });
+    const data = JSON.parse(raw) as { error?: { message?: string } };
+    if (!data?.error) return raw;
+    const message = data.error.message || "Deezer-svar utan träfflista";
+    if (!/quota/i.test(message) || attempt === 4) throw new Error(message);
+    await sleep(1000 * (attempt + 1));
+  }
+  throw new Error("Deezer-svar utan träfflista");
+}
+
 export async function searchDeezer(query: string): Promise<DeezerMatch[]> {
-  const raw = await httpRequest(
+  const raw = await deezerGet(
     "https://api.deezer.com/search?q=" + encodeURIComponent(query) + "&limit=25",
-    { extraHeaders: { Accept: "application/json" }, timeoutMs: 15000 },
   );
-  const data = JSON.parse(raw) as { data?: any[]; error?: { message?: string } };
-  if (data.error) throw new Error(data.error.message || "Deezer-svar utan träfflista");
+  const data = JSON.parse(raw) as { data?: any[] };
   return matchesFromRows(data.data || []);
 }
 
@@ -82,13 +96,8 @@ function matchesFromRows(
 }
 
 async function deezerJson<T>(path: string): Promise<T> {
-  const raw = await httpRequest("https://api.deezer.com" + path, {
-    extraHeaders: { Accept: "application/json" },
-    timeoutMs: 15000,
-  });
-  const data = JSON.parse(raw) as T & { error?: { message?: string } };
-  if (data.error) throw new Error(data.error.message || "Deezer-svar utan träfflista");
-  return data;
+  const raw = await deezerGet("https://api.deezer.com" + path);
+  return JSON.parse(raw) as T;
 }
 
 function bestDeezerMatch(matches: DeezerMatch[], artist: string): DeezerMatch | undefined {
@@ -137,13 +146,31 @@ async function searchDeezerArtistCatalog(artist: string): Promise<DeezerMatch | 
   }
 }
 
+/** Track id from a Deezer track URL, including locale and widget paths. */
+export function deezerTrackIdFromUrl(value: string): number | null {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  const host = url.hostname.toLowerCase();
+  const deezer =
+    host === "deezer.com" ||
+    host.endsWith(".deezer.com") ||
+    host === "deezer.page.link" ||
+    host.endsWith(".deezer.page.link");
+  if (!deezer) return null;
+  const match = url.pathname.match(/\/track\/(\d+)/);
+  if (!match) return null;
+  const id = Number(match[1]);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
 /** Fetch a single track (used by the stream route to resolve a fresh preview). */
 export async function deezerTrackById(id: number): Promise<DeezerMatch | null> {
   try {
-    const raw = await httpRequest("https://api.deezer.com/track/" + id, {
-      extraHeaders: { Accept: "application/json" },
-      timeoutMs: 15000,
-    });
+    const raw = await deezerGet("https://api.deezer.com/track/" + id);
     const row = JSON.parse(raw) as any;
     const artist = row?.artist?.name || "";
     if (!artist || row?.error?.type) return null;
@@ -186,15 +213,25 @@ export async function lookupDeezerArtist(
   const key = "dz:" + cleanPersonName(artist) + styleKey(hint);
   if (cache.has(key)) return cache.get(key) ?? null;
 
-  // A style word ("jazz", "rock") steers a shared name toward the artist the
-  // venue and description point at. Fall back to the bare name if that misses.
+  // A style word ("jazz", "rock") steers a shared name. If that search misses,
+  // the bare search's most-played namesake is rejected and the artist catalog
+  // decides — otherwise "Nate Smith" at a jazz club becomes the country singer.
   const queries = hint.wanted.length ? [artist + " " + hint.wanted[0], artist] : [artist];
   try {
     let best: DeezerMatch | undefined;
-    for (const search of queries) {
-      const matches = await searchDeezer(search);
-      best = bestDeezerMatch(matches, artist);
-      if (best) break;
+    let styledMiss = false;
+    for (let i = 0; i < queries.length; i++) {
+      const hit = bestDeezerMatch(await searchDeezer(queries[i]), artist);
+      if (!hit) {
+        if (i === 0 && queries.length > 1) styledMiss = true;
+        continue;
+      }
+      // "Nate Smith" plus the word jazz still misses the drummer, and the bare
+      // search then returns the country singer. A style was asked for, so a
+      // namesake from the unstyled search is not a match. The catalog is.
+      if (styledMiss) break;
+      best = hit;
+      break;
     }
     if (!best) best = await searchDeezerArtistCatalog(artist);
     if (!best) {

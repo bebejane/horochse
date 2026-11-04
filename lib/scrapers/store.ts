@@ -22,6 +22,7 @@ import {
   finishScrapeRun,
   loadBandcampArtists,
   loadExistingEventIds,
+  loadPlayableEventIds,
   loadYoutubeVideos,
   recordScrapeErrors,
   saveBandcampArtists,
@@ -104,6 +105,13 @@ export async function seedReference(events: ScrapedEvent[], provenance: Record<s
   return { venueRows, sourceRows };
 }
 
+function hasPlayableTrack(event: ScrapedEvent): boolean {
+  return (event.tracks ?? []).some((track) => {
+    if (!track.source || track.source === "bandcamp" || track.type === "link") return false;
+    return track.source === "deezer" || track.source === "soundcloud" || track.source === "youtube";
+  });
+}
+
 function toEventInput(event: ScrapedEvent, sourceKey: string): EventInput {
   return {
     id: event.id,
@@ -173,17 +181,23 @@ export async function scrapeAndStore(opts: CollectOptions = {}): Promise<StoreSu
     await upsertSources(sourceRows);
     log(`DB: ${venueRows.length} scener, ${sourceRows.length} källor seedade`);
 
-    // A run only inserts concerts that are not already stored — typically the
-    // week that just entered the window. Rows already in the database are left
-    // as they are, including their tracks.
+    // New concerts are inserted. A concert already stored is left alone, except
+    // when it still has nothing to play and this run found a track — a miss
+    // used to stick forever (Familjen, The Prodigy).
     const existing = await loadExistingEventIds(events.map((event) => event.id));
-    const fresh = events.filter((event) => !existing.has(event.id));
+    const silentCandidates = events.filter((event) => existing.has(event.id) && hasPlayableTrack(event));
+    const alreadyPlaying = await loadPlayableEventIds(silentCandidates.map((event) => event.id));
+    const repair = new Set(
+      silentCandidates.filter((event) => !alreadyPlaying.has(event.id)).map((event) => event.id),
+    );
+    const writing = events.filter((event) => !existing.has(event.id) || repair.has(event.id));
+    const freshCount = writing.length - repair.size;
     log(
-      `DB: ${fresh.length} nya event, ${events.length - fresh.length} redan lagrade lämnas orörda`,
+      `DB: ${freshCount} nya event, ${repair.size} tysta event får låt, ${events.length - writing.length} lämnas orörda`,
     );
 
     const bySource = new Map<string, ScrapedEvent[]>();
-    for (const event of fresh) {
+    for (const event of writing) {
       const source = provenance[event.id];
       if (!source) continue;
       const list = bySource.get(source);

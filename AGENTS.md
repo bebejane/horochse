@@ -79,7 +79,7 @@ Changing one side only makes the stored events and the rendered UI disagree.
 
 ## Scrape → Turso cron
 
-- `lib/scrapers/store.ts` → `scrapeAndStore(opts)`: runs `collect()`, seeds `venues`/`sources`, inserts events that are not already stored (the new week, plus any concert never seen before), and records a `scrape_run`. It does not update or delete existing events. It is the single shared writer; do not duplicate this logic.
+- `lib/scrapers/store.ts` → `scrapeAndStore(opts)`: runs `collect()`, seeds `venues`/`sources`, inserts events that are not already stored (the new week, plus any concert never seen before), and records a `scrape_run`. Existing events are left as they are, except a stored concert with no playable track is updated when this run found one. It is the single shared writer; do not duplicate this logic.
 - Two entry points, same function:
   - `pnpm scrape:db` — CLI (`scripts/scrape-to-db.ts`), for system crontab / GitHub Actions. Flags `--only`, `--no-tracks`, `--quiet`.
   - `GET /api/cron/scrape` — Vercel Cron (scheduled in `vercel.json`, daily 05:00 UTC). Guarded by `Authorization: Bearer $CRON_SECRET` (Vercel sends this) or `?secret=`; `&tracks=false` and `&only=` are supported for cheap manual runs. `maxDuration = 600` because a full run is ~1–5 min. After every run it emails a detailed report via Postmark (`lib/run-report.ts` → `lib/mail.ts`), and a failure email if the run crashes.

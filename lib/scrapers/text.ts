@@ -171,6 +171,19 @@ function isNameAndTheBand(value: string): boolean {
   return !/\s*(?:&|&amp;|\+|,|;|\/\/|\band\b|\boch\b|\bfeat\.?\b|\bft\.?\b|\bx\b)\s*/i.test(rest);
 }
 
+// Words that venues tack on after the artist. They are not part of the name.
+const TITLE_STATUS = new Set([
+  "live", "lives", "konsert", "concert", "tour", "turne", "show", "spelning",
+]);
+
+function remainderIsStatus(full: string, nameKey: string): boolean {
+  const folded = foldName(full);
+  if (!nameKey || !folded.startsWith(nameKey)) return false;
+  const rest = folded.slice(nameKey.length).trim();
+  if (!rest) return true;
+  return rest.split(" ").every((word) => TITLE_STATUS.has(word));
+}
+
 export function artistCandidates(title: string): string[] {
   let t = unescape(String(title || "")).replace(/\u00a0/g, " ");
   t = t.replace(/\s+/g, " ").replace(/[ !]+$/, "").replace(/^[ !]+/, "");
@@ -179,12 +192,20 @@ export function artistCandidates(title: string): string[] {
   t = t.replace(/^(releasekonsert|release party|album release party|konsert)\s*[-–—:]\s*/i, "");
   t = t.replace(/\s+((album\s+)?release party|en hyllningskonsert|hyllningskonsert)$/i, "");
   t = t.replace(/\s*["'“”‘’][^"'“”‘’]+["'“”‘’]/g, " ");
+  t = t.replace(/\s+(?:konsert|concert)\b[\s\S]*$/i, "");
+  t = t.replace(/\s+live\s+at\b[\s\S]*$/i, "");
+  t = t.replace(/\s+till\s+\p{L}+\s+den\s+\d[\s\S]*$/iu, "");
+  t = t.replace(/\s+på\s+(?:fållan|fallan|bar\d+)\b[\s\S]*$/i, "");
+  t = t.replace(/\s+\S+\s+\S+s\s+son\b[\s\S]*$/i, "");
   t = t.replace(/\s+/g, " ").replace(/^[ \-–—:]+/, "").replace(/[ \-–—:]+$/, "");
   if (!t) return [];
   if (t.includes(":")) {
     const [left, right] = t.split(":", 2);
-    if (left.split(" ").filter(Boolean).length > 0 && left.split(" ").filter(Boolean).length <= 4) {
-      t = right.trim();
+    const leftWords = left.split(" ").filter(Boolean);
+    if (leftWords.length > 0 && leftWords.length <= 4) {
+      // "J. Cole: The Fall-Off Tour" is the artist. "SELAM: Vivian Pérez" is the bill.
+      const rightIsTitle = /\b(tour|turné|album|release)\b/i.test(right);
+      t = (rightIsTitle ? left : right).trim();
     }
   }
   const candidates: string[] = [];
@@ -212,12 +233,25 @@ export function artistCandidates(title: string): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of candidates) {
-    const name = raw.replace(/\s+/g, " ").replace(/^[ \-–—:,.]+/, "").replace(/[ \-–—:,.]+$/, "");
+    const name = raw
+      .replace(/\s+/g, " ")
+      .replace(/^[ \-–—:,.]+/, "")
+      .replace(/[ \-–—:,.]+$/, "")
+      .replace(/\s+(?:live|lives|konsert|concert|show|spelning)$/i, "");
     const key = foldName(name);
     if (!name || seen.has(key) || key.length < 4) continue;
     if (/^(club|live|night|party|konsert|festival|the)$/.test(key)) continue;
-    const words = key.split(" ").filter((w) => !["the", "a", "an", "di"].includes(w));
-    if (words.length < 2 && foldName(title).length > key.length + 3) continue;
+    // A single token pulled out of a sentence ("Jazz" in "Jazz på Fasching") is
+    // not a search key. "The Prodigy" is two tokens — "the" is part of the name.
+    // "Familjen – LIVE" is the whole headliner plus a status word, so it stays.
+    const tokens = key.split(" ").filter((word) => !["a", "an"].includes(word));
+    if (
+      tokens.length < 2 &&
+      !remainderIsStatus(t, key) &&
+      foldName(t).length > key.length + 3
+    ) {
+      continue;
+    }
     seen.add(key);
     out.push(name);
   }
@@ -336,7 +370,7 @@ export function splitTitlePeople(title: string): string[] {
     if (/\bwith\b/i.test(name) && name.split(" ").filter(Boolean).length > 3) {
       name = name.split(/\bwith\b/i).pop()!.trim();
     }
-    name = cleanPersonName(name);
+    name = cleanPersonName(name).replace(/\s+(?:live|lives|konsert|concert|show|spelning)$/i, "");
     const key = foldName(name);
     if (!name || seen.has(key) || key.length < 3 || !isPersonName(name)) continue;
     if (/\b(friends|company|guest|guests|maybe more|coming back|make magic)\b/.test(key)) continue;

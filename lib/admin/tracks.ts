@@ -3,6 +3,7 @@ import "server-only";
 import { and, asc, eq } from "drizzle-orm";
 
 import { lookupBandcampUrl, bcTrack } from "@/lib/scrapers/bandcamp";
+import { deezerTrackById, deezerTrackIdFromUrl } from "@/lib/scrapers/deezer";
 import { lookupSoundcloudUrl, scTrack } from "@/lib/scrapers/soundcloud";
 import { trackArtistKey } from "@/lib/scrapers/text";
 import type { TrackInput } from "@/lib/db/queries";
@@ -32,7 +33,7 @@ export type AdminTrack = {
   type: string | null;
 };
 
-function musicHost(value: string): "bandcamp" | "soundcloud" | null {
+function musicHost(value: string): "bandcamp" | "soundcloud" | "deezer" | null {
   let host = "";
   try {
     host = new URL(value).hostname.toLowerCase();
@@ -41,6 +42,14 @@ function musicHost(value: string): "bandcamp" | "soundcloud" | null {
   }
   if (host === "bandcamp.com" || host.endsWith(".bandcamp.com")) return "bandcamp";
   if (host === "soundcloud.com" || host.endsWith(".soundcloud.com")) return "soundcloud";
+  if (
+    host === "deezer.com" ||
+    host.endsWith(".deezer.com") ||
+    host === "deezer.page.link" ||
+    host.endsWith(".deezer.page.link")
+  ) {
+    return "deezer";
+  }
   return null;
 }
 
@@ -68,13 +77,39 @@ function toInput(raw: Record<string, unknown>): TrackInput {
   };
 }
 
+async function deezerTrackId(value: string): Promise<number | null> {
+  const direct = deezerTrackIdFromUrl(value);
+  if (direct) return direct;
+  const res = await fetch(value, { redirect: "follow" });
+  return deezerTrackIdFromUrl(res.url);
+}
+
 async function resolveMusicUrl(value: string): Promise<TrackInput> {
   const url = value.trim();
   const host = musicHost(url);
   if (!host) {
-    throw new AdminTrackError("Klistra in en Bandcamp- eller SoundCloud-länk.");
+    throw new AdminTrackError("Klistra in en Bandcamp-, SoundCloud- eller Deezer-länk.");
   }
   try {
+    if (host === "deezer") {
+      const id = await deezerTrackId(url);
+      if (!id) throw new AdminTrackError("Klistra in en länk till en låt på Deezer.");
+      const match = await deezerTrackById(id);
+      if (!match?.id || !match.artist) throw new AdminTrackError("Ingen låt hittades på Deezer-länken.");
+      const item: TrackInput = {
+        source: "deezer",
+        artist: match.artist,
+        album: match.album || null,
+        title: match.title || null,
+        url: match.url || "https://www.deezer.com/track/" + match.id,
+        image: match.image || null,
+        trackId: match.id,
+      };
+      if (!trackArtistKey(item.artist, item.title, item.url)) {
+        throw new AdminTrackError("Länken saknar en låt som går att spara.");
+      }
+      return item;
+    }
     const release =
       host === "bandcamp"
         ? await lookupBandcampUrl(url, new Map())

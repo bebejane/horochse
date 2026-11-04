@@ -22,7 +22,17 @@ export type PosterSlide = {
   date: string;
   color: string;
   image: CanvasImageSource | null;
+  /** Månadsannonsen ritar de här raderna i stället för titel och scen. */
+  lines?: string[];
+  /** Sekunder just den här bilden ska ligga kvar. Annars används exportens gemensamma tid. */
+  hold?: number;
+  /** Tecken i den fyllda knappen. Symbolen ersätter knappen. */
+  mark?: MonthMark;
+  /** Fyller ytan med en färg och hoppar över bilden. */
+  solid?: string;
 };
+
+export type MonthMark = "play" | "plus" | "symbol";
 
 export type PosterTicker = {
   text: string;
@@ -39,6 +49,92 @@ const DATE_EM_BOTTOM = 84;
 
 const CREAM = "#f3eee4";
 const INK = "#14120f";
+
+/** Appens mörka bakgrund efter kontrastjusteringen (`--bg`). */
+const APP_BG = "#0e0c0a";
+
+export const MONTH_LINES = ["Hitta och lyssna", "på artister", "som spelar live", "i Stockholm"];
+export const MONTH_LINES_NEXT = [
+  "Välj vilka scener",
+  "du vill följa &",
+  "lägg till spelningar",
+  "i din kalender",
+];
+export const MONTH_LINES_END = ["Hör&Se", "www.höroch.se"];
+
+export const MONTH_COPIES: { lines: string[]; mark: MonthMark }[] = [
+  { lines: MONTH_LINES, mark: "play" },
+  { lines: MONTH_LINES_NEXT, mark: "plus" },
+  { lines: MONTH_LINES_END, mark: "symbol" },
+];
+
+export type MonthFrame = { lines: string[]; mark?: MonthMark };
+
+/** Närmaste tid som går jämnt upp i tiden per bild, minst en bild. */
+export function alignedTextHold(textAfter: number, imageHold: number): number {
+  const step = imageHold > 0 ? imageHold : 0.25;
+  const count = Math.max(1, Math.round(Math.max(0, textAfter) / step));
+  return Math.round(count * step * 1000) / 1000;
+}
+
+/** Texterna avlöser varandra utan paus. `show` ska gå jämnt upp i tiden per bild. */
+export function monthFrame(elapsed: number, show: number): MonthFrame {
+  if (show <= 0) return MONTH_COPIES[0];
+  const cycle = show * MONTH_COPIES.length;
+  const into = ((Math.max(0, elapsed) % cycle) + cycle) % cycle;
+  return MONTH_COPIES[Math.floor(into / show) % MONTH_COPIES.length];
+}
+
+/** Delar ett tidsintervall där texten kan bytas mitt i en bild. */
+export function monthSlices(
+  start: number,
+  end: number,
+  show: number,
+): { lines: string[]; mark?: MonthMark; hold: number }[] {
+  if (end <= start) return [];
+  if (show <= 0) return [{ ...MONTH_COPIES[0], hold: end - start }];
+  const cycle = show * MONTH_COPIES.length;
+  const slices: { lines: string[]; mark?: MonthMark; hold: number }[] = [];
+  let t = start;
+  while (t < end - 0.0005) {
+    const into = ((t % cycle) + cycle) % cycle;
+    const stepInto = into % show;
+    const remain = show - stepInto;
+    const cut = Math.min(end, t + remain);
+    if (cut <= t) break;
+    const frame = monthFrame(t, show);
+    slices.push({ lines: frame.lines, mark: frame.mark, hold: cut - t });
+    t = cut;
+  }
+  return slices;
+}
+const MONTH_SIZE = 92;
+/** 20 procent större än den förra affischknappen. */
+const MONTH_PLAY = 149;
+const MONTH_PLAY_SLUGS = [
+  "debaser",
+  "nalen",
+  "fallan",
+  "kollektivetlivet",
+  "sodrateatern",
+  "berns",
+  "cirkus",
+  "fryshuset",
+  "annexet",
+  "hovet",
+  "aviciiarena",
+  "trearena",
+  "strawberryarena",
+  "konserthuset",
+  "berwaldhallen",
+  "stampen",
+  "glennmillercafe",
+  "kungcarls",
+  "riche",
+  "landet",
+  "encore",
+  "larryscorner",
+];
 
 /** Same-origin variant so the canvas stays exportable. Remote posters would taint it. */
 export function posterImageUrl(src: string, width: 200 | 1200 = 1200, quality = 75): string {
@@ -74,6 +170,26 @@ export function venueColor(slug: string): string {
   return value || "#d4573c";
 }
 
+/** Unika scenfärger från appen, i den ordning knappen ska växla. */
+export function monthPlayColors(): string[] {
+  if (typeof document === "undefined") return ["#d4573c"];
+  const seen = new Set<string>();
+  const colors: string[] = [];
+  for (const slug of MONTH_PLAY_SLUGS) {
+    const value = venueColor(slug).toLowerCase();
+    if (seen.has(value)) continue;
+    seen.add(value);
+    colors.push(value);
+  }
+  return colors.length ? colors : ["#d4573c"];
+}
+
+export function monthPlayColor(index: number, colors: string[]): string {
+  if (!colors.length) return "#d4573c";
+  const i = ((index % colors.length) + colors.length) % colors.length;
+  return colors[i];
+}
+
 function firstFamily(list: string): string {
   return list.split(",")[0]?.trim().replace(/^["']|["']$/g, "") || "serif";
 }
@@ -85,7 +201,9 @@ export async function loadPosterFonts(): Promise<PosterFonts> {
   await Promise.all([
     document.fonts.load(`400 64px "${anselm}"`),
     document.fonts.load(`450 86px "${anselm}"`),
+    document.fonts.load(`450 ${MONTH_SIZE}px "${anselm}"`),
     document.fonts.load(`400 ${VENUE_SIZE}px "${walter}"`),
+    document.fonts.load(`400 ${MONTH_SIZE}px "${walter}"`),
   ]);
   await document.fonts.ready;
   return { anselm, walter };
@@ -347,5 +465,230 @@ export function drawPoster(
   ctx.fillText(slide.date, padX, y);
 
   if (ticker?.text) paintTicker(ctx, ticker, fonts, slide.date);
+  ctx.restore();
+}
+
+/** Bilden fyller ytan. Ingen titel, scen eller datum — bara meningen i mitten. */
+export function drawMonthPoster(
+  ctx: CanvasRenderingContext2D,
+  slide: PosterSlide | null,
+  fonts: PosterFonts,
+) {
+  const width = ctx.canvas.width;
+  const height = ctx.canvas.height;
+  ctx.save();
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = slide?.solid || APP_BG;
+  ctx.fillRect(0, 0, width, height);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  if (!slide?.solid && slide?.image) drawCover(ctx, slide.image, width, height);
+
+  const lines = slide?.lines ?? MONTH_LINES;
+  if (slide?.lines && !slide.lines.length) {
+    ctx.restore();
+    return;
+  }
+  const maxText = width - 140;
+  let size = MONTH_SIZE;
+  const fitted = MONTH_COPIES.flatMap((copy) =>
+    copy.lines.map((line, index) => ({
+      line,
+      size: copy.mark === "symbol" && index === 1 ? 0.7 : 1,
+      walter: copy.mark === "symbol" && index === 0,
+    })),
+  );
+  while (size > 64) {
+    if (fitted.every((item) => monthLineWidth(ctx, item.line, Math.round(size * item.size), fonts, item.walter) <= maxText)) break;
+    size -= 2;
+  }
+  const lineHeight = Math.round(MONTH_SIZE * 1.24);
+  const lineCount = 4;
+  const gap = 72;
+  const slotHeight = lineCount * lineHeight;
+  const textTop = (height - (slotHeight + gap + MONTH_PLAY)) / 2;
+  const textMid = textTop + slotHeight / 2;
+  ctx.font = font(450, MONTH_SIZE, fonts.anselm);
+  ctx.textBaseline = "alphabetic";
+  const ascent = ctx.measureText("Hg").fontBoundingBoxAscent || Math.round(MONTH_SIZE * 0.8);
+  const baseline = (index: number) => textTop + ascent + index * lineHeight;
+
+  const fade = ctx.createRadialGradient(width / 2, textMid, height * 0.02, width / 2, textMid, height * 0.42);
+  fade.addColorStop(0, "rgba(14, 12, 10, 0.48)");
+  fade.addColorStop(0.55, "rgba(14, 12, 10, 0.14)");
+  fade.addColorStop(1, "rgba(14, 12, 10, 0)");
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#ffffff";
+  if (slide?.mark === "symbol") {
+    drawMonthLine(ctx, lines[0] || "Hör&Se", width / 2, baseline(1), size, fonts, true);
+    drawMonthLine(ctx, lines[1] || "", width / 2, baseline(2), Math.round(size * 0.7), fonts);
+  } else {
+    lines.forEach((line, index) => drawMonthLine(ctx, line, width / 2, baseline(index), size, fonts));
+  }
+  ctx.textAlign = "left";
+  ctx.letterSpacing = "0px";
+
+  const mark = slide?.mark ?? "play";
+  drawMonthMark(
+    ctx,
+    width / 2,
+    textTop + slotHeight + gap + MONTH_PLAY / 2,
+    mark === "symbol" ? Math.round(MONTH_PLAY * 1.3) : MONTH_PLAY,
+    slide?.color || "#d4573c",
+    mark,
+  );
+  ctx.restore();
+}
+
+/** Samma kontur som symbolen i masten. Svart variant, som i ljust tema. */
+const SYMBOL_OUTLINE =
+  "M45.3,248.6c-32-50.1-25.9-114.9.9-161.5S124.7,12.8,175.7,13.7c91.5-2.6,153.7,75.1,169.3,160.6,14.7,78.6-10.4,168.4-54.4,225.4-44.9,57-88.1,104.7-132.1,156.3-31.8,36.2-68.2,40.6-101,23.3-30.2-15.5-44-43.2-44-70.8M267.5,133.7c-19.9-44-59.9-63.9-98.7-56.1-44.9,6.9-76,41.4-82.9,77.7-5,28.1,4.4,59.4,20.3,81.7M177.8,375.1c-37.1-3.5-56.5,21.1-80.7,53.1-14.7,19.9-31.4,25.6-43.5,20.6-22.3-9.5-20.4-34.4-9.2-67.2";
+const SYMBOL_W = 364.1;
+const SYMBOL_H = 601.6;
+const EYE_CX = 191.2;
+const EYE_CY = 280.4;
+const SYMBOL_INK = "#101010";
+
+function monthLineWidth(
+  ctx: CanvasRenderingContext2D,
+  line: string,
+  size: number,
+  fonts: PosterFonts,
+  walterAmp = false,
+): number {
+  return lineParts(line, walterAmp).reduce((sum, part, index, parts) => {
+    const width = partWidth(ctx, part, size, fonts);
+    if (!part.walter) return sum + width;
+    return sum + width + ampPad(parts, index, size, "left") + ampPad(parts, index, size, "right");
+  }, 0);
+}
+
+/** Lite luft på var sida om & i logotypen. */
+const AMP_SIDE = 0.16;
+
+function lineParts(line: string, walterAmp: boolean): { text: string; walter: boolean }[] {
+  if (!walterAmp || !line.includes("&")) return [{ text: line, walter: false }];
+  const parts: { text: string; walter: boolean }[] = [];
+  const bits = line.split("&");
+  bits.forEach((bit, index) => {
+    if (bit) parts.push({ text: bit, walter: false });
+    if (index < bits.length - 1) parts.push({ text: "&", walter: true });
+  });
+  return parts.length ? parts : [{ text: line, walter: false }];
+}
+
+function ampPad(parts: { text: string }[], index: number, size: number, side: "left" | "right"): number {
+  const neighbor = parts[index + (side === "left" ? -1 : 1)];
+  if (!neighbor) return 0;
+  const spaced = side === "left" ? neighbor.text.endsWith(" ") : neighbor.text.startsWith(" ");
+  return spaced ? 0 : size * AMP_SIDE;
+}
+
+function partWidth(
+  ctx: CanvasRenderingContext2D,
+  part: { text: string; walter: boolean },
+  size: number,
+  fonts: PosterFonts,
+): number {
+  ctx.letterSpacing = part.walter ? "0px" : "-0.02em";
+  ctx.font = part.walter ? font(400, size, fonts.walter) : font(450, size, fonts.anselm);
+  return ctx.measureText(part.text).width;
+}
+
+/** & i logotypen sätts i Walter. Övrig text, även &, är Anselm. */
+function drawMonthLine(
+  ctx: CanvasRenderingContext2D,
+  line: string,
+  cx: number,
+  y: number,
+  size: number,
+  fonts: PosterFonts,
+  walterAmp = false,
+) {
+  const parts = lineParts(line, walterAmp);
+  const total = parts.reduce((sum, part, index) => {
+    const width = partWidth(ctx, part, size, fonts);
+    if (!part.walter) return sum + width;
+    return sum + width + ampPad(parts, index, size, "left") + ampPad(parts, index, size, "right");
+  }, 0);
+  let x = cx - total / 2;
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "left";
+  parts.forEach((part, index) => {
+    ctx.letterSpacing = part.walter ? "0px" : "-0.02em";
+    ctx.font = part.walter ? font(400, size, fonts.walter) : font(450, size, fonts.anselm);
+    const measured = ctx.measureText(part.text).width;
+    const pad = part.walter ? ampPad(parts, index, size, "left") : 0;
+    ctx.fillText(part.text, x + pad, y);
+    x += measured + pad + (part.walter ? ampPad(parts, index, size, "right") : 0);
+  });
+}
+
+function drawMonthMark(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  diameter: number,
+  fill: string,
+  mark: MonthMark,
+) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, diameter / 2, 0, Math.PI * 2);
+  ctx.fillStyle = fill;
+  ctx.fill();
+  if (mark === "symbol") drawMastSymbol(ctx, cx, cy, diameter * 0.7);
+  else if (mark === "plus") drawPlus(ctx, cx, cy, diameter);
+  else drawPlayTriangle(ctx, cx, cy, diameter);
+  ctx.restore();
+}
+
+/** Samma ruta som play-triangeln, så plusset får samma tyngd. Raka hörn. */
+function drawPlus(ctx: CanvasRenderingContext2D, cx: number, cy: number, diameter: number) {
+  const icon = diameter * (1.05 / 2.85) * 1.2;
+  const scale = icon / 24;
+  const thick = 3.2 * scale;
+  const span = 12 * scale;
+  ctx.fillStyle = APP_BG;
+  ctx.fillRect(cx - thick / 2, cy - span / 2, thick, span);
+  ctx.fillRect(cx - span / 2, cy - thick / 2, span, thick);
+}
+
+function drawPlayTriangle(ctx: CanvasRenderingContext2D, cx: number, cy: number, diameter: number) {
+  const icon = diameter * (1.05 / 2.85) * 1.2;
+  const scale = icon / 24;
+  ctx.save();
+  ctx.translate(cx - icon / 2, cy - icon / 2);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = APP_BG;
+  ctx.beginPath();
+  ctx.moveTo(8, 5.5);
+  ctx.lineTo(8, 18.5);
+  ctx.lineTo(19, 12);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawMastSymbol(ctx: CanvasRenderingContext2D, cx: number, cy: number, height: number) {
+  const scale = height / SYMBOL_H;
+  ctx.save();
+  ctx.translate(cx - (SYMBOL_W * scale) / 2, cy - height / 2);
+  ctx.scale(scale, scale);
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 21.6;
+  ctx.strokeStyle = SYMBOL_INK;
+  ctx.stroke(new Path2D(SYMBOL_OUTLINE));
+  ctx.fillStyle = SYMBOL_INK;
+  ctx.beginPath();
+  ctx.ellipse(236.8, EYE_CY, 41.3, 58.9, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(EYE_CX, EYE_CY, 95.6, 0, Math.PI * 2);
+  ctx.stroke();
   ctx.restore();
 }

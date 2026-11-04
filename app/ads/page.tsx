@@ -22,6 +22,12 @@ export default function AdsPage() {
             <span>4:5, 1:1 eller 9:16. Bild, titel, scen och datum. Bilderna byts utan övergång.</span>
           </Link>
         </li>
+        <li>
+          <Link className={styles.tool} href="/ads/manad">
+            <strong>Månad</strong>
+            <span>Alla bilder de närmaste fem veckorna. Bara en mening i mitten, i vitt.</span>
+          </Link>
+        </li>
       </ul>
     </main>
   );

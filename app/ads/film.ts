@@ -1,6 +1,15 @@
 import { Muxer, ArrayBufferTarget } from "mp4-muxer";
 
-import { drawPoster, paintTicker, TICKER_SPEED, type PosterFonts, type PosterFormat, type PosterSlide } from "./poster";
+import {
+  drawPoster,
+  paintTicker,
+  TICKER_SPEED,
+  type PosterFonts,
+  type PosterFormat,
+  type PosterSlide,
+} from "./poster";
+
+type SlidePainter = (ctx: CanvasRenderingContext2D, slide: PosterSlide, fonts: PosterFonts) => void;
 
 const CODECS = ["avc1.640028", "avc1.4d0028", "avc1.420028"];
 const TICKER_FPS = 30;
@@ -18,16 +27,17 @@ export async function exportFilm(
   ticker: string,
   onProgress: (done: number, total: number) => void,
   isCancelled: () => boolean,
+  paint: SlidePainter = drawPoster,
 ): Promise<Blob> {
   if (!slides.length) throw new Error("Inga inlägg att exportera.");
   if (typeof VideoEncoder === "undefined") {
     throw new Error("Den här webbläsaren kan inte skapa en mp4.");
   }
 
-  const holdUs = Math.round(seconds * 1_000_000);
-  const scroll = ticker.trim() && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const framesPerSlide = scroll ? Math.max(1, Math.round(seconds * TICKER_FPS)) : 1;
-  const frameUs = Math.round(holdUs / framesPerSlide);
+  const scroll =
+    paint === drawPoster &&
+    ticker.trim() &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const canvas = document.createElement("canvas");
   canvas.width = format.width;
   canvas.height = format.height;
@@ -46,7 +56,13 @@ export async function exportFilm(
     output: (chunk, meta) => {
       const data = new Uint8Array(chunk.byteLength);
       chunk.copyTo(data);
-      muxer.addVideoChunkRaw(data, chunk.type, chunk.timestamp, frameUs, meta);
+      muxer.addVideoChunkRaw(
+        data,
+        chunk.type,
+        chunk.timestamp,
+        chunk.duration ?? Math.round(seconds * 1_000_000),
+        meta,
+      );
     },
     error: (err) => {
       videoError = asError(err);
@@ -62,20 +78,23 @@ export async function exportFilm(
     const stillCtx = still.getContext("2d", { alpha: false });
     if (!stillCtx) throw new Error("Kunde inte rita bilden.");
 
-    let frameIndex = 0;
+    let timestampUs = 0;
 
     for (let i = 0; i < slides.length; i++) {
-      drawPoster(stillCtx, slides[i], fonts);
+      const slideHold = slides[i].hold ?? seconds;
+      const holdUs = Math.max(1, Math.round(slideHold * 1_000_000));
+      const framesPerSlide = scroll ? Math.max(1, Math.round(slideHold * TICKER_FPS)) : 1;
+      const frameUs = Math.round(holdUs / framesPerSlide);
+      paint(stillCtx, slides[i], fonts);
       for (let frame = 0; frame < framesPerSlide; frame++) {
         if (isCancelled()) throw new Error("Exporten avbröts.");
         if (videoError) throw videoError;
         ctx.drawImage(still, 0, 0);
-        if (ticker) {
+        if (paint === drawPoster && ticker) {
           const offset = scroll ? (i * seconds + frame / TICKER_FPS) * TICKER_SPEED : format.width;
           paintTicker(ctx, { text: ticker, offset }, fonts, slides[i].date);
         }
-        const sample = new VideoFrame(canvas, { timestamp: frameIndex * frameUs, duration: frameUs });
-        frameIndex += 1;
+        const sample = new VideoFrame(canvas, { timestamp: timestampUs + frame * frameUs, duration: frameUs });
         try {
           encoder.encode(sample, { keyFrame: frame === 0 });
         } finally {
@@ -83,6 +102,7 @@ export async function exportFilm(
         }
         await drain(encoder, () => videoError);
       }
+      timestampUs += frameUs * framesPerSlide;
       onProgress(i + 1, slides.length);
     }
 

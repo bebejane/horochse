@@ -13,7 +13,10 @@ import {
   eq,
   gte,
   inArray,
+  isNull,
+  ne,
   notInArray,
+  or,
   sql,
 } from "drizzle-orm";
 
@@ -395,6 +398,34 @@ export async function saveYoutubeVideos(
         updatedAt: sql`excluded.updated_at`,
       },
     });
+}
+
+/**
+ * Ids among `ids` that already have something to play (Deezer, YouTube, or a
+ * SoundCloud track). A Bandcamp or SoundCloud link does not count.
+ */
+export async function loadPlayableEventIds(ids: string[]): Promise<Set<string>> {
+  const found = new Set<string>();
+  const chunk = 200;
+  for (let i = 0; i < ids.length; i += chunk) {
+    const slice = ids.slice(i, i + chunk);
+    if (!slice.length) continue;
+    const rows = await db
+      .select({ eventId: tracks.eventId })
+      .from(tracks)
+      .where(
+        and(
+          inArray(tracks.eventId, slice),
+          or(
+            eq(tracks.source, "deezer"),
+            eq(tracks.source, "youtube"),
+            and(eq(tracks.source, "soundcloud"), or(isNull(tracks.type), ne(tracks.type, "link"))),
+          ),
+        ),
+      );
+    for (const row of rows) found.add(row.eventId);
+  }
+  return found;
 }
 
 /** Ids among `ids` that are already stored. A scrape uses this so it only inserts new events. */

@@ -271,7 +271,7 @@ export default function AdminPage() {
                                 type="url"
                                 name="url"
                                 required
-                                placeholder="Bandcamp- eller SoundCloud-länk"
+                                placeholder="Bandcamp-, SoundCloud- eller Deezer-länk"
                                 aria-label={`Ny länk för ${trackLabel(track)}`}
                               />
                               <button type="submit" disabled={busy === key}>
@@ -293,7 +293,7 @@ export default function AdminPage() {
                           type="url"
                           name="url"
                           required
-                          placeholder="Bandcamp- eller SoundCloud-länk"
+                          placeholder="Bandcamp-, SoundCloud- eller Deezer-länk"
                           aria-label={`Lägg till länk för ${event.title}`}
                         />
                         <button type="submit" disabled={busy === `${event.id}:add`}>
