@@ -19,6 +19,7 @@ import {
   monthPlayColor,
   monthPlayColors,
   monthSlices,
+  cssToken,
   POSTER_FORMATS,
   posterImageUrl,
   type PosterFonts,
@@ -221,7 +222,7 @@ export default function MonthAdsPage() {
         date: "",
         color: monthPlayColor(cursor, monthPlayColors()),
         image: onBlack || !bitmap || bitmap === "failed" ? null : bitmap,
-        solid: onBlack ? "#000000" : undefined,
+        solid: onBlack ? cssToken("--dark-bg") : undefined,
         lines: textFrame.lines,
         mark: textFrame.mark,
       },
@@ -255,7 +256,7 @@ export default function MonthAdsPage() {
         date: "",
         color: monthPlayColor(0, palette),
         image: null,
-        solid: "#000000",
+        solid: cssToken("--dark-bg"),
         ...slice,
       }));
       const frames = [

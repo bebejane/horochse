@@ -47,13 +47,18 @@ const DATE_SIZE = 42;
 /** Em-boxens underkant på datumet ligger så här många pixlar ovanför bildens nederkant. */
 const DATE_EM_BOTTOM = 84;
 
-const CREAM = "#f3eee4";
-const INK = "#14120f";
-
 /** Läser en färg från stilmallen. Canvas kan inte använda `var()` själv. */
-function cssToken(name: string): string {
+export function cssToken(name: string): string {
   if (typeof document === "undefined") return "";
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function posterInk(): string {
+  return cssToken("--dark-ink");
+}
+
+function posterGround(): string {
+  return cssToken("--dark-bg");
 }
 
 function withAlpha(color: string, alpha: number): string {
@@ -178,7 +183,7 @@ export function loadPosterImage(src: string): Promise<HTMLImageElement | null> {
 }
 
 export function venueColor(slug: string): string {
-  return cssToken(`--${slug}`) || cssToken("--debaser");
+  return cssToken(`--dark-${slug}`) || cssToken("--dark-debaser");
 }
 
 /** Unika scenfärger från appen, i den ordning knappen ska växla. */
@@ -191,11 +196,11 @@ export function monthPlayColors(): string[] {
     seen.add(value);
     colors.push(value);
   }
-  return colors.length ? colors : [cssToken("--debaser")];
+  return colors.length ? colors : [cssToken("--dark-debaser")];
 }
 
 export function monthPlayColor(index: number, colors: string[]): string {
-  if (!colors.length) return cssToken("--debaser");
+  if (!colors.length) return cssToken("--dark-debaser");
   const i = ((index % colors.length) + colors.length) % colors.length;
   return colors[i];
 }
@@ -334,7 +339,7 @@ const tickerStrips = new Map<string, TickerStrip>();
 
 /** Ritas en gång. Att rita om bokstäverna varje bildruta får raden att hacka. */
 function tickerStrip(text: string, family: string): TickerStrip {
-  const key = `${family}\0${text}`;
+  const key = `${family}\0${posterInk()}\0${text}`;
   const cached = tickerStrips.get(key);
   if (cached) return cached;
 
@@ -356,7 +361,7 @@ function tickerStrip(text: string, family: string): TickerStrip {
   if (!stripCtx) return { canvas, textWidth, pad };
   stripCtx.font = font(400, VENUE_SIZE, family);
   stripCtx.letterSpacing = "0.16em";
-  stripCtx.fillStyle = "#ffffff";
+  stripCtx.fillStyle = posterInk();
   stripCtx.textBaseline = "alphabetic";
   stripCtx.fillText(text, pad, pad + ascent);
   const strip = { canvas, textWidth, pad };
@@ -419,7 +424,8 @@ export function drawPoster(
   const height = ctx.canvas.height;
   ctx.save();
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = INK;
+  const ground = posterGround();
+  ctx.fillStyle = ground;
   ctx.fillRect(0, 0, width, height);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
@@ -427,13 +433,13 @@ export function drawPoster(
   if (slide?.image) drawCover(ctx, slide.image, width, height);
 
   const fade = ctx.createLinearGradient(0, height * 0.36, 0, height);
-  fade.addColorStop(0, "rgba(20, 18, 15, 0)");
-  fade.addColorStop(0.42, "rgba(20, 18, 15, 0.62)");
-  fade.addColorStop(1, "rgba(20, 18, 15, 0.94)");
+  fade.addColorStop(0, withAlpha(ground, 0));
+  fade.addColorStop(0.42, withAlpha(ground, 0.62));
+  fade.addColorStop(1, withAlpha(ground, 0.94));
   ctx.fillStyle = fade;
   ctx.fillRect(0, height * 0.36, width, height * 0.64);
 
-  ctx.fillStyle = slide?.color || CREAM;
+  ctx.fillStyle = slide?.color || posterInk();
   ctx.fillRect(0, height - 14, width, 14);
 
   if (!slide) {
@@ -454,13 +460,14 @@ export function drawPoster(
 
   ctx.textBaseline = "top";
   ctx.letterSpacing = "0.16em";
-  ctx.fillStyle = slide.color || CREAM;
+  ctx.fillStyle = slide.color || posterInk();
   ctx.font = font(400, venueSize, fonts.walter);
   ctx.fillText(slide.venue.toLocaleUpperCase("sv"), padX, y);
   ctx.letterSpacing = "0px";
 
   y += venueSize + 26;
-  ctx.fillStyle = CREAM;
+  const ink = posterInk();
+  ctx.fillStyle = ink;
   ctx.letterSpacing = "-0.02em";
   ctx.font = font(450, title.size, fonts.anselm);
   for (const line of title.lines) {
@@ -470,7 +477,7 @@ export function drawPoster(
   ctx.letterSpacing = "0px";
 
   y += 8;
-  ctx.fillStyle = "rgba(243, 238, 228, 0.86)";
+  ctx.fillStyle = withAlpha(ink, 0.86);
   ctx.font = font(400, dateSize, fonts.anselm);
   ctx.fillText(slide.date, padX, y);
 
@@ -488,7 +495,7 @@ export function drawMonthPoster(
   const height = ctx.canvas.height;
   ctx.save();
   ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = slide?.solid || cssToken("--dark-bg");
+  ctx.fillStyle = slide?.solid || posterGround();
   ctx.fillRect(0, 0, width, height);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
@@ -524,7 +531,7 @@ export function drawMonthPoster(
   const baseline = (index: number) => textTop + ascent + index * lineHeight;
 
   const fade = ctx.createRadialGradient(width / 2, textMid, height * 0.02, width / 2, textMid, height * 0.42);
-  const bg = cssToken("--dark-bg");
+  const bg = posterGround();
   fade.addColorStop(0, withAlpha(bg, 0.48));
   fade.addColorStop(0.55, withAlpha(bg, 0.14));
   fade.addColorStop(1, withAlpha(bg, 0));
@@ -532,7 +539,7 @@ export function drawMonthPoster(
   ctx.fillRect(0, 0, width, height);
 
   ctx.textBaseline = "alphabetic";
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = posterInk();
   if (slide?.mark === "symbol") {
     drawMonthLine(ctx, lines[0] || "Hör&Se", width / 2, baseline(1), size, fonts, true);
     drawMonthLine(ctx, lines[1] || "", width / 2, baseline(2), Math.round(size * 0.7), fonts);
@@ -548,7 +555,7 @@ export function drawMonthPoster(
     width / 2,
     textTop + slotHeight + gap + MONTH_PLAY / 2,
     mark === "symbol" ? Math.round(MONTH_PLAY * 1.3) : MONTH_PLAY,
-    slide?.color || cssToken("--debaser"),
+    slide?.color || cssToken("--dark-debaser"),
     mark,
   );
   ctx.restore();
@@ -662,7 +669,7 @@ function drawPlus(ctx: CanvasRenderingContext2D, cx: number, cy: number, diamete
   const scale = icon / 24;
   const thick = 3.2 * scale;
   const span = 12 * scale;
-  ctx.fillStyle = cssToken("--dark-bg");
+  ctx.fillStyle = posterGround();
   ctx.fillRect(cx - thick / 2, cy - span / 2, thick, span);
   ctx.fillRect(cx - span / 2, cy - thick / 2, span, thick);
 }
@@ -673,7 +680,7 @@ function drawPlayTriangle(ctx: CanvasRenderingContext2D, cx: number, cy: number,
   ctx.save();
   ctx.translate(cx - icon / 2, cy - icon / 2);
   ctx.scale(scale, scale);
-  ctx.fillStyle = cssToken("--dark-bg");
+  ctx.fillStyle = posterGround();
   ctx.beginPath();
   ctx.moveTo(8, 5.5);
   ctx.lineTo(8, 18.5);
