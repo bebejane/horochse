@@ -6,7 +6,7 @@ import cn from 'classnames';
 import { useEffect, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import { VENUES } from '@/lib/types';
 import type { CalStyle, FilterMode, ListDensity, ThemeMode, ViewMode } from '@/lib/types';
-import { CloseIcon, GearIcon } from '@/components/Icons';
+import { ChevronUpIcon, CloseIcon, GearIcon } from '@/components/Icons';
 
 const WORDMARK = ['H', 'ö', 'r', '&', 'S', 'e'] as const;
 const EYEBROW_WORDMARK = ['H', 'Ö', 'R ', '& ', 'S', 'E '] as const;
@@ -857,6 +857,9 @@ export function Mast({
 									{mine.length}
 								</span>
 							) : null}
+							<span className={s.filterCaret} aria-hidden='true'>
+								<ChevronUpIcon />
+							</span>
 						</button>
 						{chips.length || pickerOpen ? (
 							<div className={s.filterMineRow}>
@@ -954,6 +957,12 @@ export function Mast({
 					>
 						{chipNodes}
 					</div>
+				) : null}
+				{pickerOpen ? (
+					<div
+						className={cn(s.filterChipsRim, { isShown: pickerFade.bottom })}
+						aria-hidden='true'
+					/>
 				) : null}
 			</div>
 		</header>

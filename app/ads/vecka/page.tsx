@@ -6,6 +6,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { displayTitle } from "@/lib/events";
 import type { ConcertEvent, EventsPayload } from "@/lib/types";
 
+import { readExcluded, writeExcluded } from "../selection-cookie";
+
 import styles from "../ads.module.scss";
 import { downloadBlob, exportFilm } from "../film";
 import {
@@ -39,12 +41,23 @@ export default function WeekAdsPage() {
   const [formatId, setFormatId] = useState<PosterFormat["id"]>("4:5");
   const [seconds, setSeconds] = useState(2);
   const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
+  const [excludedReady, setExcludedReady] = useState(false);
+  const [titles, setTitles] = useState<Record<string, string>>({});
   const [images, setImages] = useState<Record<string, ImageState>>({});
   const [fonts, setFonts] = useState<PosterFonts | null>(null);
   const [cursor, setCursor] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState("");
   const [exportError, setExportError] = useState("");
+
+  useEffect(() => {
+    setExcluded(readExcluded("hor-vecka-bort"));
+    setExcludedReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (excludedReady) writeExcluded("hor-vecka-bort", excluded);
+  }, [excluded, excludedReady]);
 
   useEffect(() => {
     document.title = "Veckans konserter — ADS";
@@ -151,7 +164,7 @@ export default function WeekAdsPage() {
     const bitmap = currentImage;
     const slide = current
       ? {
-          title: displayTitle(current),
+          title: titles[current.id] ?? displayTitle(current),
           venue: current.venue,
           date: posterDate(current.date),
           color: venueColor(current.venue_slug),
@@ -180,7 +193,7 @@ export default function WeekAdsPage() {
     };
     frame = window.requestAnimationFrame(paint);
     return () => window.cancelAnimationFrame(frame);
-  }, [current, currentImage, fonts, format, ticker]);
+  }, [current, currentImage, fonts, format, ticker, titles]);
 
   function toggle(id: string) {
     setExcluded((prev) => {
@@ -204,7 +217,7 @@ export default function WeekAdsPage() {
       const frames = slides.map((event) => {
         const bitmap = images[event.id];
         return {
-          title: displayTitle(event),
+          title: titles[event.id] ?? displayTitle(event),
           venue: event.venue,
           date: posterDate(event.date),
           color: venueColor(String(event.venue_slug)),
@@ -354,13 +367,32 @@ export default function WeekAdsPage() {
                 data-out={out ? "true" : "false"}
                 style={{ borderLeftColor: onStage ? venueColor(String(event.venue_slug)) : "transparent" }}
               >
-                {event.image ? (
-                  <img className={styles.thumb} src={posterImageUrl(event.image, 200)} alt="" />
-                ) : (
-                  <span className={styles.thumb} />
-                )}
+                <button
+                  className={styles.thumbButton}
+                  type="button"
+                  aria-label={(out ? "Ta med" : "Välj bort") + " bilden för " + displayTitle(event)}
+                  aria-pressed={!out}
+                  onClick={() => toggle(event.id)}
+                  disabled={exporting}
+                >
+                  {event.image ? (
+                    <img className={styles.thumb} src={posterImageUrl(event.image, 200)} alt="" />
+                  ) : (
+                    <span className={styles.thumb} />
+                  )}
+                </button>
                 <div className={styles.copy}>
-                  <strong>{displayTitle(event)}</strong>
+                  <label className={styles.field}>
+                    Konserttitel
+                    <textarea
+                      className={styles.titleEditor}
+                      aria-label={`Konserttitel för ${displayTitle(event)}`}
+                      value={titles[event.id] ?? displayTitle(event)}
+                      rows={2}
+                      disabled={exporting}
+                      onChange={(change) => setTitles((prev) => ({ ...prev, [event.id]: change.target.value }))}
+                    />
+                  </label>
                   <span>
                     {event.venue} · {posterDate(event.date)}
                   </span>

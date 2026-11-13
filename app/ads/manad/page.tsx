@@ -7,6 +7,8 @@ import { addDays, todayDate, toIso } from "@/lib/dates";
 import { displayTitle, isCancelledEvent } from "@/lib/events";
 import type { ConcertEvent, EventsPayload } from "@/lib/types";
 
+import { readExcluded, writeExcluded } from "../selection-cookie";
+
 import styles from "../ads.module.scss";
 import { downloadBlob, exportFilm } from "../film";
 import { formatDuration } from "../week";
@@ -30,57 +32,6 @@ type ImageState = HTMLImageElement | "failed";
 
 const HOLD_OPTIONS = [0.25, 0.5, 0.75, 1, 2, 3];
 const WINDOW_DAYS = 5 * 7;
-const EXCLUDED_COOKIE = "hor-manad-bort";
-const EXCLUDED_CHUNK = 3200;
-const EXCLUDED_MAX_AGE = 60 * 60 * 24 * 400;
-
-function excludedCookieName(index: number): string {
-  return index === 0 ? EXCLUDED_COOKIE : `${EXCLUDED_COOKIE}.${index}`;
-}
-
-function readExcludedChunks(): { index: number; value: string }[] {
-  return document.cookie.split("; ").flatMap((row) => {
-    const eq = row.indexOf("=");
-    if (eq < 0) return [];
-    const name = row.slice(0, eq);
-    const value = row.slice(eq + 1);
-    if (name === EXCLUDED_COOKIE) return [{ index: 0, value }];
-    if (!name.startsWith(`${EXCLUDED_COOKIE}.`)) return [];
-    const index = Number(name.slice(EXCLUDED_COOKIE.length + 1));
-    if (!Number.isInteger(index) || index < 1) return [];
-    return [{ index, value }];
-  });
-}
-
-function readExcluded(): Set<string> {
-  const chunks = readExcludedChunks().sort((a, b) => a.index - b.index);
-  if (!chunks.length) return new Set();
-  try {
-    const ids = JSON.parse(chunks.map((chunk) => decodeURIComponent(chunk.value)).join(""));
-    if (!Array.isArray(ids)) return new Set();
-    return new Set(ids.filter((id) => typeof id === "string" && id));
-  } catch {
-    return new Set();
-  }
-}
-
-function writeExcluded(ids: Set<string>) {
-  const json = JSON.stringify([...ids]);
-  const parts: string[] = [];
-  for (let i = 0; i < json.length; i += EXCLUDED_CHUNK) {
-    parts.push(encodeURIComponent(json.slice(i, i + EXCLUDED_CHUNK)));
-  }
-  if (!parts.length) parts.push(encodeURIComponent("[]"));
-  const keep = new Set(parts.map((_, index) => index));
-  for (const chunk of readExcludedChunks()) {
-    if (keep.has(chunk.index)) continue;
-    document.cookie = `${excludedCookieName(chunk.index)}=; Path=/; Max-Age=0; SameSite=Lax`;
-  }
-  parts.forEach((part, index) => {
-    document.cookie = `${excludedCookieName(index)}=${part}; Path=/; Max-Age=${EXCLUDED_MAX_AGE}; SameSite=Lax`;
-  });
-}
-
 export default function MonthAdsPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fontsRef = useRef<PosterFonts | null>(null);
@@ -100,13 +51,13 @@ export default function MonthAdsPage() {
   const [exportError, setExportError] = useState("");
 
   useEffect(() => {
-    setExcluded(readExcluded());
+    setExcluded(readExcluded("hor-manad-bort"));
     setExcludedReady(true);
   }, []);
 
   useEffect(() => {
     if (!excludedReady) return;
-    writeExcluded(excluded);
+    writeExcluded("hor-manad-bort", excluded);
   }, [excluded, excludedReady]);
 
   useEffect(() => {
@@ -419,11 +370,20 @@ export default function MonthAdsPage() {
                 data-current={onStage ? "true" : "false"}
                 data-out={out ? "true" : "false"}
               >
-                {event.image ? (
-                  <img className={styles.thumb} src={posterImageUrl(event.image, 200)} alt="" />
-                ) : (
-                  <span className={styles.thumb} />
-                )}
+                <button
+                  className={styles.thumbButton}
+                  type="button"
+                  aria-label={(out ? "Ta med" : "Välj bort") + " bilden för " + displayTitle(event)}
+                  aria-pressed={!out}
+                  onClick={() => toggle(event.id)}
+                  disabled={exporting}
+                >
+                  {event.image ? (
+                    <img className={styles.thumb} src={posterImageUrl(event.image, 200)} alt="" />
+                  ) : (
+                    <span className={styles.thumb} />
+                  )}
+                </button>
                 <button type="button" onClick={() => toggle(event.id)} disabled={exporting}>
                   {out ? "Ta med" : "Välj bort"}
                 </button>

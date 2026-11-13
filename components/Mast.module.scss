@@ -729,6 +729,17 @@ span.filter:global(.isSolo) {
 	transform: translateY(-0.42em);
 }
 
+.filterCaret,
+.filterChipsRim {
+	display: none;
+}
+
+.filterCaret svg {
+	display: block;
+	width: 0.85rem;
+	height: 0.85rem;
+}
+
 .filterGear,
 .filterClose {
 	padding: 0 0.55rem;
@@ -841,9 +852,11 @@ span.filter:global(.isSolo) {
 		position: sticky;
 		top: 0;
 		z-index: 21;
+		align-self: stretch;
 		align-items: center;
 		justify-content: flex-start;
 		box-sizing: border-box;
+		width: 100%;
 		height: var(--mast-bar);
 		background: var(--bg);
 		padding: 0 var(--margin);
@@ -851,8 +864,16 @@ span.filter:global(.isSolo) {
 
 	.mastTopActions {
 		width: 100%;
-		justify-content: space-between;
+		justify-content: flex-end;
 		gap: 0.85rem;
+	}
+
+	.mastAbout {
+		margin-right: auto;
+	}
+
+	.mastTopTools {
+		margin-left: auto;
 	}
 
 	.densitySwitch {
@@ -947,6 +968,7 @@ span.filter:global(.isSolo) {
 		top: 0;
 		left: 0;
 		right: 0;
+		z-index: 40;
 		max-height: calc(100svh - var(--player-height));
 		display: flex;
 		flex-direction: column;
@@ -957,10 +979,14 @@ span.filter:global(.isSolo) {
 		display: flex;
 		flex-direction: column;
 		flex: 1 1 auto;
+		gap: 0;
 		min-height: 0;
 		overflow: hidden;
+		position: relative;
 		width: 100%;
 		padding: 0;
+		--menu-bottom: 0.65rem;
+		--menu-fade: 1.85rem;
 	}
 
 	.mast:has(.filters:global(.isOpen)) .mastTop,
@@ -980,6 +1006,7 @@ span.filter:global(.isSolo) {
 		flex: 0 0 auto;
 		min-height: 0;
 		width: 100%;
+		padding-bottom: 0.35rem;
 	}
 
 	.filters:global(.isOpen) {
@@ -990,15 +1017,25 @@ span.filter:global(.isSolo) {
 		width: 100%;
 	}
 
+	.filters:global(.isOpen) > [data-venue="mine"] {
+		padding-right: 1.7rem;
+	}
+
+	.filters:global(.isOpen) > [data-venue="mine"] .filterCaret {
+		display: inline-flex;
+		position: absolute;
+		right: 0.55rem;
+		top: 50%;
+		transform: translateY(-50%);
+		align-items: center;
+	}
+
+	.filters > [data-venue="mine"] {
+		position: relative;
+	}
+
 	.filters:global(.isOpen) .filterMineRow {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		grid-column: 1 / -1;
-		grid-row: 2;
-		width: 100%;
-		min-height: 0;
-		align-items: stretch;
-		gap: 0.35rem;
+		display: none;
 	}
 
 	.filters:global(.isOpen) .filterScroller {
@@ -1020,24 +1057,25 @@ span.filter:global(.isSolo) {
 	}
 
 	.filters:global(.isOpen) .filterClose {
-		grid-column: 2;
-		grid-row: 1;
-		flex: 0 0 auto;
-		align-self: stretch;
-		width: auto;
+		display: none;
 	}
 
 	.mastInner > .filterChips {
 		display: flex;
 		flex-direction: column;
 		flex-wrap: nowrap;
-		flex: 1 1 auto;
+		flex: 0 1 auto;
+		align-self: stretch;
 		min-width: 0;
 		min-height: 0;
+		max-height: 52vh;
 		box-sizing: border-box;
 		width: 100%;
+		padding-top: 1px;
 		padding-left: var(--margin);
 		padding-right: var(--margin);
+		padding-bottom: var(--menu-fade);
+		margin-bottom: var(--menu-bottom);
 		gap: 0.35rem;
 		overflow-x: hidden;
 		overflow-y: auto;
@@ -1046,9 +1084,29 @@ span.filter:global(.isSolo) {
 		touch-action: pan-y;
 	}
 
-	.mastInner > .filterChips:global(.isOverflow) {
-		-webkit-mask-image: linear-gradient(#0000, #000 1em, #000 calc(100% - 1em), #0000);
-		mask-image: linear-gradient(#0000, #000 1em, #000 calc(100% - 1em), #0000);
+	.mastInner > .filterChips:global(.isOverflowBottom) {
+		-webkit-mask-image: linear-gradient(#000 0, #000 calc(100% - var(--menu-fade)), transparent);
+		mask-image: linear-gradient(#000 0, #000 calc(100% - var(--menu-fade)), transparent);
+		-webkit-mask-size: 100% 100%;
+		mask-size: 100% 100%;
+		-webkit-mask-repeat: no-repeat;
+		mask-repeat: no-repeat;
+	}
+
+	.filterChipsRim:global(.isShown) {
+		display: block;
+		position: absolute;
+		z-index: 2;
+		left: var(--margin);
+		right: var(--margin);
+		bottom: var(--menu-bottom);
+		height: var(--menu-fade);
+		border: 0;
+		border-radius: 0;
+		background:
+			linear-gradient(var(--ink), var(--ink)) bottom / 100% 1px no-repeat,
+			linear-gradient(to top, var(--bg), transparent);
+		pointer-events: none;
 	}
 
 	.mastInner > .filterChips > .filter {

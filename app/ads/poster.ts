@@ -283,16 +283,18 @@ function layoutTitle(
   maxWidth: number,
 ): { size: number; lines: string[] } {
   ctx.letterSpacing = "-0.02em";
+  // Bryt varje stycke separat så att automatisk ombrytning aldrig flyttar ord över en hård brytning.
+  const wrap = () => title.split(/\r?\n|\|/).flatMap((part) => wrapLine(ctx, part, maxWidth));
   let size = 86;
   while (size >= 40) {
     ctx.font = font(450, size, family);
-    const lines = wrapLine(ctx, title, maxWidth);
+    const lines = wrap();
     const tooWide = lines.some((line) => ctx.measureText(line).width > maxWidth + 1);
     if (!tooWide && lines.length <= 6) return { size, lines };
     size -= 2;
   }
   ctx.font = font(450, 40, family);
-  return { size: 40, lines: wrapLine(ctx, title, maxWidth).slice(0, 8) };
+  return { size: 40, lines: wrap().slice(0, 8) };
 }
 
 function drawCover(ctx: CanvasRenderingContext2D, image: CanvasImageSource, width: number, height: number) {

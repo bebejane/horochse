@@ -38,6 +38,14 @@ export function GearIcon() {
   );
 }
 
+export function ChevronUpIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 14.5 12 8.5l6 6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function CloseIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
