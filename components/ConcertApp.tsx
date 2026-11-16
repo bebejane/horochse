@@ -19,14 +19,15 @@ import {
 	upcomingEvents,
 } from '@/lib/events';
 import { applyVenueColors } from '@/lib/venue-colors';
-import type {
-	CalStyle,
-	ConcertEvent,
-	EventsPayload,
-	FilterMode,
-	ListDensity,
-	ThemeMode,
-	ViewMode,
+import {
+	VENUES,
+	type CalStyle,
+	type ConcertEvent,
+	type EventsPayload,
+	type FilterMode,
+	type ListDensity,
+	type ThemeMode,
+	type ViewMode,
 } from '@/lib/types';
 import { usePlayer } from '@/hooks/usePlayer';
 import { CalendarView } from './CalendarView';
@@ -129,7 +130,14 @@ function queueScrollToCard(event: ConcertEvent) {
 	});
 }
 
-export function ConcertApp({ payload }: { payload: EventsPayload }) {
+export function ConcertApp({
+	payload,
+	initialPeek = null,
+}: {
+	payload: EventsPayload;
+	/** Scensida (/debaser) öppnas som om den scenen redan är vald i filtret. */
+	initialPeek?: string | null;
+}) {
 	const events: ConcertEvent[] = payload.events || [];
 	const updated = payload.updated || '';
 	const rangeTo = payload.range?.to || null;
@@ -137,7 +145,7 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 	const [mode, setMode] = useState<FilterMode>('all');
 	const [mine, setMine] = useState<string[]>([]);
 	const [pickerOpen, setPickerOpen] = useState(false);
-	const [peek, setPeek] = useState<string | null>(null);
+	const [peek, setPeek] = useState<string | null>(initialPeek);
 	const [view, setView] = useState<ViewMode>('list');
 	const [calStyle, setCalStyle] = useState<CalStyle>('full');
 	const [theme, setTheme] = useState<ThemeMode>('dark');
@@ -201,8 +209,11 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 
 	useEffect(() => {
 		setMine(loadMine());
-		setMode(loadFilterMode());
-		setPickerOpen(loadPickerOpen());
+		// Sparat urval får inte slå över en scensida. Den ska se ut som filtret på just den scenen.
+		if (!initialPeek) {
+			setMode(loadFilterMode());
+			setPickerOpen(loadPickerOpen());
+		}
 		try {
 			const storedView = localStorage.getItem('konserter-view');
 			if (window.location.hash === '#kalender') setView('calendar');
@@ -217,7 +228,7 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 		} catch {
 			/* ignore */
 		}
-	}, []);
+	}, [initialPeek]);
 
 	useEffect(() => {
 		setLocalHost(isLocalHost());
@@ -250,9 +261,16 @@ export function ConcertApp({ payload }: { payload: EventsPayload }) {
 		} catch {
 			/* ignore */
 		}
-		if (view === 'calendar') history.replaceState(null, '', '#kalender');
-		else history.replaceState(null, '', '#lista');
-	}, [view, calStyle]);
+		const hash = view === 'calendar' ? '#kalender' : '#lista';
+		// Scensidans adress följer filtret. På startsidan rör vi bara hash.
+		if (initialPeek) {
+			const venue = peek ? VENUES.find((item) => item.slug === peek) : undefined;
+			document.title = venue ? `Konserter på ${venue.name} — Hör & Se` : 'Hör & Se';
+			history.replaceState(null, '', (peek ? `/${peek}` : '/') + hash);
+		} else {
+			history.replaceState(null, '', hash);
+		}
+	}, [view, calStyle, peek, initialPeek]);
 
 	useEffect(() => {
 		if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');

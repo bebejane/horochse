@@ -1,7 +1,7 @@
 import { eventTracks, listenMoreItems } from "./events";
 import type { ConcertEvent } from "./types";
 
-const VENUE_ADDRESSES: Record<string, string> = {
+export const VENUE_ADDRESSES: Record<string, string> = {
   debaser: "Hornstulls Strand 4, 117 39 Stockholm",
   nalen: "Regeringsgatan 74, 111 39 Stockholm",
   fallan: "Hallgränd 19, 121 62 Johanneshov",

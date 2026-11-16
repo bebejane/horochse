@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import localFont from "next/font/local";
 import Script from "next/script";
 import "@/styles/index.scss";
+import { siteOrigin } from "@/lib/seo";
 
 const william = localFont({
   src: [
@@ -24,6 +25,7 @@ const walter = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteOrigin()),
   title: "Hör & Se",
   description:
     "Konserter den kommande månaden på scener runt Stockholm, från Debaser och Nalen till Konserthuset, arenorna och de små jazzkrogarna.",
