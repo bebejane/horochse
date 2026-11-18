@@ -4,6 +4,7 @@ import s from "./EventCard.module.scss";
 import cn from "classnames";
 
 import { useState, type ReactNode } from "react";
+import { trackCalendarDownload } from "@/lib/analytics";
 import { displayTitle, eventTimes, isPlayable, listenMoreItems, titleHits } from "@/lib/events";
 import type { ConcertEvent } from "@/lib/types";
 import { NowArrow } from "./Icons";
@@ -199,7 +200,9 @@ export function EventCard({
           <div className={s.cardActions}>
             <a className={cn("go", s.cardRead)} href={href} target="_blank" rel="noopener noreferrer">Se mer</a>
             <ListenMore event={event} />
-            <a className={cn("go", { goDown: true })} href={ics}><span>Lägg till i kalender</span></a>
+            <a className={cn("go", { goDown: true })} href={ics} onClick={() => trackCalendarDownload(event)}>
+              <span>Lägg till i kalender</span>
+            </a>
           </div>
         </div>
         </div>

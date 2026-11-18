@@ -4,6 +4,7 @@ import s from "./CalendarView.module.scss";
 import cn from "classnames";
 
 import { useState, type ReactNode } from "react";
+import { trackCalendarDownload } from "@/lib/analytics";
 import { formatDay, parseDay, toIso, todayDate, weekTitle } from "@/lib/dates";
 import { calendarWeeks, displayTitle, eventTimes, isPlayable, titleHits } from "@/lib/events";
 import type { ConcertEvent } from "@/lib/types";
@@ -132,7 +133,11 @@ function CalendarEvent({
             Se
           </a>
         ) : null}
-        <a className={cn("go", { goDown: true })} href={"/kalender/" + encodeURIComponent(event.id) + ".ics"}>
+        <a
+          className={cn("go", { goDown: true })}
+          href={"/kalender/" + encodeURIComponent(event.id) + ".ics"}
+          onClick={() => trackCalendarDownload(event)}
+        >
           <span>Spara</span>
         </a>
       </div>
