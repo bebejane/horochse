@@ -1,0 +1,30 @@
+@use '../../styles/mediaqueries' as *;
+
+.intro {
+  margin: 0 0 2rem calc(var(--title-col) + var(--title-gap));
+  max-width: 48rem;
+
+  h2 {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.5rem, 3vw, 2.25rem);
+    line-height: 1.15;
+    font-weight: 400;
+  }
+
+  p {
+    margin: 0 0 0.75rem;
+    line-height: 1.45;
+  }
+}
+
+.address {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@include mq($until: tablet) {
+  .intro {
+    margin-left: 0;
+    padding-top: 1.5rem;
+  }
+}

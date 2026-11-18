@@ -20,6 +20,7 @@ import {
   sql,
 } from "drizzle-orm";
 
+import { stripRicheLiveSuffix } from "@/lib/event-title";
 import { displayProse, typographicQuotes } from "@/lib/prose";
 import type { ConcertEvent, EventsPayload, Track } from "@/lib/types";
 
@@ -565,11 +566,12 @@ function toTrack(row: TrackRow): Track {
 
 function toConcertEvent(row: EventRow, venueName: string, trackRows: TrackRow[]): ConcertEvent {
   const list = trackRows.map(toTrack);
+  const title = row.venueSlug === "riche" ? stripRicheLiveSuffix(row.title) : row.title;
   const event: ConcertEvent = {
     id: row.id,
     venue: typographicQuotes(venueName),
     venue_slug: row.venueSlug,
-    title: typographicQuotes(row.title),
+    title: typographicQuotes(title),
     date: row.date,
     time: row.time,
     datetime: isoFromDate(row.startsAt),
@@ -577,7 +579,7 @@ function toConcertEvent(row: EventRow, venueName: string, trackRows: TrackRow[])
     // `images.remotePatterns` restricts which hosts may be optimized.
     image: row.image ?? "",
     text: displayProse(row.text ?? "", {
-      title: row.title,
+      title,
       venue: venueName,
       place: row.place ?? "",
       tracks: list.map((track) => ({ artist: track.artist })),

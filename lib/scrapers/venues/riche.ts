@@ -1,5 +1,7 @@
 import { DateTime } from "luxon";
 
+import { stripRicheLiveSuffix } from "@/lib/event-title";
+
 import {
   TZ,
   httpRequest,
@@ -148,6 +150,7 @@ export async function fetch(start: DateTime, end: DateTime): Promise<ScrapedEven
       text: pageBlurb([content], page),
       extraId: String(post.id || title),
     });
+    event.title = stripRicheLiveSuffix(event.title);
     Object.assign(event, pageMediaFields(content + "\n" + page, "riche"));
     return event;
   });

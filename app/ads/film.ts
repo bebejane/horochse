@@ -15,7 +15,7 @@ const CODECS = ["avc1.640028", "avc1.4d0028", "avc1.420028"];
 const TICKER_FPS = 30;
 
 /**
- * En bild per konsert och ett hårt klipp mellan dem. Rad överst scrollar.
+ * En bild per konsert och ett hårt klipp mellan dem. Raden i högerkanten scrollar nedåt.
  * Kodaren är mjukvara och filmen är tyst: hårdvarukodaren och AAC-kodaren
  * kan ta ner hela webbläsarprocessen, och därmed Cursor.
  */
@@ -91,8 +91,8 @@ export async function exportFilm(
         if (videoError) throw videoError;
         ctx.drawImage(still, 0, 0);
         if (paint === drawPoster && ticker) {
-          const offset = scroll ? (i * seconds + frame / TICKER_FPS) * TICKER_SPEED : format.width;
-          paintTicker(ctx, { text: ticker, offset }, fonts, slides[i].date);
+          const offset = scroll ? (i * seconds + frame / TICKER_FPS) * TICKER_SPEED : 0;
+          paintTicker(ctx, { text: ticker, offset }, fonts);
         }
         const sample = new VideoFrame(canvas, { timestamp: timestampUs + frame * frameUs, duration: frameUs });
         try {

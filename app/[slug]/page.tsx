@@ -6,6 +6,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { loadPayload } from "@/lib/db/queries";
 import { upcomingEvents } from "@/lib/events";
 import { findVenue, musicEventGraph, venueAddress } from "@/lib/seo";
+import s from "./page.module.scss";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,11 +48,27 @@ export default async function VenuePage({ params }: Props) {
   const events = upcomingEvents(payload.events ?? [], [], "all").filter(
     (event) => event.venue_slug === venue.slug,
   );
+  const address = venueAddress(venue.slug);
 
   return (
     <>
       <JsonLd data={musicEventGraph(events)} />
-      <ConcertApp payload={payload} initialPeek={venue.slug} />
+      <ConcertApp
+        payload={payload}
+        initialPeek={venue.slug}
+        venueIntro={
+          <section className={s.intro} aria-labelledby="venue-heading">
+            <h2 id="venue-heading">Kommande konserter på {venue.name}</h2>
+            <p>
+              Här samlar vi spelningar på {venue.name} under de närmaste fem veckorna.
+              Se vilka artister som spelar, hitta datum och tider och lyssna på
+              smakprov där det finns. Varje konsert länkar vidare till spelställets
+              eller arrangörens sida för mer information och biljetter.
+            </p>
+            {address && <p className={s.address}>Adress: {address}</p>}
+          </section>
+        }
+      />
     </>
   );
 }

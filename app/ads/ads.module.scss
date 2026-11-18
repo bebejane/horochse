@@ -88,6 +88,27 @@
 	cursor: pointer;
 }
 
+.canvas[data-paused="true"] {
+	cursor: grab;
+	touch-action: none;
+}
+
+.canvas[data-paused="true"]:active {
+	cursor: grabbing;
+}
+
+.stageNav {
+	display: flex;
+	justify-content: center;
+	gap: 0.5rem;
+	margin-top: 0.65rem;
+}
+
+.stageNav .button {
+	min-width: 2.75rem;
+	line-height: 1;
+}
+
 .controls {
 	display: flex;
 	flex-wrap: wrap;

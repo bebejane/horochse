@@ -30,7 +30,11 @@ export type PosterSlide = {
   mark?: MonthMark;
   /** Fyller ytan med en färg och hoppar över bilden. */
   solid?: string;
+  /** Förskjutning från mittbeskärningen, i posterpixlar. */
+  crop?: CoverPan;
 };
+
+export type CoverPan = { x: number; y: number };
 
 export type MonthMark = "play" | "plus" | "symbol";
 
@@ -39,13 +43,13 @@ export type PosterTicker = {
   offset: number;
 };
 
-/** Pixlar per sekund för den löpande raden överst. */
+/** Pixlar per sekund för den lodräta raden i högerkanten. */
 export const TICKER_SPEED = 140;
 
 const VENUE_SIZE = 34;
 const DATE_SIZE = 42;
-/** Em-boxens underkant på datumet ligger så här många pixlar ovanför bildens nederkant. */
-const DATE_EM_BOTTOM = 84;
+/** Högerkanten på den lodräta raden, mätt från bildens högerkant. */
+const TICKER_INSET = 52;
 
 /** Läser en färg från stilmallen. Canvas kan inte använda `var()` själv. */
 export function cssToken(name: string): string {
@@ -297,18 +301,48 @@ function layoutTitle(
   return { size: 40, lines: wrap().slice(0, 8) };
 }
 
-function drawCover(ctx: CanvasRenderingContext2D, image: CanvasImageSource, width: number, height: number) {
+function imageSize(image: CanvasImageSource): { iw: number; ih: number } {
   const iw =
     "naturalWidth" in image && typeof image.naturalWidth === "number" ? image.naturalWidth : widthOf(image);
   const ih =
     "naturalHeight" in image && typeof image.naturalHeight === "number"
       ? image.naturalHeight
       : heightOf(image);
+  return { iw, ih };
+}
+
+/** Håller förskjutningen inom det som fortfarande täcker ytan. */
+export function clampCoverPan(
+  image: CanvasImageSource,
+  width: number,
+  height: number,
+  pan: CoverPan,
+): CoverPan {
+  const { iw, ih } = imageSize(image);
+  if (!iw || !ih) return { x: 0, y: 0 };
+  const scale = Math.max(width / iw, height / ih);
+  const maxX = Math.max(0, (iw * scale - width) / 2);
+  const maxY = Math.max(0, (ih * scale - height) / 2);
+  return {
+    x: Math.min(maxX, Math.max(-maxX, pan.x)),
+    y: Math.min(maxY, Math.max(-maxY, pan.y)),
+  };
+}
+
+function drawCover(
+  ctx: CanvasRenderingContext2D,
+  image: CanvasImageSource,
+  width: number,
+  height: number,
+  pan?: CoverPan,
+) {
+  const { iw, ih } = imageSize(image);
   if (!iw || !ih) return;
   const scale = Math.max(width / iw, height / ih);
   const dw = iw * scale;
   const dh = ih * scale;
-  ctx.drawImage(image, (width - dw) / 2, (height - dh) / 2, dw, dh);
+  const placed = clampCoverPan(image, width, height, pan ?? { x: 0, y: 0 });
+  ctx.drawImage(image, (width - dw) / 2 + placed.x, (height - dh) / 2 + placed.y, dw, dh);
 }
 
 function widthOf(image: CanvasImageSource): number {
@@ -319,16 +353,6 @@ function widthOf(image: CanvasImageSource): number {
 function heightOf(image: CanvasImageSource): number {
   if ("height" in image && typeof image.height === "number") return image.height;
   return 0;
-}
-
-/** Avstånd från datumets bläck till bildens nederkant. Samma mått används som toppmarginal. */
-function dateInkMargin(ctx: CanvasRenderingContext2D, date: string, family: string, height: number): number {
-  ctx.font = font(400, DATE_SIZE, family);
-  ctx.letterSpacing = "0px";
-  ctx.textBaseline = "top";
-  const descent = ctx.measureText(date || "Måndag").actualBoundingBoxDescent;
-  const dateTop = height - DATE_EM_BOTTOM - DATE_SIZE;
-  return height - (dateTop + descent);
 }
 
 type TickerStrip = {
@@ -376,28 +400,29 @@ function drawTicker(
   ticker: PosterTicker,
   family: string,
   width: number,
-  inkTop: number,
+  height: number,
 ) {
   const text = ticker.text.trim();
   if (!text) return;
   const strip = tickerStrip(text, family);
-  const gap = width / 5;
+  const gap = height / 5;
   const period = strip.textWidth + gap;
   if (period < 1) return;
   const shift = ((ticker.offset % period) + period) % period;
-  const y = inkTop * 0.85 - strip.pad;
-  const base = width - shift;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, 0, width, ctx.canvas.height);
+  ctx.rect(0, 0, width, height);
   ctx.clip();
+  // 90° medurs: raden står i högerkanten och offset flyttar den nedåt.
+  ctx.translate(width - TICKER_INSET, 0);
+  ctx.rotate(Math.PI / 2);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  const first = Math.floor((-strip.canvas.width - base) / period) - 1;
-  const last = Math.ceil((width - base) / period) + 1;
+  const first = Math.floor((-strip.canvas.width - shift) / period) - 1;
+  const last = Math.ceil((height - shift) / period) + 1;
   for (let copy = first; copy <= last; copy++) {
-    const x = base + copy * period - strip.pad;
-    if (x < width && x + strip.canvas.width > 0) ctx.drawImage(strip.canvas, x, y);
+    const x = shift + copy * period - strip.pad;
+    if (x < height && x + strip.canvas.width > 0) ctx.drawImage(strip.canvas, x, 0);
   }
   ctx.restore();
 }
@@ -407,12 +432,9 @@ export function paintTicker(
   ctx: CanvasRenderingContext2D,
   ticker: PosterTicker,
   fonts: PosterFonts,
-  date: string,
 ) {
-  const width = ctx.canvas.width;
-  const height = ctx.canvas.height;
   ctx.save();
-  drawTicker(ctx, ticker, fonts.walter, width, dateInkMargin(ctx, date, fonts.anselm, height));
+  drawTicker(ctx, ticker, fonts.walter, ctx.canvas.width, ctx.canvas.height);
   ctx.restore();
 }
 
@@ -432,26 +454,28 @@ export function drawPoster(
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
-  if (slide?.image) drawCover(ctx, slide.image, width, height);
+  if (slide?.image) drawCover(ctx, slide.image, width, height, slide.crop);
 
-  const fade = ctx.createLinearGradient(0, height * 0.36, 0, height);
+  const fadeTop = height * 0.62;
+  const fade = ctx.createLinearGradient(0, fadeTop, 0, height);
   fade.addColorStop(0, withAlpha(ground, 0));
-  fade.addColorStop(0.42, withAlpha(ground, 0.62));
-  fade.addColorStop(1, withAlpha(ground, 0.94));
+  fade.addColorStop(0.5, withAlpha(ground, 0.2));
+  fade.addColorStop(1, withAlpha(ground, 0.52));
   ctx.fillStyle = fade;
-  ctx.fillRect(0, height * 0.36, width, height * 0.64);
+  ctx.fillRect(0, fadeTop, width, height - fadeTop);
 
   ctx.fillStyle = slide?.color || posterInk();
   ctx.fillRect(0, height - 14, width, 14);
 
   if (!slide) {
-    if (ticker?.text) paintTicker(ctx, ticker, fonts, "Måndag");
+    if (ticker?.text) paintTicker(ctx, ticker, fonts);
     ctx.restore();
     return;
   }
 
   const padX = 72;
-  const maxWidth = width - padX * 2;
+  const tickerLane = ticker?.text.trim() ? TICKER_INSET + 72 : 0;
+  const maxWidth = width - padX * 2 - tickerLane;
   const title = layoutTitle(ctx, slide.title || "Konsert", fonts.anselm, maxWidth);
   const venueSize = VENUE_SIZE;
   const dateSize = DATE_SIZE;
@@ -483,7 +507,7 @@ export function drawPoster(
   ctx.font = font(400, dateSize, fonts.anselm);
   ctx.fillText(slide.date, padX, y);
 
-  if (ticker?.text) paintTicker(ctx, ticker, fonts, slide.date);
+  if (ticker?.text) paintTicker(ctx, ticker, fonts);
   ctx.restore();
 }
 
@@ -501,7 +525,14 @@ export function drawMonthPoster(
   ctx.fillRect(0, 0, width, height);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  if (!slide?.solid && slide?.image) drawCover(ctx, slide.image, width, height);
+  if (!slide?.solid && slide?.image) {
+    drawCover(ctx, slide.image, width, height);
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+  }
 
   const lines = slide?.lines ?? MONTH_LINES;
   if (slide?.lines && !slide.lines.length) {
@@ -526,19 +557,10 @@ export function drawMonthPoster(
   const gap = 72;
   const slotHeight = lineCount * lineHeight;
   const textTop = (height - (slotHeight + gap + MONTH_PLAY)) / 2;
-  const textMid = textTop + slotHeight / 2;
   ctx.font = font(450, MONTH_SIZE, fonts.anselm);
   ctx.textBaseline = "alphabetic";
   const ascent = ctx.measureText("Hg").fontBoundingBoxAscent || Math.round(MONTH_SIZE * 0.8);
   const baseline = (index: number) => textTop + ascent + index * lineHeight;
-
-  const fade = ctx.createRadialGradient(width / 2, textMid, height * 0.02, width / 2, textMid, height * 0.42);
-  const bg = posterGround();
-  fade.addColorStop(0, withAlpha(bg, 0.48));
-  fade.addColorStop(0.55, withAlpha(bg, 0.14));
-  fade.addColorStop(1, withAlpha(bg, 0));
-  ctx.fillStyle = fade;
-  ctx.fillRect(0, 0, width, height);
 
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = posterInk();

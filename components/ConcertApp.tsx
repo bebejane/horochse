@@ -3,7 +3,7 @@
 import s from './ConcertApp.module.scss';
 import cn from 'classnames';
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { formatUpdated, toIso, todayDate, weekMondayIso } from '@/lib/dates';
 import {
 	clearStoredSettings,
@@ -133,10 +133,13 @@ function queueScrollToCard(event: ConcertEvent) {
 export function ConcertApp({
 	payload,
 	initialPeek = null,
+	venueIntro,
 }: {
 	payload: EventsPayload;
 	/** Scensida (/debaser) öppnas som om den scenen redan är vald i filtret. */
 	initialPeek?: string | null;
+	/** Synlig presentation på scensidan, renderad av servern. */
+	venueIntro?: ReactNode;
 }) {
 	const events: ConcertEvent[] = payload.events || [];
 	const updated = payload.updated || '';
@@ -502,6 +505,7 @@ export function ConcertApp({
 			/>
 			<div className={s.shell}>
 				<main id='program'>
+					{peek === initialPeek && venueIntro}
 					<div id='days'>
 						{emptyList ? (
 							peek ? (

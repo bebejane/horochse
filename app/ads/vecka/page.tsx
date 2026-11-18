@@ -11,6 +11,7 @@ import { readExcluded, writeExcluded } from "../selection-cookie";
 import styles from "../ads.module.scss";
 import { downloadBlob, exportFilm } from "../film";
 import {
+  clampCoverPan,
   drawPoster,
   loadPosterFonts,
   loadPosterImage,
@@ -19,6 +20,7 @@ import {
   posterImageUrl,
   TICKER_SPEED,
   venueColor,
+  type CoverPan,
   type PosterFonts,
   type PosterFormat,
 } from "../poster";
@@ -32,6 +34,7 @@ const HOLD_OPTIONS = [1, 2, 3];
 
 export default function WeekAdsPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const fontsRef = useRef<PosterFonts | null>(null);
   const cancelExport = useRef(false);
   const [events, setEvents] = useState<ConcertEvent[] | null>(null);
@@ -47,8 +50,14 @@ export default function WeekAdsPage() {
   const [fonts, setFonts] = useState<PosterFonts | null>(null);
   const [cursor, setCursor] = useState(0);
   const [exporting, setExporting] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [crops, setCrops] = useState<Record<string, CoverPan>>({});
   const [progress, setProgress] = useState("");
   const [exportError, setExportError] = useState("");
+  const pausedRef = useRef(false);
+  const tickerElapsed = useRef(0);
+  const tickerLast = useRef<number | null>(null);
+  const dragRef = useRef<{ id: string; x: number; y: number; pan: CoverPan; moved: boolean } | null>(null);
 
   useEffect(() => {
     setExcluded(readExcluded("hor-vecka-bort"));
@@ -143,13 +152,26 @@ export default function WeekAdsPage() {
   }, [venue, weekMonday]);
 
   useEffect(() => {
-    if (exporting || slides.length < 2) return;
+    if (exporting || paused || slides.length < 2) return;
     const id = window.setInterval(() => setCursor((value) => value + 1), seconds * 1000);
     return () => window.clearInterval(id);
-  }, [slideKey, seconds, exporting, slides.length]);
+  }, [slideKey, seconds, exporting, paused, slides.length]);
 
-  const current = slides.length ? slides[cursor % slides.length] : null;
+  const slideIndex = slides.length ? ((cursor % slides.length) + slides.length) % slides.length : 0;
+  const current = slides.length ? slides[slideIndex] : null;
   const currentImage = current ? images[current.id] : undefined;
+  const currentCrop = current ? crops[current.id] : undefined;
+  pausedRef.current = paused;
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list || !current) return;
+    const row = list.querySelector<HTMLElement>("[data-current='true']");
+    if (!row) return;
+    const top = row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    list.scrollTo({ top, behavior: reduce ? "auto" : "smooth" });
+  }, [current]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -169,6 +191,7 @@ export default function WeekAdsPage() {
           date: posterDate(current.date),
           color: venueColor(current.venue_slug),
           image: bitmap && bitmap !== "failed" ? bitmap : null,
+          crop: crops[current.id],
         }
       : null;
     const still = document.createElement("canvas");
@@ -180,20 +203,22 @@ export default function WeekAdsPage() {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let frame = 0;
     const paint = (now: number) => {
+      const prev = tickerLast.current ?? now;
+      if (!pausedRef.current) tickerElapsed.current += now - prev;
+      tickerLast.current = now;
       ctx.drawImage(still, 0, 0);
       if (ticker) {
         paintTicker(
           ctx,
-          { text: ticker, offset: reduced ? canvas.width : (now / 1000) * TICKER_SPEED },
+          { text: ticker, offset: reduced ? 0 : (tickerElapsed.current / 1000) * TICKER_SPEED },
           loaded,
-          slide?.date || "Måndag",
         );
       }
       frame = window.requestAnimationFrame(paint);
     };
     frame = window.requestAnimationFrame(paint);
     return () => window.cancelAnimationFrame(frame);
-  }, [current, currentImage, fonts, format, ticker, titles]);
+  }, [current, currentImage, currentCrop, fonts, format, ticker, titles, crops]);
 
   function toggle(id: string) {
     setExcluded((prev) => {
@@ -222,6 +247,7 @@ export default function WeekAdsPage() {
           date: posterDate(event.date),
           color: venueColor(String(event.venue_slug)),
           image: bitmap && bitmap !== "failed" ? bitmap : null,
+          crop: crops[event.id],
         };
       });
       const blob = await exportFilm(
@@ -307,6 +333,15 @@ export default function WeekAdsPage() {
             className={styles.button}
             type="button"
             disabled={!current || exporting}
+            aria-pressed={paused}
+            onClick={() => setPaused((value) => !value)}
+          >
+            {paused ? "Fortsätt" : "Pausa"}
+          </button>
+          <button
+            className={styles.button}
+            type="button"
+            disabled={!current || exporting}
             onClick={() => current && toggle(current.id)}
           >
             Välj bort
@@ -325,6 +360,7 @@ export default function WeekAdsPage() {
         {events === null
           ? ""
           : `${slides.length} inlägg · ${formatDuration(slides.length * seconds)} · tyst mp4${picturesPending ? " · laddar bilder" : ""}`}
+        {paused && current ? " · dra i bilden för att beskära" : ""}
       </p>
       <p className={styles.status}>{exportError || progress}</p>
 
@@ -339,23 +375,103 @@ export default function WeekAdsPage() {
               width: `min(100%, calc((100vh - 7rem) * ${format.width} / ${format.height}))`,
               aspectRatio: `${format.width} / ${format.height}`,
             }}
-            data-hit={current && !exporting ? "true" : "false"}
+            data-hit={current && !exporting && !paused ? "true" : "false"}
+            data-paused={paused && current && !exporting ? "true" : "false"}
             role="button"
             tabIndex={current && !exporting ? 0 : -1}
-            aria-label={current ? `Välj bort ${displayTitle(current)}` : "Ingen konsert"}
+            aria-label={
+              paused && current
+                ? `Dra för att beskära ${displayTitle(current)}`
+                : current
+                  ? `Välj bort ${displayTitle(current)}`
+                  : "Ingen konsert"
+            }
+            onPointerDown={(event) => {
+              if (!paused || !current || exporting) return;
+              const image = images[current.id];
+              if (!image || image === "failed") return;
+              const canvas = canvasRef.current;
+              if (!canvas) return;
+              dragRef.current = {
+                id: current.id,
+                x: event.clientX,
+                y: event.clientY,
+                pan: crops[current.id] ?? { x: 0, y: 0 },
+                moved: false,
+              };
+              try {
+                event.currentTarget.setPointerCapture(event.pointerId);
+              } catch {
+                /* Utan capture följer draget ändå musen så länge den är över bilden. */
+              }
+            }}
+            onPointerMove={(event) => {
+              const drag = dragRef.current;
+              const canvas = canvasRef.current;
+              if (!drag || !canvas || !current || drag.id !== current.id) return;
+              const image = images[drag.id];
+              if (!image || image === "failed") return;
+              const rect = canvas.getBoundingClientRect();
+              if (!rect.width || !rect.height) return;
+              const pan = clampCoverPan(image, canvas.width, canvas.height, {
+                x: drag.pan.x + (event.clientX - drag.x) * (canvas.width / rect.width),
+                y: drag.pan.y + (event.clientY - drag.y) * (canvas.height / rect.height),
+              });
+              if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 3) drag.moved = true;
+              dragRef.current = { ...drag, moved: drag.moved };
+              setCrops((prev) => {
+                const existing = prev[drag.id];
+                if (existing && existing.x === pan.x && existing.y === pan.y) return prev;
+                return { ...prev, [drag.id]: pan };
+              });
+            }}
+            onPointerUp={() => {
+              dragRef.current = null;
+            }}
             onClick={() => {
-              if (!current || exporting) return;
+              if (!current || exporting || paused) return;
+              if (dragRef.current?.moved) return;
               toggle(current.id);
             }}
             onKeyDown={(event) => {
               if (event.key !== "Enter" && event.key !== " ") return;
               event.preventDefault();
-              if (!current || exporting) return;
+              if (!current || exporting || paused) return;
               toggle(current.id);
             }}
           />
+          <div className={styles.stageNav}>
+            <button
+              className={styles.button}
+              type="button"
+              aria-label="Föregående bild"
+              disabled={slides.length < 2 || exporting}
+              onClick={() => setCursor((value) => value - 1)}
+            >
+              ←
+            </button>
+            <button
+              className={styles.button}
+              type="button"
+              aria-label={paused ? "Spela" : "Pausa"}
+              aria-pressed={paused}
+              disabled={!current || exporting}
+              onClick={() => setPaused((value) => !value)}
+            >
+              {paused ? "▶" : "❚❚"}
+            </button>
+            <button
+              className={styles.button}
+              type="button"
+              aria-label="Nästa bild"
+              disabled={slides.length < 2 || exporting}
+              onClick={() => setCursor((value) => value + 1)}
+            >
+              →
+            </button>
+          </div>
         </div>
-        <ul className={styles.list}>
+        <ul ref={listRef} className={styles.list}>
           {visible.map((event) => {
             const out = excluded.has(event.id);
             const onStage = current?.id === event.id;
