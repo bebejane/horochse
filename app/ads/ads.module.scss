@@ -278,3 +278,78 @@
 	color: var(--muted);
 	padding: 1rem 0;
 }
+
+.storyFields {
+	border: 0;
+	padding: 0;
+	margin: 0;
+	min-width: 0;
+	display: grid;
+	gap: 0.9rem;
+	justify-items: start;
+}
+
+.storyFields .field {
+	width: 100%;
+}
+
+.storyFields .storyTitle,
+.storyFields textarea {
+	box-sizing: border-box;
+	width: 100%;
+}
+
+.storyFields textarea {
+	resize: vertical;
+	font: inherit;
+	font-size: 1rem;
+	color: var(--ink);
+	background: transparent;
+	border: 1px solid var(--line);
+	padding: 0.45rem 0.7rem;
+}
+
+.storyCanvas {
+	width: min(100%, 24rem);
+	aspect-ratio: 9 / 16;
+	outline: 1px solid var(--dark-line);
+	outline-offset: 2px;
+}
+
+.storyFields .tipsRange {
+	appearance: auto;
+	width: 100%;
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	accent-color: var(--ink);
+}
+
+.tipsCanvas {
+	width: min(100%, 32rem);
+	outline: 1px solid var(--dark-line);
+	outline-offset: 2px;
+}
+
+.tipsCanvas[data-rita="true"] {
+	cursor: crosshair;
+	touch-action: none;
+}
+
+.tipsRitinfo {
+	margin-top: 0.65rem;
+	color: var(--muted);
+	font-size: 0.92rem;
+}
+
+.tipsToggle {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+	font-size: 0.9rem;
+}
+
+.tipsToggle input {
+	accent-color: var(--ink);
+}

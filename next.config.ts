@@ -15,9 +15,9 @@ const nextConfig: NextConfig = {
 	images: {
 		// Only the widths the posters/calendar art actually use, so the generated
 		// `srcset` stays small (the defaults emit 10 variants per image).
-		deviceSizes: [400, 800, 1200],
+		deviceSizes: [400, 800, 1200, 1920],
 		imageSizes: [200],
-		qualities: [75, 90],
+		qualities: [75, 90, 100],
 		remotePatterns: IMAGE_ALLOWED_HOSTS.flatMap((hostname) => [
 			{ protocol: 'https' as const, hostname },
 			// Subdomains, notably the `www.` form some venues serve from.

@@ -4,22 +4,10 @@ import cn from "classnames";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { PauseIcon, PlayIcon } from "@/components/Icons";
+import type { AdminTrack } from "@/lib/admin/track-list";
 
 import styles from "./admin.module.scss";
 import { canPlay, useAdminPlayback } from "./playback";
-
-type AdminTrack = {
-  position: number;
-  source: string;
-  artist: string;
-  title: string;
-  url: string;
-  bandId: number | null;
-  albumId: number | null;
-  trackId: number | null;
-  videoId: string | null;
-  type: string | null;
-};
 
 type AdminEvent = {
   id: string;
@@ -32,7 +20,6 @@ type AdminEvent = {
 };
 
 const SOURCE_LABEL: Record<string, string> = {
-  bandcamp: "Bandcamp",
   soundcloud: "SoundCloud",
   youtube: "YouTube",
   deezer: "Deezer",
@@ -271,7 +258,7 @@ export default function AdminPage() {
                                 type="url"
                                 name="url"
                                 required
-                                placeholder="Bandcamp-, SoundCloud- eller Deezer-länk"
+                                placeholder="SoundCloud- eller Deezer-länk"
                                 aria-label={`Ny länk för ${trackLabel(track)}`}
                               />
                               <button type="submit" disabled={busy === key}>
@@ -293,7 +280,7 @@ export default function AdminPage() {
                           type="url"
                           name="url"
                           required
-                          placeholder="Bandcamp-, SoundCloud- eller Deezer-länk"
+                          placeholder="SoundCloud- eller Deezer-länk"
                           aria-label={`Lägg till länk för ${event.title}`}
                         />
                         <button type="submit" disabled={busy === `${event.id}:add`}>

@@ -2,7 +2,6 @@ import "server-only";
 
 import { and, asc, eq } from "drizzle-orm";
 
-import { lookupBandcampUrl, bcTrack } from "@/lib/scrapers/bandcamp";
 import { deezerTrackById, deezerTrackIdFromUrl } from "@/lib/scrapers/deezer";
 import { lookupSoundcloudUrl, scTrack } from "@/lib/scrapers/soundcloud";
 import { trackArtistKey } from "@/lib/scrapers/text";
@@ -10,6 +9,7 @@ import type { TrackInput } from "@/lib/db/queries";
 import { dedupeTracks } from "@/lib/db/merge-tracks";
 import { db } from "@/lib/db/client";
 import { events, trackOverrides, tracks } from "@/lib/db/schema";
+import { ärBandcampSpår, type AdminTrack } from "./track-list";
 
 export class AdminTrackError extends Error {
   status: number;
@@ -20,27 +20,13 @@ export class AdminTrackError extends Error {
   }
 }
 
-export type AdminTrack = {
-  position: number;
-  source: string;
-  artist: string;
-  title: string;
-  url: string;
-  bandId: number | null;
-  albumId: number | null;
-  trackId: number | null;
-  videoId: string | null;
-  type: string | null;
-};
-
-function musicHost(value: string): "bandcamp" | "soundcloud" | "deezer" | null {
+function musicHost(value: string): "soundcloud" | "deezer" | null {
   let host = "";
   try {
     host = new URL(value).hostname.toLowerCase();
   } catch {
     return null;
   }
-  if (host === "bandcamp.com" || host.endsWith(".bandcamp.com")) return "bandcamp";
   if (host === "soundcloud.com" || host.endsWith(".soundcloud.com")) return "soundcloud";
   if (
     host === "deezer.com" ||
@@ -88,7 +74,7 @@ async function resolveMusicUrl(value: string): Promise<TrackInput> {
   const url = value.trim();
   const host = musicHost(url);
   if (!host) {
-    throw new AdminTrackError("Klistra in en Bandcamp-, SoundCloud- eller Deezer-länk.");
+    throw new AdminTrackError("Klistra in en SoundCloud- eller Deezer-länk.");
   }
   try {
     if (host === "deezer") {
@@ -110,12 +96,9 @@ async function resolveMusicUrl(value: string): Promise<TrackInput> {
       }
       return item;
     }
-    const release =
-      host === "bandcamp"
-        ? await lookupBandcampUrl(url, new Map())
-        : await lookupSoundcloudUrl(url, new Map());
+    const release = await lookupSoundcloudUrl(url, new Map());
     if (!release) throw new AdminTrackError("Ingen spelbar låt hittades på länken.");
-    const item = toInput(host === "bandcamp" ? bcTrack(release) : scTrack(release));
+    const item = toInput(scTrack(release));
     if (!item.source || !trackArtistKey(item.artist, item.title, item.url)) {
       throw new AdminTrackError("Länken saknar en låt som går att spara.");
     }
@@ -241,13 +224,13 @@ async function commit(
     );
   }
   await db.batch(statements as unknown as Parameters<typeof db.batch>[0]);
-  return next.map(toAdminTrack);
+  return next.map(toAdminTrack).filter((track) => !ärBandcampSpår(track));
 }
 
 export async function replaceEventTrack(eventId: string, position: number, url: string): Promise<AdminTrack[]> {
   const rows = await loadRows(eventId);
   const current = rows[position];
-  if (!current) throw new AdminTrackError("Låten finns inte.", 404);
+  if (!current || ärBandcampSpår(current)) throw new AdminTrackError("Låten finns inte.", 404);
   const item = await resolveMusicUrl(url);
   const currentKey = trackArtistKey(current.artist, current.title, current.url);
   if (!currentKey) throw new AdminTrackError("Låten saknar namn och kan inte bytas ut.");
@@ -286,7 +269,7 @@ export async function addEventTrack(eventId: string, url: string): Promise<Admin
 export async function removeEventTrack(eventId: string, position: number): Promise<AdminTrack[]> {
   const rows = await loadRows(eventId);
   const current = rows[position];
-  if (!current) throw new AdminTrackError("Låten finns inte.", 404);
+  if (!current || ärBandcampSpår(current)) throw new AdminTrackError("Låten finns inte.", 404);
   const currentKey = trackArtistKey(current.artist, current.title, current.url);
   if (!currentKey) throw new AdminTrackError("Låten saknar namn och kan inte tas bort.");
 

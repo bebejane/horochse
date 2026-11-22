@@ -49,7 +49,6 @@ function asTrack(track: PlayableTrack): Track {
 export function canPlay(track: PlayableTrack): boolean {
   const req = streamRequest(asTrack(track));
   if (!req) return false;
-  if (req.source === "bandcamp") return Boolean(track.bandId && track.albumId);
   if (req.source === "soundcloud") return Boolean(track.trackId || track.url);
   if (req.source === "youtube") return Boolean(track.videoId);
   if (req.source === "deezer") return Boolean(track.trackId);

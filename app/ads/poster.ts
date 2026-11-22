@@ -32,6 +32,14 @@ export type PosterSlide = {
   solid?: string;
   /** Förskjutning från mittbeskärningen, i posterpixlar. */
   crop?: CoverPan;
+  /** Textgruppens relativa höjd, från 0 överst till 1 nederst. */
+  textPosition?: number;
+  titleOffsetX?: number;
+  dateOffsetX?: number;
+  textColor?: "white" | "black";
+  dateAfterVenue?: boolean;
+  hideBottomLine?: boolean;
+  hideFade?: boolean;
 };
 
 export type CoverPan = { x: number; y: number };
@@ -46,7 +54,8 @@ export type PosterTicker = {
 /** Pixlar per sekund för den lodräta raden i högerkanten. */
 export const TICKER_SPEED = 140;
 
-const VENUE_SIZE = 34;
+export const VENUE_SIZE = 34;
+export const VENUE_TRACKING = 0.16;
 const DATE_SIZE = 42;
 /** Högerkanten på den lodräta raden, mätt från bildens högerkant. */
 const TICKER_INSET = 52;
@@ -159,14 +168,18 @@ const MONTH_PLAY_SLUGS = [
 ];
 
 /** Same-origin variant so the canvas stays exportable. Remote posters would taint it. */
-export function posterImageUrl(src: string, width: 200 | 1200 = 1200, quality = 75): string {
+export function posterImageUrl(src: string, width: 200 | 1200 | 1920 = 1200, quality = 75): string {
   if (!src) return "";
   if (src.startsWith("/")) return src;
   return `/_next/image?url=${encodeURIComponent(src)}&w=${width}&q=${quality}`;
 }
 
 export function loadPosterImage(src: string): Promise<HTMLImageElement | null> {
-  const urls = [...new Set([posterImageUrl(src, 1200, 90), posterImageUrl(src, 1200, 75)].filter(Boolean))];
+  const urls = [...new Set([
+    posterImageUrl(src, 1920, 100),
+    posterImageUrl(src, 1200, 90),
+    posterImageUrl(src, 1200, 75),
+  ].filter(Boolean))];
   if (!urls.length) return Promise.resolve(null);
 
   const load = (url: string): Promise<HTMLImageElement | null> =>
@@ -342,6 +355,7 @@ function drawCover(
   const dw = iw * scale;
   const dh = ih * scale;
   const placed = clampCoverPan(image, width, height, pan ?? { x: 0, y: 0 });
+  ctx.imageSmoothingQuality = "high";
   ctx.drawImage(image, (width - dw) / 2 + placed.x, (height - dh) / 2 + placed.y, dw, dh);
 }
 
@@ -373,7 +387,7 @@ function tickerStrip(text: string, family: string): TickerStrip {
   const empty = document.createElement("canvas");
   if (!probe) return { canvas: empty, textWidth: 1, pad: 0 };
   probe.font = font(400, VENUE_SIZE, family);
-  probe.letterSpacing = "0.16em";
+  probe.letterSpacing = `${VENUE_TRACKING}em`;
   probe.textBaseline = "alphabetic";
   const metrics = probe.measureText(text);
   const ascent = Math.max(1, Math.ceil(metrics.actualBoundingBoxAscent));
@@ -386,7 +400,7 @@ function tickerStrip(text: string, family: string): TickerStrip {
   const stripCtx = canvas.getContext("2d");
   if (!stripCtx) return { canvas, textWidth, pad };
   stripCtx.font = font(400, VENUE_SIZE, family);
-  stripCtx.letterSpacing = "0.16em";
+  stripCtx.letterSpacing = `${VENUE_TRACKING}em`;
   stripCtx.fillStyle = posterInk();
   stripCtx.textBaseline = "alphabetic";
   stripCtx.fillText(text, pad, pad + ascent);
@@ -444,6 +458,12 @@ export function drawPoster(
   fonts: PosterFonts,
   ticker?: PosterTicker,
 ) {
+  drawPosterBackground(ctx, slide);
+  if (slide) drawPosterText(ctx, slide, fonts, ticker);
+  if (ticker?.text) paintTicker(ctx, ticker, fonts);
+}
+
+export function drawPosterBackground(ctx: CanvasRenderingContext2D, slide: PosterSlide | null) {
   const width = ctx.canvas.width;
   const height = ctx.canvas.height;
   ctx.save();
@@ -456,58 +476,80 @@ export function drawPoster(
 
   if (slide?.image) drawCover(ctx, slide.image, width, height, slide.crop);
 
-  const fadeTop = height * 0.62;
-  const fade = ctx.createLinearGradient(0, fadeTop, 0, height);
-  fade.addColorStop(0, withAlpha(ground, 0));
-  fade.addColorStop(0.5, withAlpha(ground, 0.2));
-  fade.addColorStop(1, withAlpha(ground, 0.52));
-  ctx.fillStyle = fade;
-  ctx.fillRect(0, fadeTop, width, height - fadeTop);
-
-  ctx.fillStyle = slide?.color || posterInk();
-  ctx.fillRect(0, height - 14, width, 14);
-
-  if (!slide) {
-    if (ticker?.text) paintTicker(ctx, ticker, fonts);
-    ctx.restore();
-    return;
+  if (!slide?.hideFade) {
+    const fadeTop = height * 0.62;
+    const fade = ctx.createLinearGradient(0, fadeTop, 0, height);
+    fade.addColorStop(0, withAlpha(ground, 0));
+    fade.addColorStop(0.5, withAlpha(ground, 0.2));
+    fade.addColorStop(1, withAlpha(ground, 0.52));
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, fadeTop, width, height - fadeTop);
   }
 
+  if (!slide?.hideBottomLine) {
+    ctx.fillStyle = slide?.color || posterInk();
+    ctx.fillRect(0, height - 14, width, 14);
+  }
+
+  ctx.restore();
+}
+
+export function drawPosterText(
+  ctx: CanvasRenderingContext2D,
+  slide: PosterSlide,
+  fonts: PosterFonts,
+  ticker?: PosterTicker,
+) {
+  const { width, height } = ctx.canvas;
+  ctx.save();
   const padX = 72;
   const tickerLane = ticker?.text.trim() ? TICKER_INSET + 72 : 0;
   const maxWidth = width - padX * 2 - tickerLane;
-  const title = layoutTitle(ctx, slide.title || "Konsert", fonts.anselm, maxWidth);
+  const title = layoutTitle(ctx, slide.title || (slide.textPosition === undefined ? "Konsert" : ""), fonts.anselm, maxWidth);
   const venueSize = VENUE_SIZE;
   const dateSize = DATE_SIZE;
   const titleLineHeight = Math.round(title.size * 1.12);
   const titleHeight = title.lines.length * titleLineHeight;
-  const blockHeight = venueSize + 26 + titleHeight + 28 + dateSize;
-  let y = height - 64 - blockHeight;
+  const blockHeight = venueSize + 26 + titleHeight + (slide.dateAfterVenue ? 0 : 28 + dateSize);
+  const bottom = height - 64 - blockHeight;
+  let y = slide.textPosition === undefined
+    ? bottom
+    : 64 + (bottom - 64) * slide.textPosition;
 
   ctx.textBaseline = "top";
-  ctx.letterSpacing = "0.16em";
+  ctx.letterSpacing = `${VENUE_TRACKING}em`;
+  const ink = slide.textColor === "black" ? cssToken("--light-ink") : posterInk();
   ctx.fillStyle = slide.color || posterInk();
   ctx.font = font(400, venueSize, fonts.walter);
-  ctx.fillText(slide.venue.toLocaleUpperCase("sv"), padX, y);
+  const venue = slide.venue.toLocaleUpperCase("sv");
+  if (slide.dateAfterVenue) {
+    const datum = venue && slide.date ? ` · ${slide.date}` : slide.date;
+    const bredd = ctx.measureText(venue).width + ctx.measureText(datum).width;
+    if (bredd > maxWidth) ctx.font = font(400, venueSize * maxWidth / bredd, fonts.walter);
+    ctx.fillText(venue, padX, y);
+    ctx.fillStyle = ink;
+    ctx.fillText(datum, padX + ctx.measureText(venue).width + (slide.dateOffsetX ?? 0), y);
+  } else {
+    ctx.fillText(venue, padX, y);
+  }
   ctx.letterSpacing = "0px";
 
   y += venueSize + 26;
-  const ink = posterInk();
   ctx.fillStyle = ink;
   ctx.letterSpacing = "-0.02em";
   ctx.font = font(450, title.size, fonts.anselm);
   for (const line of title.lines) {
-    ctx.fillText(line, padX, y);
+    ctx.fillText(line, padX + (slide.titleOffsetX ?? 0), y);
     y += titleLineHeight;
   }
   ctx.letterSpacing = "0px";
 
-  y += 8;
-  ctx.fillStyle = withAlpha(ink, 0.86);
-  ctx.font = font(400, dateSize, fonts.anselm);
-  ctx.fillText(slide.date, padX, y);
+  if (!slide.dateAfterVenue) {
+    ctx.fillStyle = slide.textColor ? ink : withAlpha(ink, 0.86);
+    ctx.font = font(400, dateSize, fonts.anselm);
+    ctx.fillText(slide.date, padX + (slide.dateOffsetX ?? 0), y + 8);
+  }
 
-  if (ticker?.text) paintTicker(ctx, ticker, fonts);
   ctx.restore();
 }
 
@@ -714,7 +756,15 @@ function drawPlayTriangle(ctx: CanvasRenderingContext2D, cx: number, cy: number,
   ctx.restore();
 }
 
-function drawMastSymbol(ctx: CanvasRenderingContext2D, cx: number, cy: number, height: number) {
+let symbolKontur: Path2D | undefined;
+
+export function drawMastSymbol(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  height: number,
+  färg = cssToken("--light-ink"),
+) {
   const scale = height / SYMBOL_H;
   ctx.save();
   ctx.translate(cx - (SYMBOL_W * scale) / 2, cy - height / 2);
@@ -722,9 +772,10 @@ function drawMastSymbol(ctx: CanvasRenderingContext2D, cx: number, cy: number, h
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.lineWidth = 21.6;
-  ctx.strokeStyle = cssToken("--light-ink");
-  ctx.stroke(new Path2D(SYMBOL_OUTLINE));
-  ctx.fillStyle = cssToken("--light-ink");
+  ctx.strokeStyle = färg;
+  symbolKontur ??= new Path2D(SYMBOL_OUTLINE);
+  ctx.stroke(symbolKontur);
+  ctx.fillStyle = färg;
   ctx.beginPath();
   ctx.ellipse(236.8, EYE_CY, 41.3, 58.9, 0, 0, Math.PI * 2);
   ctx.fill();

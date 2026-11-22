@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { adminPassword, isAdmin } from "@/lib/admin/auth";
+import { ärBandcampSpår } from "@/lib/admin/track-list";
 import { loadPayload } from "@/lib/db/queries";
 import { MONTHS, WEEKDAYS } from "@/lib/types";
 
@@ -43,7 +44,7 @@ export async function GET() {
         trackId: track.track_id ?? null,
         videoId: track.video_id ?? null,
         type: track.type ?? null,
-      })),
+      })).filter((track) => !ärBandcampSpår(track)),
     }));
     return NextResponse.json({ events }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
