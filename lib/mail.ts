@@ -15,6 +15,8 @@ export type MailMessage = {
   text: string;
   html?: string;
   tag?: string;
+  /** Extra RFC 5322 headers, e.g. List-Unsubscribe. */
+  headers?: Record<string, string>;
 };
 
 function fromAddress(): string {
@@ -49,6 +51,9 @@ export async function sendMail(message: MailMessage): Promise<boolean> {
         HtmlBody: message.html || undefined,
         MessageStream: "outbound",
         Tag: message.tag || "scrape-report",
+        Headers: message.headers
+          ? Object.entries(message.headers).map(([Name, Value]) => ({ Name, Value }))
+          : undefined,
       }),
       signal: AbortSignal.timeout(15000),
     });

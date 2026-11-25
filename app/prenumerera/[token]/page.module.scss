@@ -1,0 +1,60 @@
+.page {
+	margin: 0 auto;
+	max-width: 44rem;
+	min-height: 100vh;
+	padding: clamp(2rem, 6vw, 5rem) var(--margin) 4rem;
+}
+
+.mark {
+	font-size: 1.4rem;
+	font-weight: var(--william-regular);
+	letter-spacing: -0.03em;
+	line-height: 1;
+	margin: 0 0 2.4rem;
+}
+
+.eyebrow {
+	color: var(--muted);
+	font-family: var(--font-walter), "Segoe UI", sans-serif;
+	font-size: 0.72rem;
+	letter-spacing: 0.1em;
+	line-height: 1.2;
+	margin: 0 0 0.4rem;
+	text-transform: uppercase;
+}
+
+.title {
+	font-size: clamp(1.7rem, 4vw, 2.3rem);
+	font-weight: var(--william-regular);
+	letter-spacing: -0.02em;
+	line-height: 1.15;
+	margin: 0;
+}
+
+.lead {
+	color: var(--muted);
+	font-size: 1.02rem;
+	line-height: 1.55;
+	margin: 0.9rem 0 0;
+	max-width: 36rem;
+}
+
+.formWrap {
+	border-top: 1px solid var(--line);
+	margin-top: 2rem;
+	padding-top: 1.6rem;
+}
+
+.fine {
+	margin: 2.4rem 0 0;
+}
+
+.back {
+	color: var(--ink);
+	font-family: var(--font-walter), "Segoe UI", sans-serif;
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	text-decoration: underline;
+	text-underline-offset: 0.18em;
+}

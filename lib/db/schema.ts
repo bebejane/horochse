@@ -160,6 +160,34 @@ export const scrapeErrors = sqliteTable("scrape_errors", {
 });
 
 /**
+ * Newsletter subscribers.
+ *
+ * One row per email address. `venues` is a comma-separated list of venue slugs
+ * (same slugs as `VENUES` in `lib/types.ts`). The confirmation mail sets
+ * `validated`; only validated rows receive digests. `verification_token` is an
+ * opaque bearer token used by the verify, manage and unsubscribe links, so it
+ * must never be logged.
+ */
+export const newsletter = sqliteTable(
+  "newsletter",
+  {
+    email: text("email").primaryKey(),
+    venues: text("venues").notNull(),
+    // 'weekly' | 'monthly'
+    frequency: text("frequency").notNull().default("monthly"),
+    validated: integer("validated", { mode: "boolean" }).notNull().default(false),
+    verificationToken: text("verification_token").notNull().unique(),
+    /** Last successful digest send. NULL means no digest has been sent yet. */
+    mailedAt: integer("mailed_at", { mode: "timestamp_ms" }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [
+    index("newsletter_due_idx").on(table.validated, table.frequency, table.mailedAt),
+  ],
+);
+
+/**
  * Persistent cache of Bandcamp artist lookups, keyed by the folded artist name.
  * Bandcamp has no public catalog API and its search endpoint is rate-limited, so
  * reusing successful results across runs is the main way to keep the track phase

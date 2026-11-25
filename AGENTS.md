@@ -88,6 +88,18 @@ Changing one side only makes the stored events and the rendered UI disagree.
 - The app reads from Turso (`/api/events` → `loadPayload()`, ICS → `findEvent()`); there is no JSON feed. The only writer is `scrapeAndStore`.
 - For local runs, load `.env` explicitly: `node --env-file=.env --import tsx scripts/scrape-to-db.ts` (plain `tsx` via the pnpm shim can break under an inherited `NODE_OPTIONS`).
 
+## Newsletter
+
+- The `newsletter` table (`lib/db/schema.ts`) holds one row per address: `email` (PK), `venues` (comma-separated venue slugs), `frequency` (`weekly`/`monthly`), `validated`, `verification_token` (opaque bearer), `mailed_at`. Only validated rows receive digests.
+- The "Prenumerera" item in the mast opens `components/NewsletterModal.tsx` → `NewsletterForm`; venues start from the saved `konserter-mine` selection (all venues when none). The same form drives `/prenumerera/[token]` for settings.
+- Routes: `POST /api/newsletter/subscribe` (create/update + Postmark confirmation), `GET /api/newsletter/verify` (validate + redirect to the manage page), `POST /api/newsletter/preferences`, `POST /api/newsletter/unsubscribe`. The token is a credential: pages are `noindex`/`no-referrer`; never log a token.
+- `GET /api/cron/newsletter`, scheduled daily 06:30 UTC in `vercel.json`. Weekly is due on Mondays, monthly on the 1st; new validated subscribers and failed sends catch up on the next run. `mailed_at` is set only after Postmark accepts, so failures retry.
+- Digests are built from `loadPayload()` in `lib/newsletter/digest.ts` and rendered with React Email (`lib/newsletter/emails/*.tsx`) to HTML + text. They mirror the list view, cap at 80 events, and link playable events to `/{venue_slug}#{event.id}` (`EventCard` carries the id; `ConcertApp` preserves the deep-link hash).
+- `pnpm newsletter:preview [--frequency weekly|monthly] [--venues a,b] [--to you@example.com]` writes `.cache/newsletter-preview.html`/`.txt`; `--to` sends a real Postmark test.
+- `pnpm newsletter:run [--dry] [--force] [--email a@b.se] [--now 2026-12-01] [--cap n]` runs the cron locally without Vercel or `CRON_SECRET`. `--force` ignores the Monday/1st/`mailed_at` check; `--email` limits the run to one address; `--now` simulates a Stockholm date. The same options are accepted by `GET /api/cron/newsletter` as `?dry=1&force=1&email=…&now=YYYY-MM-DD`. `pnpm newsletter:run:force` is the same as `pnpm newsletter:run --force`.
+- Email colours mirror the dark palette in `styles/_base.scss` (`lib/newsletter/theme.ts`). `List-Unsubscribe` points at the POST-only API; visible footer links go to the GET-safe `/prenumerera/[token]/avsluta` page.
+- Email links use `NEXT_PUBLIC_SITE_URL` when it is set (so a local run can test the whole flow on `http://localhost:3000`), otherwise the canonical `siteOrigin()`. Poster images use `NEWSLETTER_IMAGE_BASE_URL` instead (default `siteOrigin()`), so a local email can keep localhost links while loading images from the public site. Set the image base to the production URL in `.env`; never point it at localhost for mail sent to real inboxes.
+
 ## Environment / tooling gotchas
 
 - The scraper and app need **no** env vars — YouTube is scraped key-lessly (`ytInitialData` + oembed). The Turso client reads `TURSO_DATABASE_URL` (+ optional `TURSO_AUTH_TOKEN`) from the gitignored `.env`. Postmark email uses `POSTMARK_API_TOKEN`, `POSTMARK_FROM_NAME`, `POSTMARK_FROM_EMAIL`; the report recipient is `SCRAPE_REPORT_TO` (default `dev@konst-teknik.se`).

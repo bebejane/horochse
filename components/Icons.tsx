@@ -54,6 +54,22 @@ export function CloseIcon() {
   );
 }
 
+export function MailIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3.5 5.5h17v13h-17z" fill="none" stroke="currentColor" strokeWidth="1.7" />
+      <path
+        d="m4 6.5 8 6 8-6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function NowArrow({ className }: { className?: string }) {
   return (
     <span className={className} aria-hidden="true">

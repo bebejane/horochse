@@ -6,7 +6,8 @@ import cn from 'classnames';
 import { useEffect, useLayoutEffect, useRef, useState, type Ref } from 'react';
 import { VENUES } from '@/lib/types';
 import type { CalStyle, FilterMode, ListDensity, ThemeMode, ViewMode } from '@/lib/types';
-import { ChevronUpIcon, CloseIcon, GearIcon } from '@/components/Icons';
+import { ChevronUpIcon, CloseIcon, GearIcon, MailIcon } from '@/components/Icons';
+import { NewsletterModal } from '@/components/NewsletterModal';
 
 const WORDMARK = ['H', 'ö', 'r', '&', 'S', 'e'] as const;
 const EYEBROW_WORDMARK = ['H', 'Ö', 'R ', '& ', 'S', 'E '] as const;
@@ -114,6 +115,7 @@ export function Mast({
 	const [introHidden, setIntroHidden] = useState(false);
 	const [introAway, setIntroAway] = useState(false);
 	const [aboutOpen, setAboutOpen] = useState(false);
+	const [newsletterOpen, setNewsletterOpen] = useState(false);
 
 	useEffect(() => {
 		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -692,6 +694,21 @@ export function Mast({
 					<div className={s.mastTopActions}>
 						<button
 							type='button'
+							className={cn(s.mastAbout, s.mastSubscribe, { isOn: newsletterOpen })}
+							aria-haspopup='dialog'
+							aria-expanded={newsletterOpen ? 'true' : 'false'}
+							aria-label='Prenumerera på nyhetsbrevet'
+							title='Prenumerera på nyhetsbrevet'
+							onClick={() => {
+								setAboutOpen(false);
+								setNewsletterOpen(true);
+							}}
+						>
+							<span className={s.mastSubscribeLabel}>Prenumerera</span>
+							<MailIcon className={s.mastSubscribeIcon} />
+						</button>
+						<button
+							type='button'
 							className={cn(s.mastAbout, { isOn: aboutOpen })}
 							aria-pressed={aboutOpen ? 'true' : 'false'}
 							aria-expanded={aboutOpen ? 'true' : 'false'}
@@ -965,6 +982,11 @@ export function Mast({
 					/>
 				) : null}
 			</div>
+			<NewsletterModal
+				open={newsletterOpen}
+				onClose={() => setNewsletterOpen(false)}
+				mine={mine}
+			/>
 		</header>
 	);
 }

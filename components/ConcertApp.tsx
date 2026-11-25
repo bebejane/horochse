@@ -3,7 +3,7 @@
 import s from './ConcertApp.module.scss';
 import cn from 'classnames';
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { formatUpdated, toIso, todayDate, weekMondayIso } from '@/lib/dates';
 import {
 	clearStoredSettings,
@@ -147,6 +147,7 @@ export function ConcertApp({
 	const loaded = true;
 	const [mode, setMode] = useState<FilterMode>('all');
 	const [mine, setMine] = useState<string[]>([]);
+	const deepLinkScrolled = useRef(false);
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const [peek, setPeek] = useState<string | null>(initialPeek);
 	const [view, setView] = useState<ViewMode>('list');
@@ -264,6 +265,12 @@ export function ConcertApp({
 		} catch {
 			/* ignore */
 		}
+		// En länk från nyhetsbrevet pekar på ett enskilt kort (#event-id).
+		// Behåll hashen så länge användaren är kvar på samma scen och vy.
+		const currentHash = window.location.hash;
+		const isDeepLink =
+			Boolean(currentHash) && currentHash !== '#lista' && currentHash !== '#kalender';
+		if (isDeepLink && view === 'list' && peek === initialPeek) return;
 		const hash = view === 'calendar' ? '#kalender' : '#lista';
 		// Scensidans adress följer filtret. På startsidan rör vi bara hash.
 		if (initialPeek) {
@@ -274,6 +281,20 @@ export function ConcertApp({
 			history.replaceState(null, '', hash);
 		}
 	}, [view, calStyle, peek, initialPeek]);
+
+	useEffect(() => {
+		if (deepLinkScrolled.current) return;
+		const id = window.location.hash.replace(/^#/, '');
+		if (!id || id === 'lista' || id === 'kalender') return;
+		const run = () => {
+			const event = playlistEvents.find((item) => item.id === id);
+			if (!event) return;
+			deepLinkScrolled.current = true;
+			scrollToCard(event, { force: true, behavior: 'auto' });
+		};
+		const timer = window.setTimeout(run, 160);
+		return () => window.clearTimeout(timer);
+	}, [playlistEvents]);
 
 	useEffect(() => {
 		if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');

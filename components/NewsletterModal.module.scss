@@ -1,0 +1,111 @@
+.overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 200;
+	display: grid;
+	place-items: center;
+	overflow-y: auto;
+	background: rgba(0, 0, 0, 0.62);
+	backdrop-filter: blur(3px);
+	padding: var(--margin);
+}
+
+.panel {
+	width: min(46rem, 100%);
+	max-height: min(88vh, 52rem);
+	overflow: auto;
+	background: var(--bg);
+	color: var(--ink);
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	box-shadow: 0 1.4rem 4rem rgba(0, 0, 0, 0.4);
+	padding: clamp(1.1rem, 3vw, 1.8rem);
+	scrollbar-width: thin;
+}
+
+.head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+}
+
+.eyebrow {
+	color: var(--muted);
+	font-family: var(--font-walter), "Segoe UI", sans-serif;
+	font-size: 0.7rem;
+	letter-spacing: 0.1em;
+	line-height: 1.2;
+	margin: 0 0 0.35rem;
+	text-transform: uppercase;
+}
+
+.title {
+	font-size: clamp(1.4rem, 3vw, 1.8rem);
+	font-weight: var(--william-regular);
+	letter-spacing: -0.02em;
+	line-height: 1.15;
+	margin: 0;
+}
+
+.close {
+	appearance: none;
+	display: grid;
+	place-items: center;
+	flex: 0 0 auto;
+	width: 2rem;
+	height: 2rem;
+	border: 1px solid var(--line);
+	border-radius: 50%;
+	background: transparent;
+	color: var(--muted);
+	padding: 0;
+	cursor: pointer;
+}
+
+.close svg {
+	display: block;
+	width: 0.9rem;
+	height: 0.9rem;
+}
+
+.close:hover,
+.close:focus-visible {
+	border-color: var(--ink);
+	color: var(--ink);
+}
+
+.close:focus-visible {
+	outline: 1px solid var(--ink);
+	outline-offset: 2px;
+}
+
+.lead {
+	color: var(--muted);
+	font-size: 0.98rem;
+	line-height: 1.5;
+	margin: 0.8rem 0 1.2rem;
+	max-width: 36rem;
+}
+
+@media (max-width: 840px) {
+	.overlay {
+		padding: 0;
+		place-items: stretch;
+	}
+
+	.panel {
+		width: 100%;
+		max-height: 100%;
+		min-height: 100%;
+		border: 0;
+		border-radius: 0;
+		padding: 1rem var(--margin) 2rem;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.close {
+		transition: none;
+	}
+}

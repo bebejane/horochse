@@ -138,6 +138,7 @@ export function EventCard({
         isCompact: compact,
         isCompactClosed: compactClosed,
       })}
+      id={event.id}
       data-card
       data-id={event.id}
       data-venue={event.venue_slug}

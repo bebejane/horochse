@@ -226,6 +226,34 @@
 	outline-offset: 0.28rem;
 }
 
+.mastSubscribe {
+	color: var(--ink);
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.mastSubscribeIcon {
+	display: none;
+	width: 0.95rem;
+	height: 0.95rem;
+}
+
+.mastSubscribeIcon path {
+	vector-effect: non-scaling-stroke;
+}
+
+.mastSubscribe::after {
+	content: '';
+	display: inline-block;
+	width: 0.34rem;
+	height: 0.34rem;
+	margin-left: 0.05em;
+	border-radius: 50%;
+	background: var(--debaser);
+	vertical-align: 0.1em;
+}
+
 :global(html[data-hide-intro]) .mastIntroWrap:not(:global(.isAbout)) {
 	display: none;
 }
@@ -870,6 +898,18 @@ span.filter:global(.isSolo) {
 
 	.mastAbout {
 		margin-right: auto;
+	}
+
+	.mastSubscribe {
+		margin-right: 0;
+	}
+
+	.mastSubscribeLabel {
+		display: none;
+	}
+
+	.mastSubscribeIcon {
+		display: block;
 	}
 
 	.mastTopTools {
